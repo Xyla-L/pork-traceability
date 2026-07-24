@@ -26,7 +26,7 @@
         </p>
         <div class="brand-features">
           <div class="feature-item">
-            <el-icon :size="20"><Shield /></el-icon>
+            <el-icon :size="20"><Connection /></el-icon>
             <span>全程可追溯</span>
           </div>
           <div class="feature-item">
@@ -55,7 +55,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { Shield, Lock, Monitor } from '@element-plus/icons-vue'
+import { Lock, Monitor, Connection } from '@element-plus/icons-vue'
 import LoginForm from './LoginForm.vue'
 
 const currentYear = computed(() => new Date().getFullYear())

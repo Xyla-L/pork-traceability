@@ -3,7 +3,7 @@
     <div class="left-section">
       <el-button type="text" @click="toggleSidebar"><el-icon><Menu /></el-icon></el-button>
       <div class="logo">
-        <el-icon><PiggyBank /></el-icon>
+        <el-icon><Coin /></el-icon>
         <span>猪肉溯源管理平台</span>
       </div>
     </div>
@@ -39,10 +39,10 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Menu, Bell, User, PiggyBank } from '@element-plus/icons-vue'
+import { Menu, Bell, User, Coin } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { useAppStore } from '@/stores/app'
 

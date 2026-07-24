@@ -31,10 +31,10 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, markRaw } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { PiggyBank, Monitor, User, Syringe, ClipboardCheck, DoorOpen, Knife, FlaskConical, Stamp, Package, Receiving, QrCode, ShoppingCart, AlertTriangle, RotateCcw, MessageWarning, UserFilled, Building, FileSearch, Fold, Expand } from '@element-plus/icons-vue'
+import { Monitor, User, KnifeFork, Fold, Expand } from '@element-plus/icons-vue'
 import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
 
@@ -47,7 +47,7 @@ const isCollapsed = computed(() => appStore.sidebarCollapsed)
 
 const activeMenu = computed(() => route.path)
 
-const iconMap: Record<string, any> = { Monitor: markRaw(Monitor), User: markRaw(User), Syringe: markRaw(Syringe), ClipboardCheck: markRaw(ClipboardCheck), DoorOpen: markRaw(DoorOpen), Knife: markRaw(Knife), FlaskConical: markRaw(FlaskConical), Stamp: markRaw(Stamp), Package: markRaw(Package), Receiving: markRaw(Receiving), QrCode: markRaw(QrCode), ShoppingCart: markRaw(ShoppingCart), AlertTriangle: markRaw(AlertTriangle), RotateCcw: markRaw(RotateCcw), MessageWarning: markRaw(MessageWarning), UserFilled: markRaw(UserFilled), Building: markRaw(Building), FileSearch: markRaw(FileSearch) }
+const iconMap: Record<string, any> = { Monitor: markRaw(Monitor), User: markRaw(User), KnifeFork: markRaw(KnifeFork) }
 
 const getIcon = (iconName: string) => iconMap[iconName] || Monitor
 
@@ -56,11 +56,7 @@ const menuList = computed(() => {
   return [
     { path: '/admin/dashboard', title: '工作台', icon: 'Monitor', roles: ['*'] },
     { path: '/admin/farm', title: '养殖管理', icon: 'User', roles: ['FARMER', 'SUPERVISOR', 'ADMIN'], children: [{ path: '/admin/farm/pigs', title: '生猪档案', roles: ['*'] }, { path: '/admin/farm/vaccines', title: '疫苗记录', roles: ['FARMER', 'SUPERVISOR', 'ADMIN'] }, { path: '/admin/farm/apply', title: '出栏审批', roles: ['SUPERVISOR', 'ADMIN'] }] },
-    { path: '/admin/slaughter', title: '屠宰管理', icon: 'Knife', roles: ['*'], children: [{ path: '/admin/slaughter/entry', title: '入场查验', roles: ['*'] }, { path: '/admin/slaughter/inspect', title: '屠宰检验', roles: ['*'] }, { path: '/admin/slaughter/ractopamine', title: '瘦肉精检测', roles: ['*'] }, { path: '/admin/slaughter/stamp', title: '检疫盖章', roles: ['*'] }] },
-    { path: '/admin/distribution', title: '分割配送', icon: 'Package', roles: ['*'], children: [{ path: '/admin/distribution/batch', title: '胴体批次', roles: ['*'] }, { path: '/admin/distribution/receipt', title: '门店签收', roles: ['*'] }] },
-    { path: '/admin/sales', title: '销售管理', icon: 'ShoppingCart', roles: ['*'], children: [{ path: '/admin/sales/qrcode', title: '二维码管理', roles: ['*'] }, { path: '/admin/sales/records', title: '销售记录', roles: ['*'] }, { path: '/admin/sales/warnings', title: '过期预警', roles: ['*'] }, { path: '/admin/sales/recall', title: '产品召回', roles: ['*'] }] },
-    { path: '/admin/trace', title: '应急追溯', icon: 'MessageWarning', roles: ['*'], children: [{ path: '/admin/trace/complaints', title: '举报管理', roles: ['*'] }] },
-    { path: '/admin/system', title: '系统管理', icon: 'FileSearch', roles: ['ADMIN'], children: [{ path: '/admin/system/users', title: '用户管理', roles: ['ADMIN'] }, { path: '/admin/system/orgs', title: '机构管理', roles: ['ADMIN'] }, { path: '/admin/system/audit', title: '审计日志', roles: ['ADMIN'] }] }
+    { path: '/admin/slaughter', title: '屠宰管理', icon: 'KnifeFork', roles: ['SLAUGHTERER', 'SUPERVISOR', 'ADMIN'], children: [{ path: '/admin/slaughter/entry', title: '入场查验', roles: ['SLAUGHTERER', 'SUPERVISOR', 'ADMIN'] }, { path: '/admin/slaughter/inspect', title: '屠宰检验', roles: ['SLAUGHTERER', 'SUPERVISOR', 'ADMIN'] }, { path: '/admin/slaughter/ractopamine', title: '瘦肉精检测', roles: ['SLAUGHTERER', 'SUPERVISOR', 'ADMIN'] }, { path: '/admin/slaughter/stamp', title: '检疫盖章', roles: ['SUPERVISOR', 'ADMIN'] }] }
   ].filter(menu => {
     if (menu.roles.includes('*')) return true
     return menu.roles.includes(userRole)

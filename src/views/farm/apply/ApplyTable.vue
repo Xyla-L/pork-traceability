@@ -46,7 +46,7 @@
 </template>
 
 <script setup>
-import StatusTag from '@/components/StatusTag.vue'
+import StatusTag from '@/components/common/StatusTag.vue'
 
 defineProps({
   data: {

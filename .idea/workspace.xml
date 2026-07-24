@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="524affbd-801e-4075-b9d1-98b350275a9a" name="更改" comment="">
+      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/layout/SidebarMenu.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/layout/SidebarMenu.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/layout/TopBar.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/layout/TopBar.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/router/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/router/index.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/dashboard/DashboardView.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/dashboard/DashboardView.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/farm/apply/ApplyTable.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/farm/apply/ApplyTable.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/farm/pigs/PigTable.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/farm/pigs/PigTable.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/login/LoginView.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/login/LoginView.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/node_modules/.vite/deps/@element-plus_icons-vue.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/node_modules/.vite/deps/_metadata.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/node_modules/.vite/deps/chunk-2Y72FO6O.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/node_modules/.vite/deps/chunk-2Y72FO6O.js.map" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/node_modules/.vite/deps/chunk-5WRI5ZAA.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/node_modules/.vite/deps/chunk-5WRI5ZAA.js.map" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/node_modules/.vite/deps/chunk-Q5ZGNUOD.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/node_modules/.vite/deps/chunk-Q5ZGNUOD.js.map" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/node_modules/.vite/deps/chunk-VID4RN2V.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/node_modules/.vite/deps/chunk-VID4RN2V.js.map" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/node_modules/.vite/deps/chunk-WC4ZC3H5.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/node_modules/.vite/deps/chunk-WC4ZC3H5.js.map" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/node_modules/.vite/deps/chunk-ZNJFHDRD.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/node_modules/.vite/deps/chunk-ZNJFHDRD.js.map" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/node_modules/.vite/deps/element-plus.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/node_modules/.vite/deps/element-plus_dist_locale_zh-cn__mjs.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/node_modules/.vite/deps/element-plus_dist_locale_zh-cn__mjs.js.map" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/node_modules/.vite/deps/element-plus_es.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/node_modules/.vite/deps/element-plus_es_components_base_style_css.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/node_modules/.vite/deps/element-plus_es_components_button_style_css.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/node_modules/.vite/deps/element-plus_es_components_button_style_css.js.map" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/node_modules/.vite/deps/element-plus_es_components_checkbox_style_css.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/node_modules/.vite/deps/element-plus_es_components_checkbox_style_css.js.map" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/node_modules/.vite/deps/element-plus_es_components_form-item_style_css.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/node_modules/.vite/deps/element-plus_es_components_form-item_style_css.js.map" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/node_modules/.vite/deps/element-plus_es_components_form_style_css.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/node_modules/.vite/deps/element-plus_es_components_form_style_css.js.map" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/node_modules/.vite/deps/element-plus_es_components_input_style_css.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/node_modules/.vite/deps/element-plus_es_components_input_style_css.js.map" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/node_modules/.vite/deps/pinia-plugin-persistedstate.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/node_modules/.vite/deps/pinia-plugin-persistedstate.js.map" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/node_modules/.vite/deps/pinia.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/node_modules/.vite/deps/pinia.js.map" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/node_modules/.vite/deps/vue-router.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/node_modules/.vite/deps/vue-router.js.map" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/node_modules/.vite/deps/vue.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/src/components/common/BlockchainVerifyBadge.vue" beforeDir="false" afterPath="$PROJECT_DIR$/web-admin/src/components/common/BlockchainVerifyBadge.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/src/components/common/ConfirmDialog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/web-admin/src/components/common/ConfirmDialog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/src/components/common/EmptyState.vue" beforeDir="false" afterPath="$PROJECT_DIR$/web-admin/src/components/common/EmptyState.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/src/components/common/ExpireCountdown.vue" beforeDir="false" afterPath="$PROJECT_DIR$/web-admin/src/components/common/ExpireCountdown.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/src/components/common/FileUpload.vue" beforeDir="false" afterPath="$PROJECT_DIR$/web-admin/src/components/common/FileUpload.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/src/components/common/ImagePreview.vue" beforeDir="false" afterPath="$PROJECT_DIR$/web-admin/src/components/common/ImagePreview.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/src/components/common/Pagination.vue" beforeDir="false" afterPath="$PROJECT_DIR$/web-admin/src/components/common/Pagination.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/src/components/common/SearchPanel.vue" beforeDir="false" afterPath="$PROJECT_DIR$/web-admin/src/components/common/SearchPanel.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/src/components/common/SignaturePad.vue" beforeDir="false" afterPath="$PROJECT_DIR$/web-admin/src/components/common/SignaturePad.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/src/components/common/StatusTag.vue" beforeDir="false" afterPath="$PROJECT_DIR$/web-admin/src/components/common/StatusTag.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/src/config/menuConfig.ts" beforeDir="false" afterPath="$PROJECT_DIR$/web-admin/src/config/menuConfig.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/src/router/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/web-admin/src/router/index.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/src/types/components.d.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/src/views/distribution/CarcassBatch.vue" beforeDir="false" afterPath="$PROJECT_DIR$/web-admin/src/views/distribution/CarcassBatch.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/src/views/distribution/StoreReceipt.vue" beforeDir="false" afterPath="$PROJECT_DIR$/web-admin/src/views/distribution/StoreReceipt.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/src/views/farm/ApplyList.vue" beforeDir="false" afterPath="$PROJECT_DIR$/web-admin/src/views/farm/ApplyList.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/src/views/farm/PigList.vue" beforeDir="false" afterPath="$PROJECT_DIR$/web-admin/src/views/farm/PigList.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/src/views/farm/VaccineRecord.vue" beforeDir="false" afterPath="$PROJECT_DIR$/web-admin/src/views/farm/VaccineRecord.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/src/views/login/LoginView.vue" beforeDir="false" afterPath="$PROJECT_DIR$/web-admin/src/views/login/LoginView.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/src/views/sales/ExpireWarnings.vue" beforeDir="false" afterPath="$PROJECT_DIR$/web-admin/src/views/sales/ExpireWarnings.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/src/views/sales/QrcodeManage.vue" beforeDir="false" afterPath="$PROJECT_DIR$/web-admin/src/views/sales/QrcodeManage.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/src/views/sales/RecallManage.vue" beforeDir="false" afterPath="$PROJECT_DIR$/web-admin/src/views/sales/RecallManage.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/src/views/sales/SaleRecords.vue" beforeDir="false" afterPath="$PROJECT_DIR$/web-admin/src/views/sales/SaleRecords.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/src/views/slaughter/CarcassStamp.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/src/views/slaughter/EntryInspect.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/src/views/slaughter/RactopamineTest.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/src/views/slaughter/SlaughterInspect.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/src/views/system/AuditLog.vue" beforeDir="false" afterPath="$PROJECT_DIR$/web-admin/src/views/system/AuditLog.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/src/views/system/OrgManage.vue" beforeDir="false" afterPath="$PROJECT_DIR$/web-admin/src/views/system/OrgManage.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/src/views/system/UserManage.vue" beforeDir="false" afterPath="$PROJECT_DIR$/web-admin/src/views/system/UserManage.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web-admin/src/views/trace/ComplaintManage.vue" beforeDir="false" afterPath="$PROJECT_DIR$/web-admin/src/views/trace/ComplaintManage.vue" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;lyx45&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/Xyla-L/pork-traceability.git&quot;,
+    &quot;accountId&quot;: &quot;5b1ee504-8308-434a-9f21-3bfc2626f29c&quot;
+  }
+}</component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 2
+}</component>
+  <component name="ProjectId" id="3Gtcu5JE65lyMpPoQSPDwANjVWs" />
+  <component name="ProjectViewState">
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;feat/web-business&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;D:/pork-traceability&quot;
+  }
+}</component>
+  <component name="RunManager">
+    <configuration default="true" type="JetRunConfigurationType">
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration default="true" type="KotlinStandaloneScriptRunConfigurationType">
+      <option name="filePath" />
+      <method v="2" />
+    </configuration>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="默认任务">
+      <changelist id="524affbd-801e-4075-b9d1-98b350275a9a" name="更改" comment="" />
+      <created>1784794524328</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1784794524328</updated>
+    </task>
+    <servers />
+  </component>
+</project>

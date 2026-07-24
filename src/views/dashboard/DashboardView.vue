@@ -9,28 +9,28 @@
         </div>
       </el-card>
       <el-card class="stat-card">
-        <div class="stat-icon slaughter"><el-icon><Knife /></el-icon></div>
+        <div class="stat-icon slaughter"><el-icon><KnifeFork /></el-icon></div>
         <div class="stat-info">
           <div class="stat-value">{{ statData.slaughterCount }}</div>
           <div class="stat-label">今日屠宰量</div>
         </div>
       </el-card>
       <el-card class="stat-card">
-        <div class="stat-icon distribution"><el-icon><Package /></el-icon></div>
+        <div class="stat-icon distribution"><el-icon><Box /></el-icon></div>
         <div class="stat-info">
           <div class="stat-value">{{ statData.transportCount }}</div>
           <div class="stat-label">在途批次</div>
         </div>
       </el-card>
       <el-card class="stat-card">
-        <div class="stat-icon warning"><el-icon><AlertTriangle /></el-icon></div>
+        <div class="stat-icon warning"><el-icon><Warning /></el-icon></div>
         <div class="stat-info">
           <div class="stat-value">{{ statData.expireCount }}</div>
           <div class="stat-label">临期产品数</div>
         </div>
       </el-card>
       <el-card class="stat-card">
-        <div class="stat-icon complaint"><el-icon><MessageWarning /></el-icon></div>
+        <div class="stat-icon complaint"><el-icon><ChatLineRound /></el-icon></div>
         <div class="stat-info">
           <div class="stat-value">{{ statData.complaintCount }}</div>
           <div class="stat-label">待处理举报</div>
@@ -84,10 +84,10 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, reactive, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { User, Knife, Package, AlertTriangle, MessageWarning, Coin } from '@element-plus/icons-vue'
+import { User, KnifeFork, Box, Warning, ChatLineRound, Coin } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 
 const router = useRouter()
@@ -138,7 +138,7 @@ const initCharts = () => {
   }
 }
 
-const goToWarnings = () => router.push('/admin/sales/warnings')
+const goToWarnings = () => {}
 
 const handleResize = () => { salesChart?.resize(); warningChart?.resize() }
 
