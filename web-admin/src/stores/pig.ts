@@ -6,12 +6,20 @@ import { pigApi } from '@/api/modules/breeding'
 
 export const usePigStore = defineStore('pig', () => {
   // ========== State ==========
+  
+  // 生猪分页列表
   const pigList = ref<PigIndividual[]>([])
+  // 分页总条数
   const total = ref(0)
+  // 当前选中/查看的单头生猪详情
   const currentPig = ref<PigIndividual | null>(null)
+  // 当前生猪对应的疫苗记录数组
   const vaccineList = ref<VaccineRecord[]>([])
+  // 屠宰申请列表
   const applyList = ref<SlaughterApply[]>([])
+  // 当前生猪检疫证明
   const quarantineCert = ref<QuarantineCert | null>(null)
+  // 全局加载状态，控制表格loading动画
   const loading = ref(false)
 
   // ========== Actions ==========

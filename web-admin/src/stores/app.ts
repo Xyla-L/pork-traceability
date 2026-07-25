@@ -9,8 +9,12 @@ import { ref } from 'vue'
  */
 export const useAppStore = defineStore('app', () => {
   // ========== State ==========
+
+  // 侧边栏是否折叠
   const sidebarCollapsed = ref(false)
+  // 顶部通知消息列表
   const notifications = ref<AppNotification[]>([])
+  // 当前页面面包屑导航数组
   const breadcrumbs = ref<BreadcrumbItem[]>([])
 
   // ========== Actions ==========
