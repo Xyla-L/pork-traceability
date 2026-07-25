@@ -153,6 +153,18 @@ const fetchFarmList = async () => {
   }
 }
 
+const resetForm = () => {
+  Object.assign(formData, {
+    earTagNo: '',
+    farmId: '',
+    breed: '',
+    birthDate: '',
+    penNo: '',
+    source: '自繁'
+  })
+  formRef.value?.resetFields()
+}
+
 // 监听 editData 变化，回填表单
 watch(
   () => props.editData,
@@ -172,18 +184,6 @@ watch(
   },
   { immediate: true }
 )
-
-const resetForm = () => {
-  Object.assign(formData, {
-    earTagNo: '',
-    farmId: '',
-    breed: '',
-    birthDate: '',
-    penNo: '',
-    source: '自繁'
-  })
-  formRef.value?.resetFields()
-}
 
 const handleClose = () => {
   resetForm()

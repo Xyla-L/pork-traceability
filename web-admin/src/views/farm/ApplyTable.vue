@@ -22,7 +22,7 @@
       <el-table-column prop="targetSlaughterhouse" label="目标屠宰场" min-width="160" show-overflow-tooltip />
       <el-table-column prop="approvalStatus" label="审批状态" min-width="100" align="center">
         <template #default="{ row }">
-          <status-tag :status="row.approvalStatus" />
+          <StatusTag :type="applyStatusType(row.approvalStatus)" />
         </template>
       </el-table-column>
       <el-table-column label="操作" width="160" fixed="right" align="center">
@@ -64,6 +64,11 @@ defineProps({
 })
 
 defineEmits(['approve', 'view'])
+
+const applyStatusType = (status) => {
+  const map = { 0: 'pending', 1: 'approved', 2: 'rejected' }
+  return map[status] || ''
+}
 </script>
 
 <style lang="scss" scoped>

@@ -10,6 +10,7 @@
     <el-scrollbar class="sidebar-scroll">
       <el-menu
         :default-active="activeMenu"
+        :default-openeds="openedSubMenus"
         :collapse="collapsed"
         :collapse-transition="false"
         :unique-opened="true"
@@ -59,14 +60,43 @@ defineProps<{
 const route = useRoute()
 const authStore = useAuthStore()
 
-// 当前激活的菜单项
-const activeMenu = computed(() => route.path)
+// 当前激活的菜单项 —— 匹配最长前缀，兼容 /farm/pigs/1 这种详情路由
+const activeMenu = computed(() => {
+  const allPaths = flattenMenuPaths(menuConfig)
+  // 按路径长度降序排列，优先匹配更具体的路径
+  const sorted = [...allPaths].sort((a, b) => b.length - a.length)
+  const matched = sorted.find((p) => route.path.startsWith(p))
+  return matched || route.path
+})
+
+// 需要自动展开的父菜单
+const openedSubMenus = computed(() => {
+  const parents: string[] = []
+  for (const item of menuConfig) {
+    if (item.children?.some((c) => route.path.startsWith(c.path))) {
+      parents.push(item.path)
+    }
+  }
+  return parents
+})
+
+/** 递归收集所有菜单项的 path（含 children） */
+function flattenMenuPaths(items: typeof menuConfig): string[] {
+  const paths: string[] = []
+  for (const item of items) {
+    paths.push(item.path)
+    if (item.children) {
+      paths.push(...flattenMenuPaths(item.children))
+    }
+  }
+  return paths
+}
 
 // 根据角色过滤可见菜单
 const visibleMenu = computed(() => {
   const role = authStore.role
-  if (!role) return []
-  if (role === 'ADMIN') return menuConfig // 管理员看到全部
+  // 开发阶段：无角色时显示全部菜单（后续接入登录后删掉 !role 判断）
+  if (!role || role === 'ADMIN') return menuConfig
   return filterMenuByRole(menuConfig, [role])
 })
 </script>

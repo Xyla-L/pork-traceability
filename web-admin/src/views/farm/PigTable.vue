@@ -21,7 +21,7 @@
       <el-table-column prop="birthDate" label="出生日期" min-width="120" align="center" />
       <el-table-column prop="status" label="状态" min-width="100" align="center">
         <template #default="{ row }">
-          <status-tag :status="row.status" />
+          <StatusTag :type="pigStatusType(row.status)" />
         </template>
       </el-table-column>
       <el-table-column label="操作" width="200" fixed="right" align="center">
@@ -75,6 +75,11 @@ const breedMap = {
   'du洛克': '杜洛克',
   'dulock': '杜洛克',
   'pitelan': '皮特兰'
+}
+
+const pigStatusType = (status) => {
+  const map = { 1: 'raising', 2: 'transport', 3: 'slaughtered', 4: 'abnormal' }
+  return map[status] || ''
 }
 
 const breedLabel = (breed) => {
