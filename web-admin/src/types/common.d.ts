@@ -56,6 +56,9 @@ export interface MenuItem {
   children?: MenuItem[]
 }
 
+// ========== Element Plus Tag 类型 ==========
+export type EpTagType = 'success' | 'warning' | 'danger' | 'info' | 'primary'
+
 // ========== 区块链状态 ==========
 export type BlockchainStatus = 'confirmed' | 'pending' | 'failed' | 'none'
 
