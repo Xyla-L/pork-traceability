@@ -165,9 +165,10 @@ onMounted(() => fetchList())
 <style lang="scss" scoped>
 .page-container { padding: 20px; background: #fff; border-radius: 4px; }
 .search-panel { padding-bottom: 16px; border-bottom: 1px solid #ebeef5; margin-bottom: 16px;
+  :deep(.el-form) { flex-wrap: nowrap; }
   :deep(.el-form-item) { margin-bottom: 12px; } }
 .action-bar { display: flex; justify-content: flex-end; margin-bottom: 16px; }
-.pagination-wrapper { display: flex; justify-content: flex-end; padding-top: 16px; margin-top: 16px; border-top: 1px solid #ebeef5; }
+.pagination-wrapper { display: flex; justify-content: center; padding-top: 16px; margin-top: 16px; border-top: 1px solid #ebeef5; }
 .unit-hint { margin-left: 6px; font-size: 13px; color: #909399; }
 .selected-pigs :deep(.el-form-item__content) { line-height: 2; }
 </style>
