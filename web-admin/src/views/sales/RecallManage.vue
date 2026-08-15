@@ -214,7 +214,7 @@ onMounted(() => fetchList())
 <style lang="scss" scoped>
 .page-container { padding: 20px; background: #fff; border-radius: 4px; }
 .action-bar { display: flex; justify-content: flex-end; margin-bottom: 16px; }
-.pagination-wrapper { display: flex; justify-content: flex-end; padding-top: 16px; margin-top: 16px; border-top: 1px solid #ebeef5; }
+.pagination-wrapper { display: flex; justify-content: center; padding-top: 16px; margin-top: 16px; border-top: 1px solid #ebeef5; }
 .progress-cell { display: flex; align-items: center; gap: 10px; }
 .progress-text { font-size: 12px; color: #909399; white-space: nowrap; flex-shrink: 0; }
 .progress-hint { font-size: 14px; color: #909399; margin-left: 4px; }

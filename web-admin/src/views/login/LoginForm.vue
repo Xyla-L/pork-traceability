@@ -83,9 +83,10 @@ import { ref, reactive, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { User, Lock, Key, Loading } from '@element-plus/icons-vue'
-// import { authApi } from '@/api/auth'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const authStore = useAuthStore()
 
 const loginFormRef = ref(null)
 const captchaCanvas = ref(null)
@@ -224,15 +225,12 @@ async function handleLogin() {
   loginLoading.value = true
 
   try {
-    // TODO: 调用真实登录接口
-    // const res = await authApi.login({ ... })
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    await authStore.login(loginForm.username, loginForm.password)
     handleRememberPassword()
     ElMessage.success('登录成功，正在跳转...')
     setTimeout(() => { router.push('/admin') }, 800)
-  } catch (error) {
-    const message = error?.response?.data?.message || error?.message || '登录失败，请稍后重试'
-    ElMessage.error(message)
+  } catch {
+    // 错误提示由 request 拦截器统一处理（如「用户名或密码错误」），这里只需刷新验证码
     refreshCaptcha()
     loginForm.captcha = ''
   } finally {

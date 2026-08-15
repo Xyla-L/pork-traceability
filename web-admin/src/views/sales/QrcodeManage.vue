@@ -256,7 +256,7 @@ onMounted(() => fetchList())
 .search-panel { padding-bottom: 16px; border-bottom: 1px solid #ebeef5; margin-bottom: 16px;
   :deep(.el-form-item) { margin-bottom: 12px; } }
 .action-bar { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 16px; }
-.pagination-wrapper { display: flex; justify-content: flex-end; padding-top: 16px; margin-top: 16px; border-top: 1px solid #ebeef5; }
+.pagination-wrapper { display: flex; justify-content: center; padding-top: 16px; margin-top: 16px; border-top: 1px solid #ebeef5; }
 .qr-preview-wrap { display: flex; flex-direction: column; align-items: center; gap: 12px; }
 .qr-preview-img { padding: 16px; background: #f5f7fa; border-radius: 8px; }
 .qr-preview-code { font-family: 'Courier New', monospace; font-size: 12px; color: #606266; }

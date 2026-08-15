@@ -234,5 +234,5 @@ onMounted(() => fetchList())
 .days-urgent { color: #e6a23c; font-weight: 600; }
 .days-warning { color: #e6a23c; }
 .handled-info { font-size: 12px; color: #909399; }
-.pagination-wrapper { display: flex; justify-content: flex-end; padding-top: 16px; margin-top: 16px; border-top: 1px solid #ebeef5; }
+.pagination-wrapper { display: flex; justify-content: center; padding-top: 16px; margin-top: 16px; border-top: 1px solid #ebeef5; }
 </style>
