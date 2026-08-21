@@ -254,7 +254,7 @@ onMounted(() => fetchList())
 .search-panel { padding-bottom: 16px; border-bottom: 1px solid #ebeef5; margin-bottom: 16px;
   :deep(.el-form-item) { margin-bottom: 12px; } }
 .status-tabs { margin-bottom: 20px; }
-.pagination-wrapper { display: flex; justify-content: flex-end; padding-top: 16px; margin-top: 16px; border-top: 1px solid #ebeef5; }
+.pagination-wrapper { display: flex; justify-content: center; padding-top: 16px; margin-top: 16px; border-top: 1px solid #ebeef5; }
 .complaint-text-section { margin-bottom: 20px; h4 { font-size: 14px; font-weight: 600; margin-bottom: 8px; } }
 .complaint-text { font-size: 14px; line-height: 1.8; color: #606266; background: #f5f7fa; padding: 12px 16px; border-radius: 6px; border-left: 3px solid #e6a23c; }
 .photo-section { margin-bottom: 20px; h4 { font-size: 14px; font-weight: 600; margin-bottom: 8px; } }
