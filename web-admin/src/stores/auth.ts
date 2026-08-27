@@ -61,6 +61,20 @@ export const useAuthStore = defineStore(
     }
 
     /**
+     * 更新当前用户个人信息
+     * TODO: 后端接口就绪后改为调用 authApi.updateProfile(data)
+     */
+    async function updateProfile(data: { realName?: string; phone?: string; email?: string }) {
+      // const { authApi } = await import('@/api/modules/auth')
+      // const updated = await authApi.updateProfile(data)
+      // user.value = { ...user.value, ...updated }
+      if (user.value) {
+        user.value = { ...user.value, ...data }
+        setStoredUser(user.value)
+      }
+    }
+
+    /**
      * 刷新 Access Token
      */
     async function refreshAccessToken() {
@@ -113,6 +127,7 @@ export const useAuthStore = defineStore(
       login,
       logout,
       fetchUserInfo,
+      updateProfile,
       refreshAccessToken,
       hasPermission,
       hasAnyRole,

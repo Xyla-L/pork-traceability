@@ -67,7 +67,7 @@ const handleCurrentChange = (page) => {
 <style lang="scss" scoped>
 .pagination-wrapper {
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
   align-items: center;
   padding: 16px 0 8px;
 

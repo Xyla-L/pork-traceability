@@ -28,4 +28,18 @@ export const authApi = {
   getMe() {
     return request.get('/auth/me')
   },
+
+  /**
+   * 更新当前用户个人信息
+   */
+  updateProfile(data: { realName?: string; phone?: string; email?: string }) {
+    return request.put('/auth/me', data)
+  },
+
+  /**
+   * 修改当前用户密码
+   */
+  updatePassword(data: { oldPassword: string; newPassword: string }) {
+    return request.put('/auth/password', data)
+  },
 }

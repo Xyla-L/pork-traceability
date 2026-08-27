@@ -58,16 +58,20 @@
         </template>
       </el-dropdown>
     </div>
+
+    <!-- 修改密码弹窗 -->
+    <ChangePasswordDialog v-model="changePwdVisible" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { useAppStore } from '@/stores/app'
 import BreadcrumbNav from './BreadcrumbNav.vue'
+import ChangePasswordDialog from '@/components/common/ChangePasswordDialog.vue'
 
 defineEmits<{
   toggleSidebar: []
@@ -76,6 +80,7 @@ defineEmits<{
 const router = useRouter()
 const authStore = useAuthStore()
 const appStore = useAppStore()
+const changePwdVisible = ref(false)
 
 const notifications = computed(() => appStore.notifications)
 const unreadCount = computed(
@@ -94,10 +99,10 @@ function handleNotificationClick(item: any) {
 async function handleCommand(command: string) {
   switch (command) {
     case 'profile':
-      // TODO: 跳转个人信息页
+      router.push('/admin/system/profile')
       break
     case 'password':
-      // TODO: 打开修改密码弹窗
+      changePwdVisible.value = true
       break
     case 'logout':
       try {

@@ -10,7 +10,7 @@
         <el-input v-model="treeFilter" placeholder="搜索机构..." clearable size="small" style="margin-bottom: 12px" />
         <el-tree ref="treeRef" :data="orgTreeData" :props="{ children: 'children', label: 'label' }"
           node-key="id" :filter-node-method="filterNode" :expand-on-click-node="false"
-          highlight-current default-expand-all>
+          highlight-current default-expand-all @node-click="handleNodeClick">
           <template #default="{ node, data }">
             <div class="tree-node-content">
               <span class="tree-node-label">
@@ -193,5 +193,5 @@ onMounted(() => loadOrgTree())
 :deep(.el-tree-node__content):hover .tree-node-actions { opacity: 1; }
 .org-detail-panel { flex: 1; border: 1px solid #ebeef5; border-radius: 8px; padding: 24px; }
 .detail-title { font-size: 18px; font-weight: 600; margin: 0 0 20px 0; }
-.detail-actions { display: flex; gap: 12px; margin-top: 24px; }
+.detail-actions { display: flex; gap: 12px; margin-top: 24px; justify-content: center; }
 </style>

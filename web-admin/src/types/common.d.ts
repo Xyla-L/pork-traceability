@@ -30,6 +30,7 @@ export interface UserInfo {
   username: string
   realName: string
   phone: string
+  email?: string
   orgId: number
   orgName: string
   role: RoleType

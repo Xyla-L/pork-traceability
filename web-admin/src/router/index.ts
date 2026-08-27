@@ -218,6 +218,12 @@ const routes: RouteRecordRaw[] = [
 
       // ========== 系统管理 ==========
       {
+        path: 'system/profile',
+        name: 'Profile',
+        component: () => import('@/views/system/Profile.vue'),
+        meta: { title: '个人信息', hidden: true, roles: ['*'] },
+      },
+      {
         path: 'system/users',
         name: 'UserManage',
         component: () => import('@/views/system/UserManage.vue'),

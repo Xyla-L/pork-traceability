@@ -396,7 +396,7 @@ onMounted(() => {
 
   .pagination-wrapper {
     display: flex;
-    justify-content: flex-end;
+    justify-content: center;
     padding-top: 16px;
     margin-top: 16px;
     border-top: 1px solid #ebeef5;
