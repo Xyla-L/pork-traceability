@@ -25,6 +25,12 @@
         :reports="safeBuyReports"
       />
 
+      <!-- 安心购详情入口 -->
+      <view class="safe-buy-entry" @click="handleSafeBuy">
+        <text class="entry-text">查看完整安心购详情（证章画廊 / 检测报告 / 链上时间轴）</text>
+        <text class="entry-arrow">›</text>
+      </view>
+
       <!-- 区块链记录 -->
       <view class="card">
         <view class="section-title">🔗 区块链存证</view>
@@ -108,6 +114,10 @@ function handleComplaint() {
     url: `/pages/complaint/complaint?qrCode=${encodeURIComponent(p?.qrCode || qrCode.value)}&batchNo=${encodeURIComponent(p?.batchNo || '')}`,
   })
 }
+
+function handleSafeBuy() {
+  uni.navigateTo({ url: `/pages/safe-buy/safe-buy?qrCode=${encodeURIComponent(qrCode.value)}` })
+}
 </script>
 
 <style lang="scss" scoped>
@@ -125,6 +135,28 @@ function handleComplaint() {
     &.tall {
       height: 400rpx;
     }
+  }
+}
+
+.safe-buy-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #ecf5ff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+
+  .entry-text {
+    flex: 1;
+    font-size: 26rpx;
+    color: #409eff;
+  }
+
+  .entry-arrow {
+    font-size: 36rpx;
+    color: #409eff;
+    margin-left: 12rpx;
   }
 }
 
