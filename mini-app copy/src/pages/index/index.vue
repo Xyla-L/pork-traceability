@@ -28,15 +28,6 @@
       <view class="search-btn" @click="handleSearch">搜索</view>
     </view>
 
-    <!-- 我的举报入口 -->
-    <view class="card complaint-entry" @click="goComplaint">
-      <view class="complaint-entry-left">
-        <text class="complaint-entry-icon">📋</text>
-        <text class="complaint-entry-text">我的举报</text>
-      </view>
-      <text class="recent-arrow">›</text>
-    </view>
-
     <!-- 最近扫码记录 -->
     <view class="card recent">
       <view class="section-title">最近扫码</view>
@@ -101,10 +92,6 @@ function handleSearch() {
 
 function handleOpen(item) {
   uni.navigateTo({ url: `/pages/scan-result/scan-result?qrCode=${encodeURIComponent(item.qrCode)}` })
-}
-
-function goComplaint() {
-  uni.navigateTo({ url: '/pages/complaint-list/complaint-list' })
 }
 </script>
 
@@ -192,30 +179,6 @@ function goComplaint() {
     color: #fff;
     font-size: 28rpx;
     border-radius: 12rpx;
-  }
-}
-
-.complaint-entry {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 24rpx;
-  margin-bottom: 20rpx;
-
-  .complaint-entry-left {
-    display: flex;
-    align-items: center;
-    gap: 16rpx;
-
-    .complaint-entry-icon {
-      font-size: 40rpx;
-    }
-
-    .complaint-entry-text {
-      font-size: 30rpx;
-      font-weight: 600;
-      color: #303133;
-    }
   }
 }
 
