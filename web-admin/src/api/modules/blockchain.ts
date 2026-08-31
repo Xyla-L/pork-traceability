@@ -35,4 +35,11 @@ export const blockchainApi = {
   getAuditLogs(params?: any) {
     return request.get('/blockchain/audit-logs', { params })
   },
+
+  /**
+   * 审计统计摘要
+   */
+  getAuditStats() {
+    return request.get('/blockchain/audit-stats')
+  },
 }

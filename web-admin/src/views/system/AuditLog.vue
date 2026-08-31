@@ -125,7 +125,7 @@ function handleView(row: any) { ElMessage.info(`查看审计详情: ${row.txHash
 async function fetchList() {
   loading.value = true
   try {
-    const res = await import('@/utils/request').then(m => m.default.get('/blockchain/audit', {
+    const res = await import('@/utils/request').then(m => m.default.get('/blockchain/audit-logs', {
       params: { pageNum: pagination.pageNum, pageSize: pagination.pageSize, ...filterForm,
         startDate: dateRange.value?.[0], endDate: dateRange.value?.[1] }
     }))
