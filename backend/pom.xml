@@ -35,7 +35,6 @@
         <module>trace-service</module>
         <module>blockchain-service</module>
         <module>file-service</module>
-        <module>auth-service</module>
     </modules>
 
     <!-- 统一版本号管理 -->
@@ -249,12 +248,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <excludes>
-                        <exclude>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                        </exclude>
-                    </excludes>
+                    <skip>true</skip>
                 </configuration>
             </plugin>
         </plugins>

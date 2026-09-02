@@ -4,6 +4,8 @@ server:
 spring:
   application:
     name: auth-service
+  config:
+    import: optional:nacos:auth-service.yaml
   cloud:
     nacos:
       discovery:
@@ -12,9 +14,11 @@ spring:
         server-addr: 127.0.0.1:8848
         file-extension: yaml
   datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://127.0.0.1:3306/db_common?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false
+    # 1. 数据库名：必须是你左侧面板里存在的库（例如 db_common）
+    url: jdbc:mysql://localhost:3306/db_common?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    # 2. 用户名：必须是你 SQL 脚本里创建的 pork_user
     username: pork_user
+    # 3. 密码：必须是你 SQL 脚本里设置的 123456
     password: 123456
   data:
     redis:
@@ -37,7 +41,7 @@ mybatis-plus:
 sa-token:
   token-name: Authorization
   timeout: 86400
-  active-timeout: -1
+  active-timeout: -1  #开发阶段为不过期，后续要修改时限
   is-concurrent: true
   is-share: false
   token-style: uuid

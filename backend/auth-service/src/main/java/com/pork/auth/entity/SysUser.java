@@ -1,6 +1,7 @@
 package com.pork.auth.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
@@ -13,48 +14,39 @@ public class SysUser {
     @TableId(type = IdType.AUTO)
     private Long id;
 
-    /**
-     * 用户名
-     */
     private String username;
 
-    /**
-     * SM3密码哈希
-     */
+    // ✅ 关键：告诉 MP，这个 Java 字段对应数据库的 password_hash 列
+    @TableField("password_hash")
     private String password;
 
-    /**
-     * 角色：ADMIN/FARMER/SLAUGHTER_OP/DISTRIBUTOR/RETAILER/SUPERVISOR
-     */
     private String role;
 
-    /**
-     * 手机号
-     */
     private String phone;
 
-    /**
-     * CA证书编号（监管/屠宰操作员专用）
-     */
+    // ✅ 数据库里没有 ca_cert_no 这列，告诉 MP 忽略它
+    @TableField(exist = false)
     private String caCertNo;
 
-    /**
-     * 企业/个体名称
-     */
+    // ✅ 数据库里没有 org_name 这列，实际叫 org_id
+    @TableField("org_id")
     private String orgName;
 
-    /**
-     * 状态：0-禁用，1-启用
-     */
+    // ✅ 数据库有 real_name 列，补上这个字段
+    @TableField("real_name")
+    private String realName;
+
     private Integer status;
 
-    /**
-     * 创建时间
-     */
+    // ✅ 数据库有 last_login_time 列，补上
+    @TableField("last_login_time")
+    private LocalDateTime lastLoginTime;
+
+    // ✅ 数据库有 create_time 列，补上
+    @TableField("create_time")
     private LocalDateTime createTime;
 
-    /**
-     * 更新时间
-     */
+    // ✅ 数据库有 update_time 列，补上
+    @TableField("update_time")
     private LocalDateTime updateTime;
 }

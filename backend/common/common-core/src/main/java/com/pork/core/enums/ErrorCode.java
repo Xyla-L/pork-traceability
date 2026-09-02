@@ -26,6 +26,10 @@ public enum ErrorCode {
     FORBIDDEN(2003, "没有操作权限"),
     TOKEN_INVALID(2004, "无效的Token"),
     ACCOUNT_DISABLED(2005, "账号已被禁用，请联系管理员"),
+    PASSWORD_NOT_MATCH(20001, "两次输入的密码不一致"),
+    USER_NOT_FOUND(20010, "用户不存在"),
+    USERNAME_EXISTS(20002, "用户名已存在"),
+    REGISTER_FAILED(20003, "用户注册失败，请重试"),
     // 3. 业务通用错误 (3xxx)
     RECORD_NOT_FOUND(3001, "数据不存在"),
     RECORD_ALREADY_EXISTS(3002, "数据已存在"),
