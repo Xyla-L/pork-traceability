@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import type { AppNotification } from '@/types/notification'
 
 /**
  * 全局应用状态
@@ -28,14 +29,32 @@ export const useAppStore = defineStore('app', () => {
   }
 
   async function fetchNotifications() {
-    // TODO: 接通知接口
-    // const data = await notificationApi.getList()
-    // notifications.value = data
+    const { notificationApi } = await import('@/api/modules/notification')
+    const data = await notificationApi.getList()
+    notifications.value = data || []
   }
 
-  function markNotificationRead(id: number) {
+  async function markNotificationRead(id: number) {
+    // 本地乐观更新已读状态
     const item = notifications.value.find((n) => n.id === id)
     if (item) item.read = true
+    // 同步后端（后端未就绪时静默失败，不影响本地展示）
+    try {
+      const { notificationApi } = await import('@/api/modules/notification')
+      await notificationApi.markRead(id)
+    } catch {
+      // 忽略
+    }
+  }
+
+  async function markAllRead() {
+    notifications.value.forEach((n) => (n.read = true))
+    try {
+      const { notificationApi } = await import('@/api/modules/notification')
+      await notificationApi.markAllRead()
+    } catch {
+      // 忽略
+    }
   }
 
   function setBreadcrumbs(items: BreadcrumbItem[]) {
@@ -54,21 +73,13 @@ export const useAppStore = defineStore('app', () => {
     setSidebarCollapsed,
     fetchNotifications,
     markNotificationRead,
+    markAllRead,
     setBreadcrumbs,
     clearBreadcrumbs,
   }
 })
 
 // ========== 类型 ==========
-export interface AppNotification {
-  id: number
-  title: string
-  content: string
-  type: 'warning' | 'info' | 'success' | 'error'
-  read: boolean
-  createTime: string
-}
-
 export interface BreadcrumbItem {
   title: string
   path?: string
