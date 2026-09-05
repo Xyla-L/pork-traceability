@@ -21,6 +21,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useAuthStore } from '@/stores/auth'
 
 const props = defineProps<{ modelValue: boolean }>()
 const emit = defineEmits<{ 'update:modelValue': [boolean] }>()
@@ -32,6 +33,7 @@ const visible = computed({
 
 const formRef = ref()
 const submitting = ref(false)
+const authStore = useAuthStore()
 const form = reactive({ oldPassword: '', newPassword: '', confirmPassword: '' })
 
 const rules = {
@@ -61,9 +63,14 @@ async function handleSubmit() {
 
   submitting.value = true
   try {
-    // TODO: 后端接口就绪后调用 authApi.updatePassword({ oldPassword, newPassword })
+    await authStore.updatePassword({
+      oldPassword: form.oldPassword,
+      newPassword: form.newPassword,
+    })
     ElMessage.success('密码修改成功')
     visible.value = false
+  } catch {
+    // 错误提示由请求层统一处理
   } finally {
     submitting.value = false
   }
