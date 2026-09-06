@@ -1,0 +1,13 @@
+D:\pork-traceability\backend\auth-service\src\main\java\com\pork\auth\dto\RegisterDTO.java
+D:\pork-traceability\backend\auth-service\src\main\java\com\pork\auth\service\impl\AuthServiceImpl.java
+D:\pork-traceability\backend\auth-service\src\main\java\com\pork\auth\vo\GetUserInfoVO.java
+D:\pork-traceability\backend\auth-service\src\main\java\com\pork\auth\dto\LoginDTO.java
+D:\pork-traceability\backend\auth-service\src\main\java\com\pork\auth\vo\LoginVO.java
+D:\pork-traceability\backend\auth-service\src\main\java\com\pork\auth\mapper\SysUserMapper.java
+D:\pork-traceability\backend\auth-service\src\main\java\com\pork\auth\config\SaTokenConfig.java
+D:\pork-traceability\backend\auth-service\src\main\java\com\pork\auth\service\AuthService.java
+D:\pork-traceability\backend\auth-service\src\main\java\com\pork\auth\entity\SysUser.java
+D:\pork-traceability\backend\auth-service\src\main\java\com\pork\auth\enums\RoleEnum.java
+D:\pork-traceability\backend\auth-service\src\main\java\com\pork\auth\controller\AuthController.java
+D:\pork-traceability\backend\auth-service\src\main\java\com\pork\auth\AuthApplication.java
+D:\pork-traceability\backend\auth-service\src\main\java\com\pork\auth\vo\RegisterVO.java
