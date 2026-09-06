@@ -23,16 +23,30 @@
             <version>${project.version}</version>
         </dependency>
 
-        <!-- Sa-Token 认证授权（父工程已管理版本） -->
+        <!-- Sa-Token 核心 -->
         <dependency>
             <groupId>cn.dev33</groupId>
             <artifactId>sa-token-spring-boot3-starter</artifactId>
         </dependency>
 
-        <!-- Redisson 分布式缓存（父工程已管理版本，Sa-Token 存储 Token/权限用） -->
+        <!-- Sa-Token Redis 持久化插件 -->
+        <dependency>
+            <groupId>cn.dev33</groupId>
+            <artifactId>sa-token-redis-jackson</artifactId>
+            <version>1.38.0</version>
+        </dependency>
+
+        <!-- Redisson 客户端 -->
         <dependency>
             <groupId>org.redisson</groupId>
             <artifactId>redisson-spring-boot-starter</artifactId>
+            <exclusions>
+                <!-- 排除掉 spring-boot-starter-data-redis，避免与 sa-token-redis-jackson 冲突 -->
+                <exclusion>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-data-redis</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- BouncyCastle 国密算法支持（SM2/SM3/SM4），版本需自行指定（父工程未管理） -->
@@ -40,6 +54,12 @@
             <groupId>org.bouncycastle</groupId>
             <artifactId>bcprov-jdk15to18</artifactId>
             <version>1.76</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+            <version>3.2.5</version>  <!-- 加上版本号 -->
         </dependency>
     </dependencies>
 </project>

@@ -34,6 +34,7 @@ public enum ErrorCode {
     RECORD_NOT_FOUND(3001, "数据不存在"),
     RECORD_ALREADY_EXISTS(3002, "数据已存在"),
     BUSINESS_ERROR(3999, "业务处理失败"),
+
     
     // 5. 系统级错误 (5xxx)
     SYSTEM_ERROR(5000, "系统内部异常"),

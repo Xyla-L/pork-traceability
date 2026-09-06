@@ -24,7 +24,7 @@ spring:
     redis:
       host: 127.0.0.1
       port: 6379
-      database: 0
+      database: 10
 
 mybatis-plus:
   configuration:
@@ -39,6 +39,7 @@ mybatis-plus:
 
 # Sa-Token 配置
 sa-token:
+  dao-type: redis
   token-name: Authorization
   timeout: 86400
   active-timeout: -1  #开发阶段为不过期，后续要修改时限

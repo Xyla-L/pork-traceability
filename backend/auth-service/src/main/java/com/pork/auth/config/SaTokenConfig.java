@@ -21,8 +21,8 @@ public class SaTokenConfig implements WebMvcConfigurer {
         registry.addInterceptor(new SaInterceptor(handle -> StpUtil.checkLogin()))
                 .addPathPatterns("/**") // 拦截所有请求
                 .excludePathPatterns(
-                        "/user/register",  // 放行注册
-                        "/user/login",     // 放行登录
+                        "/auth/register",  // 放行注册
+                        "/auth/login",     // 放行登录
                         "/doc.html/**",    // 放行 Knife4j/Swagger
                         "/webjars/**",
                         "/swagger-resources/**",

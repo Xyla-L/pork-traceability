@@ -4,6 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
+    <!-- 1. 继承父工程，获取所有版本管理和依赖声明 -->
     <parent>
         <groupId>com.pork</groupId>
         <artifactId>backend</artifactId>
@@ -12,54 +13,50 @@
 
     <artifactId>gateway-service</artifactId>
     <packaging>jar</packaging>
-    <description>API网关服务</description>
+    <description>API 网关服务</description>
 
     <dependencies>
-        <!-- Spring Cloud Gateway -->
+        <!-- 2. 核心依赖：Spring Cloud Gateway -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-gateway</artifactId>
         </dependency>
-        <!-- Nacos 服务发现 -->
+
+        <!-- 3. 服务发现：Nacos Discovery -->
+        <!-- 同样，版本由父工程的 spring-cloud-alibaba-dependencies 管理 -->
         <dependency>
             <groupId>com.alibaba.cloud</groupId>
             <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
         </dependency>
-        <!-- Nacos 配置中心 -->
-        <dependency>
-            <groupId>com.alibaba.cloud</groupId>
-            <artifactId>spring-cloud-starter-alibaba-nacos-config</artifactId>
-        </dependency>
-        <!-- Sa-Token 网关鉴权 -->
+
+        <!-- 4. 权限认证：Sa-Token Reactor -->
+        <!-- 父工程的 dependencyManagement 中已经声明了 sa-token-reactor-spring-boot3-starter -->
         <dependency>
             <groupId>cn.dev33</groupId>
             <artifactId>sa-token-reactor-spring-boot3-starter</artifactId>
         </dependency>
-        <!-- Redisson -->
-        <dependency>
-            <groupId>org.redisson</groupId>
-            <artifactId>redisson-spring-boot-starter</artifactId>
-        </dependency>
-        <!-- common-core -->
+
+        <!-- 5. 公共工具：引入不含 Web 依赖的 common-core -->
+        <!-- 版本由父工程统一管理为 ${project.version} -->
         <dependency>
             <groupId>com.pork</groupId>
             <artifactId>common-core</artifactId>
         </dependency>
+
+        <!-- 6. 开发工具 -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
     </dependencies>
 
+    <!-- 7. 构建插件 -->
     <build>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                    <excludes>
-                        <exclude>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                        </exclude>
-                    </excludes>
-                </configuration>
             </plugin>
         </plugins>
     </build>
