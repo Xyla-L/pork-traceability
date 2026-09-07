@@ -1,23 +1,20 @@
-// 1. 必须有的包声明（否则Java会找不到它属于哪个包）
 package com.pork.breeding.service;
 
-// 2. 补全这些导入
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.pork.breeding.dto.PigCreateDTO;
-import com.pork.breeding.dto.PigQueryDTO;
+import com.pork.breeding.dto.PigIndividualDTO;
 import com.pork.breeding.entity.PigIndividual;
-import com.pork.breeding.vo.PigDetailVO;
+import com.pork.breeding.vo.PigIndividualVO;
 
 public interface PigIndividualService extends IService<PigIndividual> {
 
-    Long createPig(PigCreateDTO dto);
+    Page<PigIndividualVO> pageQuery(Long current, Long size, String earTagNo, Integer status);
 
-    Page<PigDetailVO> pagePigs(Integer page, Integer size, PigQueryDTO queryDTO);
+    void addIndividual(PigIndividualDTO dto);
 
-    PigDetailVO getPigDetailById(Long id);
+    void updateIndividual(PigIndividualDTO dto);
 
-    void updatePig(Long id, PigQueryDTO updateDTO);
+    PigIndividualVO getDetail(Long id);
 
-    void deletePig(Long id);
+    void removeIndividual(Long id);
 }

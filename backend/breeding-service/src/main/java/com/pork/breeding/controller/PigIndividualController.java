@@ -1,74 +1,63 @@
 package com.pork.breeding.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.pork.breeding.dto.PigCreateDTO;
-import com.pork.breeding.dto.PigQueryDTO;
+import com.pork.breeding.dto.PigIndividualDTO;
 import com.pork.breeding.service.PigIndividualService;
-import com.pork.breeding.vo.PigDetailVO;
+import com.pork.breeding.vo.PigIndividualVO;
+import com.pork.core.result.PageResult;
 import com.pork.core.result.Result;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/breeding/pigs")
+@RequestMapping("/pigIndividual")
+@Tag(name = "生猪个体管理", description = "提供生猪档案的增删改查及分页查询功能")
+@RequiredArgsConstructor
 public class PigIndividualController {
 
-    @Autowired
-    private PigIndividualService pigIndividualService;
+    private final PigIndividualService pigIndividualService;
 
-    /**
-     * 1. 创建生猪个体（绑定耳标）
-     * 对应文档 5.2.2
-     */
-    @PostMapping
-    public Result<Long> createPig(@RequestBody @Valid PigCreateDTO dto) {
-        Long pigId = pigIndividualService.createPig(dto);
-        return Result.success(pigId);
-    }
-
-    /**
-     * 2. 分页查询生猪列表
-     * 对应文档 5.2.3（通常列表页需要分页，且支持耳标号等条件筛选）
-     */
     @GetMapping("/page")
-    public Result<Page<PigDetailVO>> pagePigs(
-            @RequestParam(defaultValue = "1") Integer page,
-            @RequestParam(defaultValue = "10") Integer size,
-            PigQueryDTO queryDTO) {
+    @Operation(summary = "分页查询")
+    public Result<PageResult<PigIndividualVO>> pageQuery(
+            @RequestParam(defaultValue = "1") Long current,
+            @RequestParam(defaultValue = "10") Long size,
+            @Parameter(description = "耳标号") @RequestParam(required = false) String earTagNo,
+            @Parameter(description = "状态：1-在养,2-已出栏,3-已屠宰,4-异常死亡") @RequestParam(required = false) Integer status) {
 
-        Page<PigDetailVO> result = pigIndividualService.pagePigs(page, size, queryDTO);
-        return Result.success(result);
+        Page<PigIndividualVO> page = pigIndividualService.pageQuery(current, size, earTagNo, status);
+        return Result.success(PageResult.of(page));
     }
 
-    /**
-     * 3. 根据ID查询生猪详情
-     * 对应文档 5.2.4
-     */
-    @GetMapping("/{id}")
-    public Result<PigDetailVO> getPigDetail(@PathVariable Long id) {
-        PigDetailVO vo = pigIndividualService.getPigDetailById(id);
-        return Result.success(vo);
-    }
-
-    /**
-     * 4. 更新生猪信息（如转舍、状态变更等）
-     */
-    @PutMapping("/{id}")
-    public Result<Void> updatePig(
-            @PathVariable Long id,
-            @RequestBody @Valid PigQueryDTO updateDTO) {
-
-        pigIndividualService.updatePig(id, updateDTO);
+    @PostMapping
+    @Operation(summary = "新增生猪个体")
+    public Result<Void> add(@Valid @RequestBody PigIndividualDTO dto) {
+        pigIndividualService.addIndividual(dto);
         return Result.success();
     }
 
-    /**
-     * 5. 逻辑删除生猪个体
-     */
+    @PutMapping
+    @Operation(summary = "修改生猪个体")
+    public Result<Void> update(@Valid @RequestBody PigIndividualDTO dto) {
+        pigIndividualService.updateIndividual(dto);
+        return Result.success();
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "根据ID获取详情")
+    public Result<PigIndividualVO> getDetail(@PathVariable Long id) {
+        PigIndividualVO vo = pigIndividualService.getDetail(id);
+        return Result.success(vo);
+    }
+
     @DeleteMapping("/{id}")
-    public Result<Void> deletePig(@PathVariable Long id) {
-        pigIndividualService.deletePig(id);
+    @Operation(summary = "删除生猪个体")
+    public Result<Void> remove(@PathVariable Long id) {
+        pigIndividualService.removeIndividual(id);
         return Result.success();
     }
 }
