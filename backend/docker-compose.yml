@@ -1,0 +1,250 @@
+name: pork-traceability
+
+x-app-environment: &app-environment
+  NACOS_ADDR: nacos:8848
+  NACOS_NAMESPACE: ${NACOS_NAMESPACE:-}
+  REDIS_HOST: redis
+  REDIS_PORT: 6379
+  REDIS_PASSWORD: ${REDIS_PASSWORD:-change-this-redis-password}
+  REDIS_DATABASE: ${REDIS_DATABASE:-0}
+  RABBITMQ_HOST: rabbitmq
+  RABBITMQ_PORT: 5672
+  RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-pork}
+  RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-change-this-rabbit-password}
+  DB_USERNAME: ${DB_USERNAME:-pork_user}
+  DB_PASSWORD: ${DB_PASSWORD:-123456}
+  JWT_SECRET: ${JWT_SECRET:-pork-traceability-secret-key-2026}
+  BREEDING_SERVICE_URL: http://breeding-service:8082
+  SLAUGHTER_SERVICE_URL: http://slaughter-service:8083
+  DISTRIBUTION_SERVICE_URL: http://distribution-service:8084
+  SALES_SERVICE_URL: http://sales-service:8085
+  BLOCKCHAIN_SERVICE_URL: http://blockchain-service:8087
+
+x-app-defaults: &app-defaults
+  restart: unless-stopped
+  networks: [pork-net]
+  depends_on:
+    mysql: { condition: service_healthy }
+    redis: { condition: service_healthy }
+    nacos: { condition: service_healthy }
+  healthcheck:
+    test: ["CMD-SHELL", "curl -fsS http://localhost:$${SERVICE_PORT}/actuator/health | grep -q UP"]
+    interval: 15s
+    timeout: 5s
+    retries: 10
+    start_period: 45s
+
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-change-this-root-password}
+      TZ: Asia/Shanghai
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_0900_ai_ci"]
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./init-sql:/docker-entrypoint-initdb.d:ro
+    ports: ["3306:3306"]
+    networks: [pork-net]
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-change-this-redis-password}"]
+    volumes: ["redis-data:/data"]
+    ports: ["6379:6379"]
+    networks: [pork-net]
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-change-this-redis-password}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-pork}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-change-this-rabbit-password}
+    volumes: ["rabbitmq-data:/var/lib/rabbitmq"]
+    ports: ["5672:5672", "15672:15672"]
+    networks: [pork-net]
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+
+  nacos:
+    image: nacos/nacos-server:v2.4.3
+    restart: unless-stopped
+    environment:
+      MODE: standalone
+      NACOS_AUTH_ENABLE: "false"
+    ports: ["8848:8848", "9848:9848"]
+    networks: [pork-net]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8848/nacos/v1/console/health/readiness | grep -q UP"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  gateway-service:
+    <<: *app-defaults
+    build:
+      context: .
+      args: { SERVICE: gateway-service }
+    environment:
+      <<: *app-environment
+      MAIN_CLASS: com.pork.gateway.GatewayApplication
+      SERVICE_PORT: 8080
+    ports: ["8080:8080"]
+
+  auth-service:
+    <<: *app-defaults
+    build:
+      context: .
+      args: { SERVICE: auth-service }
+    environment:
+      <<: *app-environment
+      MAIN_CLASS: com.pork.auth.AuthApplication
+      SERVICE_PORT: 8081
+      DB_URL: jdbc:mysql://mysql:3306/db_common?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME:-admin}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-ChangeMe123!}
+
+  breeding-service:
+    <<: *app-defaults
+    build:
+      context: .
+      args: { SERVICE: breeding-service }
+    environment:
+      <<: *app-environment
+      MAIN_CLASS: com.pork.breeding.BreedingApplication
+      SERVICE_PORT: 8082
+      DB_URL: jdbc:mysql://mysql:3306/db_breeding?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    depends_on:
+      mysql: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      nacos: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+
+  slaughter-service:
+    <<: *app-defaults
+    build:
+      context: .
+      args: { SERVICE: slaughter-service }
+    environment:
+      <<: *app-environment
+      MAIN_CLASS: com.pork.slaughter.SlaughterApplication
+      SERVICE_PORT: 8083
+      DB_URL: jdbc:mysql://mysql:3306/db_slaughter?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      SLAUGHTERHOUSE_NAME: ${SLAUGHTERHOUSE_NAME:-默认定点屠宰场}
+    depends_on:
+      mysql: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      nacos: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+
+  distribution-service:
+    <<: *app-defaults
+    build:
+      context: .
+      args: { SERVICE: distribution-service }
+    environment:
+      <<: *app-environment
+      MAIN_CLASS: com.pork.distribution.DistributionApplication
+      SERVICE_PORT: 8084
+      DB_URL: jdbc:mysql://mysql:3306/db_distribution?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    depends_on:
+      mysql: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      nacos: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+
+  sales-service:
+    <<: *app-defaults
+    build:
+      context: .
+      args: { SERVICE: sales-service }
+    environment:
+      <<: *app-environment
+      MAIN_CLASS: com.pork.sales.SalesApplication
+      SERVICE_PORT: 8085
+      DB_URL: jdbc:mysql://mysql:3306/db_sales?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    depends_on:
+      mysql: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      nacos: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+
+  trace-service:
+    <<: *app-defaults
+    build:
+      context: .
+      args: { SERVICE: trace-service }
+    environment:
+      <<: *app-environment
+      MAIN_CLASS: com.pork.trace.TraceServiceApplication
+      SERVICE_PORT: 8086
+      DB_URL: jdbc:mysql://mysql:3306/db_common?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+
+  blockchain-service:
+    <<: *app-defaults
+    build:
+      context: .
+      args: { SERVICE: blockchain-service }
+    environment:
+      <<: *app-environment
+      MAIN_CLASS: com.pork.blockchain.BlockchainApplication
+      SERVICE_PORT: 8087
+      DB_URL: jdbc:mysql://mysql:3306/db_common?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      BLOCKCHAIN_TYPE: local
+    depends_on:
+      mysql: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      nacos: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+
+  file-service:
+    <<: *app-defaults
+    build:
+      context: .
+      args: { SERVICE: file-service }
+    environment:
+      <<: *app-environment
+      MAIN_CLASS: com.pork.file.FileApplication
+      SERVICE_PORT: 8088
+      DB_URL: jdbc:mysql://mysql:3306/db_common?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      FILE_STORAGE_ROOT: /app/data/trace-files
+    volumes: ["${FILE_STORAGE_PATH:-./data/trace-files}:/app/data/trace-files"]
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    volumes: ["./nginx.conf:/etc/nginx/nginx.conf:ro"]
+    ports: ["80:80"]
+    networks: [pork-net]
+    depends_on:
+      gateway-service: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+networks:
+  pork-net:
+    driver: bridge
+
+volumes:
+  mysql-data:
+  redis-data:
+  rabbitmq-data:
