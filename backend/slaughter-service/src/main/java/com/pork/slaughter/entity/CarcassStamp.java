@@ -18,10 +18,16 @@ public class CarcassStamp {
      */
     private Long pigId;
 
+    private String batchNo;
+
+    private String carcassNo;
+
     /**
      * 印章编号
      */
     private String stampNo;
+
+    private String stampType;
 
     /**
      * 盖章时间
@@ -42,6 +48,12 @@ public class CarcassStamp {
      * 电子签名
      */
     private String eSignature;
+
+    private String contentHash;
+
+    private Integer status;
+
+    private String remark;
 
     /**
      * 创建时间

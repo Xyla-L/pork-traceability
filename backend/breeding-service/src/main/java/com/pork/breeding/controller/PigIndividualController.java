@@ -14,14 +14,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/pigIndividual")
+@RequestMapping("/pigs")
 @Tag(name = "生猪个体管理", description = "提供生猪档案的增删改查及分页查询功能")
 @RequiredArgsConstructor
 public class PigIndividualController {
 
     private final PigIndividualService pigIndividualService;
 
-    @GetMapping("/page")
+    @GetMapping({"", "/page"})
     @Operation(summary = "分页查询")
     public Result<PageResult<PigIndividualVO>> pageQuery(
             @RequestParam(defaultValue = "1") Long current,
@@ -40,9 +40,10 @@ public class PigIndividualController {
         return Result.success();
     }
 
-    @PutMapping
+    @PutMapping("/{id}")
     @Operation(summary = "修改生猪个体")
-    public Result<Void> update(@Valid @RequestBody PigIndividualDTO dto) {
+    public Result<Void> update(@PathVariable Long id, @Valid @RequestBody PigIndividualDTO dto) {
+        dto.setId(id);
         pigIndividualService.updateIndividual(dto);
         return Result.success();
     }

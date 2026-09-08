@@ -8,6 +8,8 @@ import com.pork.slaughter.entity.EntryInspection;
 import com.pork.slaughter.mapper.EntryInspectionMapper;
 import com.pork.slaughter.service.EntryInspectionService;
 import com.pork.slaughter.vo.EntryInspectionVO;
+import com.pork.core.enums.ErrorCode;
+import com.pork.core.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -15,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.time.LocalDateTime;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -27,22 +30,27 @@ public class EntryInspectionServiceImpl extends ServiceImpl<EntryInspectionMappe
     public boolean addEntry(EntryInspectionDTO dto) {
         EntryInspection entity = new EntryInspection();
         BeanUtils.copyProperties(dto, entity);
-        return this.save(entity);
+        entity.setCreateTime(LocalDateTime.now());
+        if (!this.save(entity)) throw new BusinessException(ErrorCode.DATABASE_ERROR, "入场查验保存失败");
+        return true;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean updateEntry(Long id, EntryInspectionDTO dto) {
+        if (this.getById(id) == null) throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, "入场查验记录不存在");
         EntryInspection entity = new EntryInspection();
         entity.setId(id);
         BeanUtils.copyProperties(dto, entity);
-        return this.updateById(entity);
+        if (!this.updateById(entity)) throw new BusinessException(ErrorCode.DATABASE_ERROR, "入场查验更新失败");
+        return true;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean deleteEntry(Long id) {
-        return this.removeById(id);
+        if (!this.removeById(id)) throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, "入场查验记录不存在");
+        return true;
     }
 
     @Override

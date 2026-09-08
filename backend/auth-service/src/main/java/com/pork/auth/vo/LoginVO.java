@@ -11,23 +11,9 @@ public class LoginVO {
      */
     private String token;
 
-    /**
-     * 用户ID
-     */
-    private Long userId;
+    private String refreshToken;
 
-    /**
-     * 用户名
-     */
-    private String username;
+    private long expiresIn;
 
-    /**
-     * 用户角色
-     */
-    private String role;
-
-    /**
-     * 所属企业/个体名称
-     */
-    private String orgName;
+    private UserInfoVO user;
 }

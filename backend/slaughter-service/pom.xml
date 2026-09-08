@@ -67,6 +67,10 @@
             <groupId>com.pork</groupId>
             <artifactId>common-security</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.pork</groupId>
+            <artifactId>common-mq</artifactId>
+        </dependency>
 
         <!-- Lombok -->
         <dependency>

@@ -22,9 +22,11 @@ public class QuarantineCertDTO {
     @Schema(description = "检疫证编号", requiredMode = Schema.RequiredMode.REQUIRED)
     private String certNo;
 
+    @NotBlank(message = "签发机构不能为空")
     @Schema(description = "签发机构")
     private String issueOrg;
 
+    @NotNull(message = "签发时间不能为空")
     @Schema(description = "签发时间")
     private LocalDateTime issueTime;
 
@@ -38,6 +40,7 @@ public class QuarantineCertDTO {
     @Schema(description = "扫描件文件ID", requiredMode = Schema.RequiredMode.REQUIRED)
     private String fileId;
 
+    @NotBlank(message = "CA数字签名不能为空")
     @Schema(description = "CA数字签名(Base64)")
     private String caSignature;
 }

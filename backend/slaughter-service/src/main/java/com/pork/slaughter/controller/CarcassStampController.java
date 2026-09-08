@@ -2,71 +2,62 @@ package com.pork.slaughter.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.pork.core.enums.ErrorCode;
+import com.pork.core.exception.BusinessException;
+import com.pork.core.result.PageResult;
+import com.pork.core.result.Result;
 import com.pork.slaughter.dto.CarcassStampDTO;
 import com.pork.slaughter.entity.CarcassStamp;
 import com.pork.slaughter.service.CarcassStampService;
 import com.pork.slaughter.vo.CarcassStampVO;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.annotation.Resource;
-
 @RestController
-@RequestMapping("/api/slaughter/carcass-stamp")
+@RequestMapping("/slaughter/stamps")
+@RequiredArgsConstructor
 public class CarcassStampController {
+    private final CarcassStampService service;
 
-    @Resource
-    private CarcassStampService carcassStampService;
-
-    /**
-     * 分页查询
-     */
-    @GetMapping("/page")
-    public IPage<CarcassStamp> page(
-            @RequestParam(defaultValue = "1") Integer pageNum,
-            @RequestParam(defaultValue = "10") Integer pageSize,
-            @RequestParam(required = false) Long pigId,
-            @RequestParam(required = false) String stampNo) {
-        
-        Page<CarcassStamp> page = new Page<>(pageNum, pageSize);
+    @GetMapping
+    public Result<PageResult<CarcassStamp>> page(@RequestParam(defaultValue = "1") Integer pageNum,
+                                                  @RequestParam(defaultValue = "20") Integer pageSize,
+                                                  @RequestParam(required = false) Long pigId,
+                                                  @RequestParam(required = false) String stampNo) {
         CarcassStamp query = new CarcassStamp();
         query.setPigId(pigId);
         query.setStampNo(stampNo);
-        return carcassStampService.pageQuery(page, query);
+        IPage<CarcassStamp> page = service.pageQuery(new Page<>(pageNum, pageSize), query);
+        return Result.success(PageResult.of(page.getCurrent(), page.getSize(), page.getTotal(), page.getRecords()));
     }
 
-    /**
-     * 根据ID查询
-     */
     @GetMapping("/{id}")
-    public CarcassStampVO getById(@PathVariable Long id) {
-        CarcassStamp stamp = carcassStampService.getById(id);
+    public Result<CarcassStampVO> getById(@PathVariable Long id) {
+        CarcassStamp stamp = service.getById(id);
+        if (stamp == null) throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, "检疫盖章记录不存在");
         CarcassStampVO vo = new CarcassStampVO();
         BeanUtils.copyProperties(stamp, vo);
-        return vo;
+        return Result.success(vo);
     }
 
-    /**
-     * 新增
-     */
     @PostMapping
-    public boolean add(@RequestBody CarcassStampDTO dto) {
-        return carcassStampService.addStamp(dto);
+    public Result<Void> add(@Valid @RequestBody CarcassStampDTO dto) {
+        service.addStamp(dto);
+        return Result.success();
     }
 
-    /**
-     * 更新
-     */
-    @PutMapping
-    public boolean update(@RequestBody CarcassStampDTO dto) {
-        return carcassStampService.updateStamp(dto);
+    @PutMapping("/{id}")
+    public Result<Void> update(@PathVariable Long id, @Valid @RequestBody CarcassStampDTO dto) {
+        dto.setId(id);
+        service.updateStamp(dto);
+        return Result.success();
     }
 
-    /**
-     * 删除
-     */
     @DeleteMapping("/{id}")
-    public boolean delete(@PathVariable Long id) {
-        return carcassStampService.deleteStamp(id);
+    public Result<Void> delete(@PathVariable Long id) {
+        service.deleteStamp(id);
+        return Result.success();
     }
 }
