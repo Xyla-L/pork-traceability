@@ -9,36 +9,50 @@ import com.pork.slaughter.entity.RactopamineTest;
 import com.pork.slaughter.mapper.RactopamineTestMapper;
 import com.pork.slaughter.service.RactopamineTestService;
 import com.pork.slaughter.vo.RactopamineTestVO;
+import com.pork.core.enums.ErrorCode;
+import com.pork.core.exception.BusinessException;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
 
 @Service
 public class RactopamineTestServiceImpl extends ServiceImpl<RactopamineTestMapper, RactopamineTest>
         implements RactopamineTestService {
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean addTest(RactopamineTestDTO dto) {
         RactopamineTest entity = new RactopamineTest();
         BeanUtil.copyProperties(dto, entity);
-        return this.save(entity);
+        entity.setCreateTime(LocalDateTime.now());
+        if (!this.save(entity)) throw new BusinessException(ErrorCode.DATABASE_ERROR, "瘦肉精检测保存失败");
+        return true;
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean updateTest(Long id, RactopamineTestDTO dto) {
+        if (this.getById(id) == null) throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, "瘦肉精检测记录不存在");
         RactopamineTest entity = new RactopamineTest();
         BeanUtil.copyProperties(dto, entity);
         entity.setId(id);
-        return this.updateById(entity);
+        if (!this.updateById(entity)) throw new BusinessException(ErrorCode.DATABASE_ERROR, "瘦肉精检测更新失败");
+        return true;
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean deleteTest(Long id) {
-        return this.removeById(id);
+        if (!this.removeById(id)) throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, "瘦肉精检测记录不存在");
+        return true;
     }
 
     @Override
     public Page<RactopamineTestVO> pageQuery(RactopamineTestDTO dto) {
-        Page<RactopamineTest> page = new Page<>(dto.getPageNum(), dto.getPageSize());
+        int pageNum = dto.getPageNum() == null ? 1 : dto.getPageNum();
+        int pageSize = dto.getPageSize() == null ? 20 : dto.getPageSize();
+        Page<RactopamineTest> page = new Page<>(pageNum, pageSize);
 
         LambdaQueryWrapper<RactopamineTest> wrapper = new LambdaQueryWrapper<>();
         if (dto.getPigId() != null) {

@@ -20,7 +20,7 @@ public class FarmController {
 
     private final FarmService farmService;
 
-    @GetMapping("/page")
+    @GetMapping({"", "/page"})
     @Operation(summary = "分页查询养殖场列表")
     public Result<PageResult<FarmVO>> pageQuery(
             @RequestParam(defaultValue = "1") Long current,
@@ -37,9 +37,10 @@ public class FarmController {
         return Result.success();
     }
 
-    @PutMapping
+    @PutMapping("/{id}")
     @Operation(summary = "更新养殖场信息")
-    public Result<Void> update(@Valid @RequestBody FarmDTO dto) {
+    public Result<Void> update(@PathVariable Long id, @Valid @RequestBody FarmDTO dto) {
+        dto.setId(id);
         farmService.updateFarm(dto);
         return Result.success();
     }

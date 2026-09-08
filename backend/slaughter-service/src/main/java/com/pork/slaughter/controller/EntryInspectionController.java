@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 
 @RestController
-@RequestMapping("/entry")
+@RequestMapping("/slaughter/entries")
 @RequiredArgsConstructor
 public class EntryInspectionController {
 
@@ -21,7 +21,7 @@ public class EntryInspectionController {
     /**
      * 新增入场查验记录
      */
-    @PostMapping("/add")
+    @PostMapping
     public Result<Boolean> addEntry(@Valid @RequestBody EntryInspectionDTO dto) {
         return Result.success(entryInspectionService.addEntry(dto));
     }
@@ -29,7 +29,7 @@ public class EntryInspectionController {
     /**
      * 修改入场查验记录
      */
-    @PostMapping("/update")
+    @PutMapping("/{id}")
     public Result<Boolean> updateEntry(@PathVariable Long id, @Valid @RequestBody EntryInspectionDTO dto) {
         return Result.success(entryInspectionService.updateEntry(id, dto));
     }
@@ -37,7 +37,7 @@ public class EntryInspectionController {
     /**
      * 删除入场查验记录
      */
-    @PostMapping("/delete/{id}")
+    @DeleteMapping("/{id}")
     public Result<Boolean> deleteEntry(@PathVariable Long id) {
         return Result.success(entryInspectionService.deleteEntry(id));
     }
@@ -45,7 +45,7 @@ public class EntryInspectionController {
     /**
      * 分页查询入场查验列表
      */
-    @GetMapping("/page")
+    @GetMapping
     public Result<PageResult<EntryInspectionVO>> listEntries(
             EntryInspectionDTO dto,
             @RequestParam(defaultValue = "1") int pageNum,

@@ -1,49 +1,43 @@
 server:
-  port: 8081
+  port: ${SERVICE_PORT:8081}
 
 spring:
   application:
     name: auth-service
   config:
-    import: optional:nacos:auth-service.yaml
+    import: optional:nacos:${spring.application.name}.yaml
   cloud:
     nacos:
       discovery:
-        server-addr: 127.0.0.1:8848
-      config:
-        server-addr: 127.0.0.1:8848
-        file-extension: yaml
+        server-addr: ${NACOS_ADDR:127.0.0.1:8848}
+        namespace: ${NACOS_NAMESPACE:}
   datasource:
-    # 1. 数据库名：必须是你左侧面板里存在的库（例如 db_common）
-    url: jdbc:mysql://localhost:3306/db_common?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-    # 2. 用户名：必须是你 SQL 脚本里创建的 pork_user
-    username: pork_user
-    # 3. 密码：必须是你 SQL 脚本里设置的 123456
-    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${DB_URL:jdbc:mysql://localhost:3306/db_common?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:123456}
   data:
     redis:
-      host: 127.0.0.1
-      port: 6379
-      database: 10
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
 
 mybatis-plus:
   configuration:
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
     map-underscore-to-camel-case: true
   global-config:
-    db-config:
-      id-type: auto
-      logic-delete-field: deleted
-      logic-delete-value: 1
-      logic-not-delete-value: 0
+    banner: false
 
-# Sa-Token 配置
-sa-token:
-  dao-type: redis
-  token-name: Authorization
-  timeout: 86400
-  active-timeout: -1  #开发阶段为不过期，后续要修改时限
-  is-concurrent: true
-  is-share: false
-  token-style: uuid
-  is-log: false
+security:
+  bootstrap-admin:
+    enabled: ${BOOTSTRAP_ADMIN_ENABLED:true}
+    username: ${BOOTSTRAP_ADMIN_USERNAME:admin}
+    password: ${BOOTSTRAP_ADMIN_PASSWORD:ChangeMe123!}
+  default-password: ${DEFAULT_USER_PASSWORD:ChangeMe123!}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

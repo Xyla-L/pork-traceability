@@ -6,24 +6,25 @@ import com.pork.core.result.Result;
 import com.pork.slaughter.dto.SlaughterInspectionDTO;
 import com.pork.slaughter.service.SlaughterInspectionService;
 import com.pork.slaughter.vo.SlaughterInspectionVO;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/slaughter/inspections")
+@RequiredArgsConstructor
 public class SlaughterInspectionController {
 
-    @Autowired
-    private SlaughterInspectionService slaughterInspectionService;
+    private final SlaughterInspectionService slaughterInspectionService;
 
     @PostMapping
-    public Result<Void> add(@RequestBody SlaughterInspectionDTO dto) {
+    public Result<Void> add(@Valid @RequestBody SlaughterInspectionDTO dto) {
         slaughterInspectionService.addInspection(dto);
         return Result.success();
     }
 
     @PutMapping("/{id}")
-    public Result<Void> update(@PathVariable Long id, @RequestBody SlaughterInspectionDTO dto) {
+    public Result<Void> update(@PathVariable Long id, @Valid @RequestBody SlaughterInspectionDTO dto) {
         slaughterInspectionService.updateInspection(id, dto);
         return Result.success();
     }
@@ -34,7 +35,7 @@ public class SlaughterInspectionController {
         return Result.success();
     }
 
-    @GetMapping("/page")
+    @GetMapping
     public Result<PageResult<SlaughterInspectionVO>> pageQuery(SlaughterInspectionDTO dto) {
         Page<SlaughterInspectionVO> page = slaughterInspectionService.pageQuery(dto);
         return Result.success(PageResult.of(page));

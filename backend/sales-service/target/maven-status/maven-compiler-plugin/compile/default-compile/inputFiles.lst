@@ -1,1 +1,14 @@
+D:\pork-traceability\backend\sales-service\src\main\java\com\pork\sales\entity\RetailSale.java
+D:\pork-traceability\backend\sales-service\src\main\java\com\pork\sales\vo\QrCodeVO.java
+D:\pork-traceability\backend\sales-service\src\main\java\com\pork\sales\mapper\RecallOrderMapper.java
+D:\pork-traceability\backend\sales-service\src\main\java\com\pork\sales\mapper\ExpireWarningMapper.java
+D:\pork-traceability\backend\sales-service\src\main\java\com\pork\sales\client\DistributionClient.java
+D:\pork-traceability\backend\sales-service\src\main\java\com\pork\sales\dto\SalesRequests.java
+D:\pork-traceability\backend\sales-service\src\main\java\com\pork\sales\service\SalesService.java
+D:\pork-traceability\backend\sales-service\src\main\java\com\pork\sales\controller\SalesController.java
+D:\pork-traceability\backend\sales-service\src\main\java\com\pork\sales\service\impl\SalesServiceImpl.java
+D:\pork-traceability\backend\sales-service\src\main\java\com\pork\sales\mapper\RetailSaleMapper.java
 D:\pork-traceability\backend\sales-service\src\main\java\com\pork\core\Main.java
+D:\pork-traceability\backend\sales-service\src\main\java\com\pork\sales\SalesApplication.java
+D:\pork-traceability\backend\sales-service\src\main\java\com\pork\sales\entity\RecallOrder.java
+D:\pork-traceability\backend\sales-service\src\main\java\com\pork\sales\entity\ExpireWarning.java

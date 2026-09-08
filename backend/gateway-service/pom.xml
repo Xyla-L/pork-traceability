@@ -29,11 +29,14 @@
             <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
         </dependency>
 
-        <!-- 4. 权限认证：Sa-Token Reactor -->
-        <!-- 父工程的 dependencyManagement 中已经声明了 sa-token-reactor-spring-boot3-starter -->
+        <!-- JWT 校验工具与 Redis 黑名单。 -->
         <dependency>
-            <groupId>cn.dev33</groupId>
-            <artifactId>sa-token-reactor-spring-boot3-starter</artifactId>
+            <groupId>com.pork</groupId>
+            <artifactId>common-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis-reactive</artifactId>
         </dependency>
 
         <!-- 5. 公共工具：引入不含 Web 依赖的 common-core -->

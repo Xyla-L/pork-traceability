@@ -1,1 +1,8 @@
+D:\pork-traceability\backend\file-service\src\main\java\com\pork\file\controller\FileController.java
 D:\pork-traceability\backend\file-service\src\main\java\com\pork\core\Main.java
+D:\pork-traceability\backend\file-service\src\main\java\com\pork\file\FileApplication.java
+D:\pork-traceability\backend\file-service\src\main\java\com\pork\file\vo\FileInfoVO.java
+D:\pork-traceability\backend\file-service\src\main\java\com\pork\file\entity\FileMetadata.java
+D:\pork-traceability\backend\file-service\src\main\java\com\pork\file\service\impl\LocalFileStorageService.java
+D:\pork-traceability\backend\file-service\src\main\java\com\pork\file\service\FileStorageService.java
+D:\pork-traceability\backend\file-service\src\main\java\com\pork\file\mapper\FileMetadataMapper.java

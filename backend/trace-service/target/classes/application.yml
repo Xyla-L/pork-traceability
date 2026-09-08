@@ -1,46 +1,39 @@
 server:
-  port: 8086
-
+  port: ${SERVICE_PORT:8086}
 spring:
   application:
     name: trace-service
   config:
-    import: optional:nacos:${spring.application.name}.yaml #Spring Boot 2.4+ 必须显式声明从 Nacos 导入配置
+    import: optional:nacos:${spring.application.name}.yaml
   cloud:
     nacos:
       discovery:
-        server-addr: 127.0.0.1:8848 # Nacos 服务器地址
-        namespace: dev # 如果有命名空间ID请填入，没有则删掉这行
-      config:
-        server-addr: 127.0.0.1:8848
-        file-extension: yaml # 配置文件格式
-        namespace: dev
-        group: DEFAULT_GROUP
-  data:
-    redis:
-      host: 127.0.0.1
-      port: 6379
-      database: 10
+        server-addr: ${NACOS_ADDR:127.0.0.1:8848}
+        namespace: ${NACOS_NAMESPACE:}
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/db_common?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
-    username: root
-    password: 123456
-
+    url: ${DB_URL:jdbc:mysql://localhost:3306/db_common?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:123456}
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
 mybatis-plus:
   configuration:
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    map-underscore-to-camel-case: true
   global-config:
-    db-config:
-      logic-delete-field: deleted
-      logic-delete-value: 1
-      logic-not-delete-value: 0
-sa-token:
-  dao-type: redis
-  token-name: Authorization
-  timeout: 86400
-  active-timeout: -1  #开发阶段为不过期，后续要修改时限
-  is-concurrent: true
-  is-share: false
-  token-style: uuid
-  is-log: false
+    banner: false
+services:
+  breeding-url: ${BREEDING_SERVICE_URL:http://localhost:8082}
+  slaughter-url: ${SLAUGHTER_SERVICE_URL:http://localhost:8083}
+  distribution-url: ${DISTRIBUTION_SERVICE_URL:http://localhost:8084}
+  sales-url: ${SALES_SERVICE_URL:http://localhost:8085}
+  blockchain-url: ${BLOCKCHAIN_SERVICE_URL:http://localhost:8087}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

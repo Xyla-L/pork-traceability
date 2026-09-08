@@ -13,7 +13,7 @@
 
     <artifactId>common-security</artifactId>
     <packaging>jar</packaging>
-    <description>安全模块：Sa-Token认证、SM2/SM3国密、RBAC权限注解</description>
+    <description>安全模块：JWT、SM2/SM3国密与 RBAC 公共能力</description>
 
     <dependencies>
         <!-- 依赖 common-core -->
@@ -23,25 +23,12 @@
             <version>${project.version}</version>
         </dependency>
 
-        <!-- Sa-Token 核心 -->
-        <dependency>
-            <groupId>cn.dev33</groupId>
-            <artifactId>sa-token-spring-boot3-starter</artifactId>
-        </dependency>
-
-        <!-- Sa-Token Redis 持久化插件 -->
-        <dependency>
-            <groupId>cn.dev33</groupId>
-            <artifactId>sa-token-redis-jackson</artifactId>
-            <version>1.38.0</version>
-        </dependency>
-
         <!-- Redisson 客户端 -->
         <dependency>
             <groupId>org.redisson</groupId>
             <artifactId>redisson-spring-boot-starter</artifactId>
             <exclusions>
-                <!-- 排除掉 spring-boot-starter-data-redis，避免与 sa-token-redis-jackson 冲突 -->
+                <!-- 公共模块显式管理 Redis Starter，避免重复传递。 -->
                 <exclusion>
                     <groupId>org.springframework.boot</groupId>
                     <artifactId>spring-boot-starter-data-redis</artifactId>
@@ -59,7 +46,6 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
-            <version>3.2.5</version>  <!-- 加上版本号 -->
         </dependency>
     </dependencies>
 </project>

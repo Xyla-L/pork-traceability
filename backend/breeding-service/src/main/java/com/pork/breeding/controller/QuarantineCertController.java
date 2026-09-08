@@ -2,7 +2,6 @@ package com.pork.breeding.controller;
 
 import com.pork.breeding.dto.QuarantineCertDTO;
 import com.pork.breeding.service.QuarantineCertService;
-import com.pork.breeding.service.QuarantineCertService;
 import com.pork.breeding.vo.QuarantineCertVO;
 import com.pork.core.result.Result;
 import io.swagger.v3.oas.annotations.Operation;

@@ -25,6 +25,11 @@
             <groupId>com.pork</groupId>
             <artifactId>common-security</artifactId>
         </dependency>
+        <!-- 认证服务自身负责构建无状态 JWT 安全过滤链。 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
         <!-- Nacos 服务发现 -->
         <dependency>
             <groupId>com.alibaba.cloud</groupId>

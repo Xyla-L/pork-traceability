@@ -18,6 +18,12 @@ public class SlaughterInspection {
      */
     private Long pigId;
 
+    private String inspectNo;
+
+    private String batchNo;
+
+    private String earTagNo;
+
     /**
      * 检验类型：1-宰前检验, 2-宰后检验
      */
@@ -28,6 +34,8 @@ public class SlaughterInspection {
      */
     private LocalDateTime inspectTime;
 
+    private java.math.BigDecimal temperature;
+
     /**
      * 脏器检查明细 (JSON格式)
      */
@@ -37,6 +45,10 @@ public class SlaughterInspection {
      * 检验结果：1-合格, 0-不合格
      */
     private Integer result;
+
+    private Integer status;
+
+    private String conclusion;
 
     /**
      * 不合格项描述

@@ -18,7 +18,7 @@ public class SlaughterApplyController {
 
     private final SlaughterApplyService slaughterApplyService;
 
-    @GetMapping("/page")
+    @GetMapping({"", "/page"})
     @Operation(summary = "分页查询出栏申报列表")
     public Result<PageResult<SlaughterApplyVO>> pageQuery(
             @RequestParam(defaultValue = "1") Long current,

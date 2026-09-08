@@ -1,5 +1,6 @@
 package com.pork.auth.dto;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 @Data
@@ -7,15 +8,12 @@ public class LoginDTO {
     /**
      * 用户名
      */
+    @NotBlank(message = "用户名不能为空")
     private String username;
 
     /**
      * 密码
      */
+    @NotBlank(message = "密码不能为空")
     private String password;
-
-    /**
-     * 角色（可选，如果登录时需指定角色，如多角色用户）
-     */
-    private String role;
 }

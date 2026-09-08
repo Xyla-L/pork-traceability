@@ -31,6 +31,11 @@
             <groupId>com.alibaba.fastjson2</groupId>
             <artifactId>fastjson2</artifactId>
         </dependency>
+        <!-- 公共查询对象只依赖校验注解 API，具体校验实现由 Web 服务提供。 -->
+        <dependency>
+            <groupId>jakarta.validation</groupId>
+            <artifactId>jakarta.validation-api</artifactId>
+        </dependency>
         <!-- MyBatis-Plus 核心依赖 -->
         <dependency>
             <groupId>com.baomidou</groupId>

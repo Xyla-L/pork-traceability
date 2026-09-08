@@ -1,167 +1,179 @@
-
 package com.pork.auth.service.impl;
 
-import cn.dev33.satoken.stp.StpUtil;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.pork.auth.dto.AuthRequests;
 import com.pork.auth.dto.LoginDTO;
-import com.pork.auth.dto.RegisterDTO;
+import com.pork.auth.entity.SysOrg;
 import com.pork.auth.entity.SysUser;
+import com.pork.auth.mapper.SysOrgMapper;
 import com.pork.auth.mapper.SysUserMapper;
 import com.pork.auth.service.AuthService;
-import com.pork.auth.vo.GetUserInfoVO;
 import com.pork.auth.vo.LoginVO;
-import com.pork.auth.vo.RegisterVO;
+import com.pork.auth.vo.UserInfoVO;
 import com.pork.core.enums.ErrorCode;
 import com.pork.core.exception.BusinessException;
-import com.pork.core.result.Result;
-
+import com.pork.security.util.JwtUtil;
+import com.pork.security.util.SM3Util;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.bouncycastle.crypto.digests.SM3Digest;
-import org.bouncycastle.util.encoders.Hex;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
+    private static final String BLACKLIST_PREFIX = "auth:blacklist:token:";
+    private static final long ACCESS_EXPIRES_IN_SECONDS = 2 * 60 * 60;
+    private static final Map<String, List<String>> ROLE_PERMISSIONS = Map.of(
+            "FARMER", List.of("breeding:manage", "trace:read"),
+            "SLAUGHTER_OP", List.of("slaughter:manage", "trace:read"),
+            "DISTRIBUTOR", List.of("distribution:manage", "trace:read"),
+            "RETAILER", List.of("sales:manage", "trace:read"),
+            "SUPERVISOR", List.of("trace:read", "complaint:handle", "recall:manage", "blockchain:audit"),
+            "ADMIN", List.of("breeding:manage", "slaughter:manage", "distribution:manage", "sales:manage",
+                    "trace:read", "complaint:handle", "recall:manage", "blockchain:audit", "system:manage")
+    );
 
     private final SysUserMapper userMapper;
+    private final SysOrgMapper orgMapper;
+    private final StringRedisTemplate redis;
 
-    /**
-     * 用户登录
-     */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public LoginVO login(LoginDTO dto) {
-        // 1. 根据用户名查询用户
-        LambdaQueryWrapper<SysUser> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SysUser::getUsername, dto.getUsername());
-        SysUser user = userMapper.selectOne(wrapper);
-
-        if (user == null) {
+        SysUser user = userMapper.selectOne(Wrappers.<SysUser>lambdaQuery()
+                .eq(SysUser::getUsername, dto.getUsername()));
+        if (user == null || !passwordMatches(dto.getPassword(), user)) {
             throw new BusinessException(ErrorCode.LOGIN_FAILED);
         }
-
-        // 2. 校验密码（SM3 散列对比）
-        String encryptedPassword = sm3Encrypt(dto.getPassword());
-        if (!encryptedPassword.equals(user.getPassword())) {
-            throw new BusinessException(ErrorCode.LOGIN_FAILED);
-        }
-
-        // 3. 校验用户状态
-        if (user.getStatus() == 0) {
-            throw new BusinessException(ErrorCode.ACCOUNT_DISABLED);
-        }
-
-        // 4. 执行 Sa-Token 登录并获取 Token
-        StpUtil.login(user.getId());
-        String token = StpUtil.getTokenValue();
-
-        // 5. 封装返回 VO
-        return LoginVO.builder()
-                .token(token)
-                .userId(user.getId())
-                .username(user.getUsername())
-                .role(user.getRole())
-                .build();
+        ensureEnabled(user);
+        user.setLastLoginTime(LocalDateTime.now());
+        userMapper.updateById(user);
+        return tokensFor(user);
     }
 
-    /**
-     * 用户注册
-     */
     @Override
-    public RegisterVO register(RegisterDTO dto) {
-        // 1. 校验两次密码是否一致
-        if (!dto.getPassword().equals(dto.getConfirmPassword())) {
-            throw new BusinessException(ErrorCode.PASSWORD_NOT_MATCH);
+    public LoginVO refresh(String refreshToken) {
+        if (!"refresh".equals(JwtUtil.getTokenType(refreshToken))
+                || Boolean.TRUE.equals(redis.hasKey(BLACKLIST_PREFIX + refreshToken))) {
+            throw new BusinessException(ErrorCode.TOKEN_INVALID);
         }
-
-        // 2. 校验用户名是否已存在
-        LambdaQueryWrapper<SysUser> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SysUser::getUsername, dto.getUsername());
-        SysUser existingUser = userMapper.selectOne(wrapper);
-        if (existingUser != null) {
-            throw new BusinessException(ErrorCode.USERNAME_EXISTS);
-        }
-
-        // 3. SM3 加密密码
-        String encryptedPassword = sm3Encrypt(dto.getPassword());
-
-        // 4. 设置默认值并插入数据库
-        SysUser user = new SysUser();
-        user.setUsername(dto.getUsername());
-        user.setPassword(encryptedPassword);
-        user.setRealName(dto.getRealName() != null ? dto.getRealName() : dto.getUsername());
-        user.setPhone(dto.getPhone());
-        user.setRole(dto.getRole() != null ? dto.getRole() : "user");
-        user.setStatus(1); // 默认启用
-        user.setCreateTime(LocalDateTime.now());
-
-        int result = userMapper.insert(user);
-        if (result <= 0) {
-            throw new BusinessException(ErrorCode.REGISTER_FAILED);
-        }
-
-        // 5. 返回注册结果
-        return RegisterVO.builder()
-                .userId(user.getId())
-                .username(user.getUsername())
-                .realName(user.getRealName())
-                .role(user.getRole())
-                .build();
+        SysUser user = findUser(JwtUtil.getUsername(refreshToken));
+        ensureEnabled(user);
+        blacklist(refreshToken);
+        return tokensFor(user);
     }
 
-    /**
-     * 获取当前登录用户信息
-     */
     @Override
-    public GetUserInfoVO getUserInfo() {
-        // 通过 Sa-Token 获取当前登录用户ID
-        Long userId = StpUtil.getLoginIdAsLong();
-
-        // 查库获取用户信息
-        LambdaQueryWrapper<SysUser> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SysUser::getId, userId);
-        SysUser user = userMapper.selectOne(wrapper);
-
-        if (user == null) {
-            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
-        }
-
-        // 返回用户信息 VO
-        return GetUserInfoVO.builder()
-                .userId(user.getId())
-                .username(user.getUsername())
-                .realName(user.getRealName())
-                .role(user.getRole())
-                .phone(user.getPhone())
-                .orgName(user.getOrgName())
-                .status(user.getStatus())
-                .lastLoginTime(user.getLastLoginTime())
-                .createTime(user.getCreateTime())
-                .build();
+    public UserInfoVO getUserInfo() {
+        return toUserInfo(currentUser());
     }
 
-    /**
-     * 用户登出
-     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public UserInfoVO updateProfile(AuthRequests.Profile request) {
+        SysUser user = currentUser();
+        if (request.nickname() != null) user.setNickname(request.nickname());
+        if (request.realName() != null) user.setRealName(request.realName());
+        if (request.phone() != null) user.setPhone(request.phone());
+        if (request.email() != null) user.setEmail(request.email());
+        user.setUpdateTime(LocalDateTime.now());
+        userMapper.updateById(user);
+        return toUserInfo(user);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updatePassword(AuthRequests.Password request) {
+        SysUser user = currentUser();
+        if (!passwordMatches(request.oldPassword(), user)) {
+            throw new BusinessException(ErrorCode.LOGIN_FAILED, "原密码错误");
+        }
+        String salt = newSalt();
+        user.setPasswordSalt(salt);
+        user.setPasswordHash(SM3Util.hashWithSalt(request.newPassword(), salt));
+        user.setUpdateTime(LocalDateTime.now());
+        userMapper.updateById(user);
+    }
+
     @Override
     public void logout(String token) {
-        StpUtil.logoutByTokenValue(token);
+        if (StringUtils.hasText(token) && JwtUtil.isValid(token)) blacklist(token);
+        SecurityContextHolder.clearContext();
     }
 
-    /**
-     * SM3 密码加密工具方法
-     */
-    private String sm3Encrypt(String password) {
-        SM3Digest digest = new SM3Digest();
-        byte[] srcData = password.getBytes(StandardCharsets.UTF_8);
-        digest.update(srcData, 0, srcData.length);
-        byte[] hash = new byte[digest.getDigestSize()];
-        digest.doFinal(hash, 0);
-        return Hex.toHexString(hash);
+    private LoginVO tokensFor(SysUser user) {
+        String subject = user.getId().toString();
+        return LoginVO.builder()
+                .token(JwtUtil.generateToken(subject, user.getRole()))
+                .refreshToken(JwtUtil.generateRefreshToken(subject, user.getRole()))
+                .expiresIn(ACCESS_EXPIRES_IN_SECONDS)
+                .user(toUserInfo(user))
+                .build();
+    }
+
+    private SysUser currentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+        return findUser(authentication.getName());
+    }
+
+    private SysUser findUser(String subject) {
+        try {
+            SysUser user = subject == null ? null : userMapper.selectById(Long.valueOf(subject));
+            if (user == null) throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+            return user;
+        } catch (NumberFormatException exception) {
+            throw new BusinessException(ErrorCode.TOKEN_INVALID);
+        }
+    }
+
+    private void ensureEnabled(SysUser user) {
+        if (!Integer.valueOf(1).equals(user.getStatus())) {
+            throw new BusinessException(ErrorCode.ACCOUNT_DISABLED);
+        }
+    }
+
+    private boolean passwordMatches(String rawPassword, SysUser user) {
+        if (user == null || user.getPasswordHash() == null) return false;
+        return StringUtils.hasText(user.getPasswordSalt())
+                ? SM3Util.verifyWithSalt(rawPassword, user.getPasswordHash(), user.getPasswordSalt())
+                : SM3Util.verify(rawPassword, user.getPasswordHash());
+    }
+
+    private UserInfoVO toUserInfo(SysUser user) {
+        SysOrg org = user.getOrgId() == null ? null : orgMapper.selectById(user.getOrgId());
+        return UserInfoVO.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .realName(user.getRealName())
+                .phone(user.getPhone())
+                .email(user.getEmail())
+                .orgId(user.getOrgId())
+                .orgName(org == null ? null : org.getName())
+                .role(user.getRole())
+                .status(user.getStatus())
+                .lastLoginTime(user.getLastLoginTime())
+                .permissions(ROLE_PERMISSIONS.getOrDefault(user.getRole(), List.of()))
+                .build();
+    }
+
+    private void blacklist(String token) {
+        redis.opsForValue().set(BLACKLIST_PREFIX + token, "1", JwtUtil.remainingSeconds(token), TimeUnit.SECONDS);
+    }
+
+    private String newSalt() {
+        return UUID.randomUUID().toString().replace("-", "");
     }
 }
