@@ -404,26 +404,12 @@ onMounted(async () => {
     pig.value = pigStore.currentPig
     vaccines.value = pigStore.vaccineList
     quarantineCert.value = pigStore.quarantineCert
-  } catch {
-    // 后端不可用时使用模拟数据
-    pig.value = {
-      id,
-      earTagNo: `ET2024060100${id}`,
-      farmId: 1,
-      farmName: 'XX市XX养殖专业合作社',
-      breed: '长白猪',
-      birthDate: '2024-03-15',
-      penNo: 'A-03',
-      source: '自繁',
-      status: 1,
-      createTime: '2024-03-15 10:00:00',
-      updateTime: '2024-07-15 08:00:00',
-    }
-
-    vaccines.value = [
-      { id: 1, pigId: id, vaccineName: '猪瘟活疫苗', batchNo: 'CSF-20240601', injectTime: '2024-06-05 09:30', dosage: '2ml/头', operator: '养殖员-张三', fileIds: [], createTime: '2024-06-05' },
-      { id: 2, pigId: id, vaccineName: '口蹄疫O型灭活疫苗', batchNo: 'FMD-20240615', injectTime: '2024-06-20 10:00', dosage: '2ml/头', operator: '养殖员-张三', fileIds: [], createTime: '2024-06-20' },
-    ]
+  } catch (error) {
+    // 后端不可用时，保持空数据并提示
+    console.error('获取生猪详情失败:', error)
+    pig.value = null
+    vaccines.value = []
+    quarantineCert.value = null
   } finally {
     loading.value = false
   }

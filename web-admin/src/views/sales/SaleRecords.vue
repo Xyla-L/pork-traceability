@@ -104,29 +104,10 @@ async function fetchList() {
     }))
     tableData.value = res.data?.records || res.data?.list || res.list || []
     pagination.total = res.data?.total || res.total || 0
-  } catch {
-    // 模拟数据
-    const mockNames = ['猪前腿肉 500g', '猪五花肉 300g', '猪里脊 400g', '猪排骨 600g', '猪蹄 500g']
-    const mockStores = ['XX社区超市', 'YY生鲜店', 'ZZ便利店', 'WW农贸市场']
-    const list = Array.from({ length: 25 }, (_, i) => ({
-      id: i + 1, productQrCode: `QR-PORK-20240715${String(i + 1).padStart(3, '0')}`,
-      productName: mockNames[i % mockNames.length], splitBatchId: 100 + i,
-      storeName: mockStores[i % mockStores.length],
-      sellTime: `2024-07-${String(15 - Math.floor(i / 3)).padStart(2, '0')} ${String(8 + i % 10).padStart(2, '0')}:${String(i * 7 % 60).padStart(2, '0')}`,
-      sellPrice: 15 + (i * 7) % 50, sellWeightKg: 0.3 + (i % 5) * 0.2,
-      status: i < 18 ? 2 : i < 22 ? 1 : i < 24 ? 3 : 4,
-      expireDate: `2024-07-${String(18 + i % 10).padStart(2, '0')}`,
-      createTime: `2024-07-${String(10 + i).padStart(2, '0')} 10:00:00`
-    }))
-    const filtered = list.filter(item => {
-      if (searchForm.productName && !item.productName.includes(searchForm.productName)) return false
-      if (searchForm.batchNo && !item.productQrCode.includes(searchForm.batchNo)) return false
-      if (searchForm.storeName && !item.storeName.includes(searchForm.storeName)) return false
-      if (searchForm.status && item.status !== searchForm.status) return false
-      return true
-    })
-    tableData.value = filtered.slice((pagination.pageNum - 1) * pagination.pageSize, pagination.pageNum * pagination.pageSize)
-    pagination.total = filtered.length
+  } catch (error) {
+    console.error('获取销售记录列表失败:', error)
+    tableData.value = []
+    pagination.total = 0
   } finally {
     loading.value = false
   }

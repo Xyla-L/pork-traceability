@@ -10,7 +10,7 @@
       <el-table-column prop="applyNo" label="申报编号" min-width="160" show-overflow-tooltip />
       <el-table-column label="生猪耳标号" min-width="140" show-overflow-tooltip>
         <template #default="{ row }">
-          {{ earTagNoMap[row.pigId] || row.pigId || '-' }}
+          {{ row.earTagNo || row.pigId || '-' }}
         </template>
       </el-table-column>
       <el-table-column prop="applyTime" label="申报时间" min-width="160" align="center" />
@@ -56,10 +56,6 @@ defineProps({
   loading: {
     type: Boolean,
     default: false
-  },
-  earTagNoMap: {
-    type: Object,
-    default: () => ({})
   }
 })
 

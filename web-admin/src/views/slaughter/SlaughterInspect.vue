@@ -168,23 +168,8 @@ const fetchList = async () => {
     pagination.total = res.data?.total || res.total || 0
   } catch (error) {
     console.error('获取屠宰检验列表失败:', error)
-    // 后端不可用时使用模拟数据
-    const mockData = Array.from({ length: 28 }, (_, i) => ({
-      id: i + 1,
-      inspectNo: `IN${Date.now().toString(36).toUpperCase()}${String(i + 1).padStart(3, '0')}`,
-      batchNo: `B202407${String(1500 + i).padStart(4, '0')}`,
-      earTagNo: `ET202406${String(100 + i * 2).padStart(3, '0')}`,
-      inspectType: ['宰前检验', '宰后检验', '同步检验'][i % 3],
-      inspector: ['王兽医', '李兽医', '张兽医', '赵兽医'][i % 4],
-      inspectTime: `2024-07-${String(2 + Math.floor(i / 4)).padStart(2, '0')} ${String(8 + i % 10).padStart(2, '0')}:00`,
-      result: i < 22 ? '合格' : i < 26 ? '不合格' : '待检验',
-      status: i < 22 ? '合格' : i < 26 ? '不合格' : '待检验',
-      organCheck: i % 5 === 0 ? '心脏异常' : '全部正常',
-    }))
-    const start = (pagination.pageNum - 1) * pagination.pageSize
-    const end = start + pagination.pageSize
-    tableData.value = mockData.slice(start, end)
-    pagination.total = mockData.length
+    tableData.value = []
+    pagination.total = 0
   } finally {
     tableLoading.value = false
   }

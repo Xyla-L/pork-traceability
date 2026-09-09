@@ -132,6 +132,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { Search, Refresh } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import BlockchainVerifyBadge from '@/components/common/BlockchainVerifyBadge.vue'
+import request from '@/utils/request'
 
 const searchForm = reactive({ transportNo: '', storeName: '', qtyCheck: null as number | null })
 const receiptDate = ref<string | null>(null)
@@ -192,26 +193,28 @@ function handleReset() { Object.assign(searchForm, { transportNo: '', storeName:
 function handleSizeChange() { pagination.pageNum = 1; fetchList() }
 function handlePageChange() { fetchList() }
 
-function fetchList() {
+async function fetchList() {
   loading.value = true
-  const stores = ['XX社区超市', 'YY生鲜店', 'ZZ便利店', 'WW农贸市场', 'UU超市']
-  const list = Array.from({ length: 30 }, (_, i) => ({
-    id: i + 1, receiptNo: `S202407${String(1500 + i).padStart(4, '0')}`,
-    transportNo: `T202407${String(1400 + i).padStart(4, '0')}`,
-    storeName: stores[i % stores.length], receiver: ['钱店长', '吴店长', '郑店长', '孙店长'][i % 4],
-    receiptTime: `2024-07-${String(3 + i).padStart(2, '0')} ${String(14 + i % 8).padStart(2, '0')}:30:00`,
-    qtyCheck: i < 27 ? 1 : 0, tempCheck: i < 28 ? 1 : 0, packageIntact: i < 25 ? 1 : 0,
-    chainStatus: i % 5 === 0 ? 'pending' : 'confirmed' as const,
-  }))
-  const filtered = list.filter(item => {
-    if (searchForm.transportNo && !item.transportNo.includes(searchForm.transportNo)) return false
-    if (searchForm.storeName && !item.storeName.includes(searchForm.storeName)) return false
-    if (searchForm.qtyCheck !== null && item.qtyCheck !== searchForm.qtyCheck) return false
-    return true
-  })
-  tableData.value = filtered.slice((pagination.pageNum - 1) * pagination.pageSize, pagination.pageNum * pagination.pageSize)
-  pagination.total = filtered.length
-  loading.value = false
+  try {
+    const res = await request.get('/distribution/receipts', {
+      params: { pageNum: pagination.pageNum, pageSize: pagination.pageSize, storeName: searchForm.storeName || undefined }
+    })
+    const list = res.data?.records || res.data?.list || res.list || []
+    // 后端字段适配：transportId → transportNo；contentHash 存在视为已上链
+    tableData.value = (Array.isArray(list) ? list : []).map((item: any) => ({
+      ...item,
+      receiptNo: item.receiptNo || `S${item.id || ''}`,
+      transportNo: item.transportNo || item.transportId || '',
+      chainStatus: item.contentHash ? 'confirmed' : 'pending',
+    }))
+    pagination.total = res.data?.total || res.total || 0
+  } catch (error) {
+    console.error('获取门店签收列表失败:', error)
+    tableData.value = []
+    pagination.total = 0
+  } finally {
+    loading.value = false
+  }
 }
 
 onMounted(() => fetchList())

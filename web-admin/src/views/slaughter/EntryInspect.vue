@@ -154,22 +154,8 @@ const fetchList = async () => {
     pagination.total = res.data?.total || res.total || 0
   } catch (error) {
     console.error('获取入场查验列表失败:', error)
-    // 后端不可用时使用模拟数据
-    const mockData = Array.from({ length: 25 }, (_, i) => ({
-      id: i + 1,
-      batchNo: `B202407${String(1500 + i).padStart(4, '0')}`,
-      earTagNo: `ET202406${String(100 + i * 3).padStart(3, '0')}`,
-      sourceFarm: ['XX养殖合作社', 'YY生态养殖场', 'ZZ畜牧公司'][i % 3],
-      arrivalTime: `2024-07-${String(2 + Math.floor(i / 5)).padStart(2, '0')} ${String(6 + i % 12).padStart(2, '0')}:30`,
-      weight: 110 + Math.floor(Math.random() * 30),
-      quarantineCert: `QC20240701${String(100 + i).padStart(3, '0')}`,
-      inspector: ['张查验', '李查验', '王查验'][i % 3],
-      status: i < 18 ? '合格' : i < 23 ? '待查验' : '不合格',
-    }))
-    const start = (pagination.pageNum - 1) * pagination.pageSize
-    const end = start + pagination.pageSize
-    tableData.value = mockData.slice(start, end)
-    pagination.total = mockData.length
+    tableData.value = []
+    pagination.total = 0
   } finally {
     tableLoading.value = false
   }
