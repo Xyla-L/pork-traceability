@@ -1,5 +1,6 @@
 package com.pork.auth.vo;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Data;
 
@@ -7,64 +8,36 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 用户信息响应 VO（登录 / 获取当前用户信息 / 更新个人信息 共用）
+ * 用户信息VO
  */
 @Data
 @Builder
+@Schema(description = "用户信息")
 public class UserInfoVO {
-
-    /**
-     * 用户ID
-     */
+    @Schema(description = "用户ID", example = "1")
     private Long id;
 
-    /**
-     * 用户名
-     */
+    @Schema(description = "用户名", example = "admin")
     private String username;
 
-    /**
-     * 真实姓名
-     */
+    @Schema(description = "真实姓名", example = "管理员")
     private String realName;
 
-    /**
-     * 手机号
-     */
+    @Schema(description = "手机号", example = "13800138000")
     private String phone;
 
-    /**
-     * 邮箱
-     */
     private String email;
 
-    /**
-     * 所属机构ID
-     */
     private Long orgId;
 
-    /**
-     * 所属机构名称
-     */
     private String orgName;
 
-    /**
-     * 角色
-     */
+    @Schema(description = "角色", example = "ADMIN")
     private String role;
 
-    /**
-     * 状态（0-禁用 1-启用）
-     */
     private Integer status;
 
-    /**
-     * 上次登录时间
-     */
     private LocalDateTime lastLoginTime;
 
-    /**
-     * 权限标识列表
-     */
     private List<String> permissions;
 }
