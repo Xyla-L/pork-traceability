@@ -117,7 +117,7 @@ public class BlockchainServiceImpl implements BlockchainService {
         Long today = mapper.selectCount(Wrappers.<BlockchainRecord>lambdaQuery().ge(BlockchainRecord::getChainTime, start));
         Long pending = mapper.selectCount(Wrappers.<BlockchainRecord>lambdaQuery().in(BlockchainRecord::getStatus, 0, 2));
         Long latest = mapper.selectObjs(Wrappers.<BlockchainRecord>query().select("MAX(block_number)"))
-                .stream().findFirst().filter(v -> v != null).map(v -> ((Number) v).longValue()).orElse(0L);
+                .stream().filter(v -> v != null).findFirst().map(v -> ((Number) v).longValue()).orElse(0L);
         return Map.of("totalTx", total, "todayTx", today, "pendingTx", pending, "latestBlock", latest);
     }
 

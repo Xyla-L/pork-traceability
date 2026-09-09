@@ -14,6 +14,7 @@ x-app-environment: &app-environment
   DB_USERNAME: ${DB_USERNAME:-pork_user}
   DB_PASSWORD: ${DB_PASSWORD:-123456}
   JWT_SECRET: ${JWT_SECRET:-pork-traceability-secret-key-2026}
+  SPRING_PROFILES_ACTIVE: docker
   BREEDING_SERVICE_URL: http://breeding-service:8082
   SLAUGHTER_SERVICE_URL: http://slaughter-service:8083
   DISTRIBUTION_SERVICE_URL: http://distribution-service:8084

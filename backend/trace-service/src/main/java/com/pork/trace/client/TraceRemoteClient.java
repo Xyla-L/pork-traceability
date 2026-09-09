@@ -47,7 +47,7 @@ public class TraceRemoteClient {
     }
     public Object breedingByPigs(List<Long> ids) { return get(breedingUrl + "/breeding/internal/pigs?ids=" + ids(ids)); }
     public Object slaughterByPigs(List<Long> ids) { return get(slaughterUrl + "/slaughter/internal/pigs?ids=" + ids(ids)); }
-    public Object breedingPigs(Integer status) { return get(breedingUrl + "/breeding/pigs?pageNum=1&pageSize=1&status=" + status); }
+    public Object breedingPigs(Integer status) { return get(breedingUrl + "/pigs?pageNum=1&pageSize=1&status=" + status); }
     public Object slaughterStamps(String startDate) { return get(slaughterUrl + "/slaughter/stamps?pageNum=1&pageSize=1&status=1&startDate=" + startDate); }
     public Object transports(Integer status) { return get(distributionUrl + "/distribution/transports?pageNum=1&pageSize=1&status=" + status); }
     public Object batches() { return get(distributionUrl + "/distribution/batches?pageNum=1&pageSize=1"); }

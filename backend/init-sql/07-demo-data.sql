@@ -121,10 +121,10 @@ USE db_common;
 
 INSERT INTO blockchain_ledger (biz_key, content_hash, tx_hash, block_number, chain_time)
 SELECT 'SP-DEMO-0002', @split2_hash, CONCAT('0x', SHA2(CONCAT('SP-DEMO-0002', @split2_hash), 256)), 1, NOW()
-WHERE NOT EXISTS (SELECT 1 FROM blockchain_ledger WHERE biz_key = 'SP-DEMO-0002' AND content_hash = @split2_hash);
+WHERE NOT EXISTS (SELECT 1 FROM blockchain_ledger WHERE biz_key = 'SP-DEMO-0002' AND BINARY content_hash = BINARY @split2_hash);
 INSERT INTO blockchain_ledger (biz_key, content_hash, tx_hash, block_number, chain_time)
 SELECT 'QR-PORK-DEMO-0001', @sale_hash, CONCAT('0x', SHA2(CONCAT('QR-PORK-DEMO-0001', @sale_hash), 256)), 2, NOW()
-WHERE NOT EXISTS (SELECT 1 FROM blockchain_ledger WHERE biz_key = 'QR-PORK-DEMO-0001' AND content_hash = @sale_hash);
+WHERE NOT EXISTS (SELECT 1 FROM blockchain_ledger WHERE biz_key = 'QR-PORK-DEMO-0001' AND BINARY content_hash = BINARY @sale_hash);
 
 INSERT INTO blockchain_record (event_id, biz_type, biz_id, biz_key, content_hash, tx_hash,
                                block_number, chain_time, status, retry_count)
