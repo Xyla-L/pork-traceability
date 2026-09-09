@@ -6,7 +6,7 @@
  * 后端接口就绪后：将 USE_MOCK 置为 false，各 api 模块会自动切换为真实请求。
  */
 
-export const USE_MOCK = true
+export const USE_MOCK = false
 
 /** 模拟网络延迟，方便观察骨架屏/加载态 */
 export function delay(ms = 300) {

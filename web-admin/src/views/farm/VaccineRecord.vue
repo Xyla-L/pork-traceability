@@ -99,11 +99,8 @@ const pagination = reactive({
 const fetchList = async () => {
   tableLoading.value = true
 
-  // 先加载模拟数据兜底
-  loadMockData()
-
   try {
-    const pigParams = { pageSize: 100 }
+    const pigParams = { size: 100 }
     if (searchForm.earTagNo) {
       pigParams.earTagNo = searchForm.earTagNo
     }
@@ -132,51 +129,16 @@ const fetchList = async () => {
       filtered = filtered.filter((v) => v.vaccineName?.includes(searchForm.vaccineName))
     }
 
-    if (filtered.length > 0) {
-      pagination.total = filtered.length
-      const start = (pagination.pageNum - 1) * pagination.pageSize
-      tableData.value = filtered.slice(start, start + pagination.pageSize)
-    }
-  } catch {
-    // 后端不可用，使用已加载的模拟数据
+    pagination.total = filtered.length
+    const start = (pagination.pageNum - 1) * pagination.pageSize
+    tableData.value = filtered.slice(start, start + pagination.pageSize)
+  } catch (error) {
+    console.error('获取疫苗记录列表失败:', error)
+    tableData.value = []
+    pagination.total = 0
   } finally {
     tableLoading.value = false
   }
-}
-
-const loadMockData = () => {
-  const earTags = ['ET20240601001', 'ET20240601002', 'ET20240601003', 'ET20240602005', 'ET20240602008']
-  const vaccineNames = ['猪瘟活疫苗', '口蹄疫O型灭活疫苗', '高致病性蓝耳病疫苗', '猪圆环病毒疫苗']
-  const operators = ['养殖员-张三', '兽医-李四', '技术员-王五']
-  const batchPrefixes = ['CSF-', 'FMD-', 'PRRS-', 'PCV-']
-
-  const allMock = []
-  for (let i = 1; i <= 28; i++) {
-    const vIdx = i % vaccineNames.length
-    allMock.push({
-      id: 2000 + i,
-      pigId: 1000 + (i % 20) + 1,
-      earTagNo: earTags[i % earTags.length],
-      vaccineName: vaccineNames[vIdx],
-      batchNo: `${batchPrefixes[vIdx]}2024${String(6 + Math.floor(i / 6)).padStart(2, '0')}${String(i).padStart(2, '0')}`,
-      injectTime: `2024-0${6 + Math.floor(i / 8)}-${String((i * 3) % 28 + 1).padStart(2, '0')} 0${(i % 8 + 1)}:30`,
-      dosage: `${[1, 2][i % 2]}ml/头`,
-      operator: operators[i % 3],
-      fileIds: [],
-      createTime: `2024-06-${String((i * 5) % 28 + 1).padStart(2, '0')} 10:00:00`,
-    })
-  }
-
-  let filtered = [...allMock]
-  if (searchForm.earTagNo) {
-    filtered = filtered.filter((v) => v.earTagNo.includes(searchForm.earTagNo))
-  }
-  if (searchForm.vaccineName) {
-    filtered = filtered.filter((v) => v.vaccineName.includes(searchForm.vaccineName))
-  }
-  pagination.total = filtered.length
-  const start = (pagination.pageNum - 1) * pagination.pageSize
-  tableData.value = filtered.slice(start, start + pagination.pageSize)
 }
 
 // ==================== 搜索/重置 ====================

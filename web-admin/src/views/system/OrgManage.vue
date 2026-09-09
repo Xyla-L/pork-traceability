@@ -93,6 +93,7 @@
 import { ref, reactive, watch, onMounted } from 'vue'
 import { Plus, Stamp, KnifeFork, Van, Shop, OfficeBuilding } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { systemOrgApi } from '@/api/modules/system'
 
 const treeRef = ref()
 const treeFilter = ref('')
@@ -140,42 +141,62 @@ function handleEdit(data: any) {
 }
 
 function handleDelete(data: any) {
-  ElMessageBox.confirm(`确定删除机构 "${data.label}" 吗？`, '警告', { type: 'warning', confirmButtonText: '确定删除' }).then(() => {
-    ElMessage.success(`机构 "${data.label}" 已删除`)
-    loadOrgTree()
+  ElMessageBox.confirm(`确定删除机构 "${data.label}" 吗？`, '警告', { type: 'warning', confirmButtonText: '确定删除' }).then(async () => {
+    try {
+      await systemOrgApi.remove(data.id)
+      ElMessage.success(`机构 "${data.label}" 已删除`)
+      selectedOrg.value = null
+      loadOrgTree()
+    } catch (error) {
+      console.error('删除机构失败:', error)
+      ElMessage.error('删除失败')
+    }
   }).catch(() => {})
 }
 
-function handleSubmit() {
-  formRef.value?.validate().then(() => {
-    ElMessage.success(isEdit.value ? '机构信息更新成功' : '机构创建成功')
+async function handleSubmit() {
+  try {
+    await formRef.value?.validate()
+  } catch {
+    return
+  }
+
+  submitting.value = true
+  try {
+    const payload = {
+      parentId: formData.parentId || null,
+      type: formData.type,
+      name: formData.label,
+      manager: formData.manager,
+      phone: formData.phone,
+      address: formData.address,
+      remark: formData.remark,
+    }
+    if (isEdit.value) {
+      await systemOrgApi.update(formData.id, payload)
+      ElMessage.success('机构信息更新成功')
+    } else {
+      await systemOrgApi.create(payload)
+      ElMessage.success('机构创建成功')
+    }
     dialogVisible.value = false
     loadOrgTree()
-  }).catch(() => {})
+  } catch (error) {
+    console.error('保存机构失败:', error)
+    ElMessage.error('保存失败')
+  } finally {
+    submitting.value = false
+  }
 }
 
-function loadOrgTree() {
-  // 模拟机构树
-  orgTreeData.value = [
-    { id: 1, label: 'XX养殖合作社', type: 'farm', manager: '张社长', phone: '13800001001', address: 'XX省XX市XX县XX村', createTime: '2024-01-15', children: [] },
-    {
-      id: 2, label: 'XX市定点屠宰场', type: 'slaughter', manager: '李厂长', phone: '13800002001', address: 'XX市XX区XX路100号', createTime: '2024-01-20',
-      children: [
-        { id: 21, label: '分割车间A组', type: 'slaughter', manager: '王主任', phone: '13800002011', address: '同上', createTime: '2024-02-01', children: [] },
-        { id: 22, label: '分割车间B组', type: 'slaughter', manager: '刘主任', phone: '13800002012', address: '同上', createTime: '2024-02-01', children: [] },
-      ]
-    },
-    {
-      id: 3, label: 'XX冷链物流公司', type: 'distribution', manager: '赵经理', phone: '13800003001', address: 'XX市XX区XX物流园3号', createTime: '2024-02-10',
-      children: [
-        { id: 31, label: '运输车队一队', type: 'distribution', manager: '孙队长', phone: '13800003011', address: '同上', createTime: '2024-02-15', children: [] },
-        { id: 32, label: '运输车队二队', type: 'distribution', manager: '周队长', phone: '13800003012', address: '同上', createTime: '2024-02-15', children: [] },
-      ]
-    },
-    { id: 4, label: '市动物卫生监督所', type: 'supervisor', manager: '陈所长', phone: '13800004001', address: 'XX市XX区XX路200号', createTime: '2024-01-01', children: [] },
-    { id: 5, label: 'XX社区超市', type: 'retail', manager: '钱店长', phone: '13800005001', address: 'XX市XX区XX社区', createTime: '2024-03-01', children: [] },
-    { id: 6, label: 'YY生鲜店', type: 'retail', manager: '吴店长', phone: '13800005002', address: 'XX市XX区YY路50号', createTime: '2024-03-05', children: [] },
-  ]
+async function loadOrgTree() {
+  try {
+    const list = await systemOrgApi.tree()
+    orgTreeData.value = Array.isArray(list) ? list : []
+  } catch (error) {
+    console.error('获取机构树失败:', error)
+    orgTreeData.value = []
+  }
 }
 
 onMounted(() => loadOrgTree())

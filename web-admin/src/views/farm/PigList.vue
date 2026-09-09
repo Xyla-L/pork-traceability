@@ -191,13 +191,10 @@ const pagination = reactive({
 const fetchList = async () => {
   tableLoading.value = true
 
-  // 先加载模拟数据兜底
-  loadMockData()
-
   try {
     const params = {
-      pageNum: pagination.pageNum,
-      pageSize: pagination.pageSize,
+      current: pagination.pageNum,
+      size: pagination.pageSize,
       earTagNo: searchForm.earTagNo || undefined,
       farmId: searchForm.farmId || undefined,
       breed: searchForm.breed || undefined,
@@ -209,78 +206,14 @@ const fetchList = async () => {
     const res = await request.get('/breeding/pigs', { params, timeout: 5000 })
     const list = res.data?.records || res.data?.list || res.list || []
     const total = res.data?.total || res.total
-    if (Array.isArray(list) && list.length > 0) {
-      tableData.value = list
-      pagination.total = total || list.length || 0
-    }
-  } catch {
-    // 后端不可用，使用已加载的模拟数据
+    tableData.value = Array.isArray(list) ? list : []
+    pagination.total = total || list.length || 0
+  } catch (error) {
+    console.error('获取生猪列表失败:', error)
+    tableData.value = []
+    pagination.total = 0
   } finally {
     tableLoading.value = false
-  }
-}
-
-// 模拟数据
-const loadMockData = () => {
-  const breeds = ['长白猪', '大白猪', '杜洛克', '皮特兰', '二元杂', '三元杂']
-  const sources = ['自繁', '外购-XX种猪场', '外购-YY养殖场']
-  const statuses = [1, 1, 1, 1, 1, 2, 2, 3, 4]
-  const farms = [
-    { id: 1, name: 'XX市XX养殖专业合作社' },
-    { id: 2, name: 'YY县YY养殖场' },
-    { id: 3, name: 'ZZ生态养殖有限公司' },
-  ]
-
-  const allMock = []
-  for (let i = 1; i <= 32; i++) {
-    const farm = farms[i % 3]
-    const status = statuses[i % statuses.length]
-    const birthDate = new Date(2024, 2, 1)
-    birthDate.setDate(birthDate.getDate() + i * 7)
-    allMock.push({
-      id: 1000 + i,
-      earTagNo: `ET${String(2024060000 + i).padStart(11, '0')}`,
-      farmId: farm.id,
-      farmName: farm.name,
-      breed: breeds[i % breeds.length],
-      birthDate: birthDate.toISOString().split('T')[0],
-      penNo: `A-${String(Math.floor((i - 1) / 4) + 1).padStart(2, '0')}`,
-      source: sources[i % 3],
-      status,
-      createTime: '2024-03-15 10:00:00',
-      updateTime: '2024-07-15 08:00:00',
-    })
-  }
-
-  // 搜索过滤
-  let filtered = [...allMock]
-  if (searchForm.earTagNo) {
-    filtered = filtered.filter((p) => p.earTagNo.includes(searchForm.earTagNo))
-  }
-  if (searchForm.breed) {
-    filtered = filtered.filter((p) => p.breed === searchForm.breed)
-  }
-  if (searchForm.status) {
-    const statusMap = { '在养': 1, '已出栏': 2, '已屠宰': 3, '异常': 4 }
-    const statusVal = statusMap[searchForm.status]
-    if (statusVal) filtered = filtered.filter((p) => p.status === statusVal)
-  }
-  if (searchForm.farmId) {
-    filtered = filtered.filter((p) => p.farmId === Number(searchForm.farmId))
-  }
-
-  pagination.total = filtered.length
-  const start = (pagination.pageNum - 1) * pagination.pageSize
-  tableData.value = filtered.slice(start, start + pagination.pageSize)
-
-  // 同时填充 farmOptions（如果后端没返回）
-  if (farmOptions.value.length === 0) {
-    farmOptions.value = [
-      { id: 1, name: 'XX市XX养殖专业合作社' },
-      { id: 2, name: 'YY县YY养殖场' },
-      { id: 3, name: 'ZZ生态养殖有限公司' },
-    ]
-    farmNameMap.value = { 1: 'XX市XX养殖专业合作社', 2: 'YY县YY养殖场', 3: 'ZZ生态养殖有限公司' }
   }
 }
 

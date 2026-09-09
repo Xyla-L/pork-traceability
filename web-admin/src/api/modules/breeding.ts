@@ -1,9 +1,27 @@
 import request from '@/utils/request'
 
+/**
+ * breeding 模块后端分页参数使用 current/size，
+ * 前端统一使用 pageNum/pageSize，此处做字段映射。
+ */
+function toBackendParams(params: any = {}) {
+  if (!params || typeof params !== 'object') return params
+  const mapped = { ...params }
+  if (mapped.pageNum !== undefined) {
+    mapped.current = mapped.pageNum
+    delete mapped.pageNum
+  }
+  if (mapped.pageSize !== undefined) {
+    mapped.size = mapped.pageSize
+    delete mapped.pageSize
+  }
+  return mapped
+}
+
 export const pigApi = {
   // ========== 生猪档案 ==========
   list(params: any) {
-    return request.get('/breeding/pigs', { params })
+    return request.get('/breeding/pigs', { params: toBackendParams(params) })
   },
   detail(id: number) {
     return request.get(`/breeding/pigs/${id}`)
@@ -28,7 +46,7 @@ export const pigApi = {
     return request.post(`/breeding/pigs/${pigId}/apply`, data)
   },
   getApplies(params?: any) {
-    return request.get('/breeding/applies', { params })
+    return request.get('/breeding/applies', { params: toBackendParams(params) })
   },
   approveApply(applyId: number, data: { approved: boolean; comment?: string }) {
     return request.put(`/breeding/applies/${applyId}/approve`, data)
@@ -47,7 +65,7 @@ export const pigApi = {
     return request.post('/breeding/farms', data)
   },
   getFarms(params?: any) {
-    return request.get('/breeding/farms', { params })
+    return request.get('/breeding/farms', { params: toBackendParams(params) })
   },
   getFarmDetail(id: number) {
     return request.get(`/breeding/farms/${id}`)

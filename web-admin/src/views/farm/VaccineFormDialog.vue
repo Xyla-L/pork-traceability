@@ -169,7 +169,7 @@ const searchPigs = async (query) => {
   pigSearchLoading.value = true
   try {
     const res = await request.get('/breeding/pigs', {
-      params: { earTagNo: query, pageSize: 20 }
+      params: { earTagNo: query, size: 20 }
     })
     pigOptions.value = res.data?.records || res.data?.list || res.list || []
   } catch (error) {

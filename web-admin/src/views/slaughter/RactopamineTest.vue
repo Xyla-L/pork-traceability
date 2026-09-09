@@ -167,27 +167,8 @@ const fetchList = async () => {
     pagination.total = res.data?.total || res.total || 0
   } catch (error) {
     console.error('获取瘦肉精检测列表失败:', error)
-    // 后端不可用时使用模拟数据
-    const testTypes = ['瘦肉精检测', '克伦特罗检测', '莱克多巴胺检测', '沙丁胺醇检测']
-    const results = ['阴性', '阴性', '阴性', '待检测', '阳性']
-    const methods = ['胶体金法', 'ELISA法', 'LC-MS/MS法']
-    const mockData = Array.from({ length: 30 }, (_, i) => ({
-      id: i + 1,
-      testNo: `RACT${Date.now().toString(36).toUpperCase()}${String(i + 1).padStart(3, '0')}`,
-      batchNo: `B202407${String(1500 + i).padStart(4, '0')}`,
-      sampleNo: `SAMPLE-202407${String(100 + i).padStart(3, '0')}`,
-      testType: testTypes[i % testTypes.length],
-      testMethod: methods[i % methods.length],
-      sampleSite: ['尿液', '肝脏', '肌肉'][i % 3],
-      result: results[i % results.length],
-      status: results[i % results.length],
-      tester: ['王检测员', '李检测员', '赵检测员'][i % 3],
-      testTime: `2024-07-${String(2 + Math.floor(i / 5)).padStart(2, '0')} ${String(9 + i % 8).padStart(2, '0')}:${String(i * 7 % 60).padStart(2, '0')}`,
-    }))
-    const start = (pagination.pageNum - 1) * pagination.pageSize
-    const end = start + pagination.pageSize
-    tableData.value = mockData.slice(start, end)
-    pagination.total = mockData.length
+    tableData.value = []
+    pagination.total = 0
   } finally {
     tableLoading.value = false
   }
