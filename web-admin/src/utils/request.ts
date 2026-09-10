@@ -55,6 +55,8 @@ instance.interceptors.response.use(
 
     if (response?.status === 401) {
       const authStore = useAuthStore()
+      // 标记了 skipAuthRedirect 的请求（如通知、轮询等非关键接口）401 时静默失败，不触发登出
+      const skipAuthRedirect = error.config?.skipAuthRedirect === true
       if (authStore.refreshToken) {
         return authStore
           .refreshAccessToken()
@@ -64,12 +66,17 @@ instance.interceptors.response.use(
             return instance(config)
           })
           .catch(() => {
-            authStore.logout()
-            router.push('/login')
+            if (!skipAuthRedirect) {
+              authStore.logout()
+              router.push('/login')
+            }
+            return Promise.reject(error)
           })
       }
-      authStore.logout()
-      router.push('/login')
+      if (!skipAuthRedirect) {
+        authStore.logout()
+        router.push('/login')
+      }
       return Promise.reject(error)
     }
 

@@ -36,6 +36,14 @@
             <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
         </dependency>
 
+        <!-- 负载均衡：路由使用 lb:// 前缀时，必须引入该依赖才能把服务名解析为实例。
+             Spring Cloud 2023 的 spring-cloud-starter-gateway 不会自动带上它，
+             缺失时网关对 lb://xxx 直接返回 503。 -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-loadbalancer</artifactId>
+        </dependency>
+
         <!-- JWT 校验工具与 Redis 黑名单。 -->
         <dependency>
             <groupId>com.pork</groupId>

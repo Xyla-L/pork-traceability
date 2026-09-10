@@ -45,7 +45,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 
@@ -68,10 +68,22 @@ const roleLabel = computed(() => {
 })
 
 const form = reactive({
-  realName: user.value?.realName || '',
-  phone: user.value?.phone || '',
-  email: user.value?.email || '',
+  realName: '',
+  phone: '',
+  email: '',
 })
+
+// user 异步加载完成后回填表单（进入页面时 authStore.user 可能尚未就绪）
+watch(
+  user,
+  (u) => {
+    if (!u) return
+    form.realName = u.realName || ''
+    form.phone = u.phone || ''
+    form.email = u.email || ''
+  },
+  { immediate: true }
+)
 
 const rules = {
   realName: [{ required: true, message: '请输入姓名', trigger: 'blur' }],

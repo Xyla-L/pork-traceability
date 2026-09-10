@@ -29,9 +29,13 @@ export const useAppStore = defineStore('app', () => {
   }
 
   async function fetchNotifications() {
-    const { notificationApi } = await import('@/api/modules/notification')
-    const data = await notificationApi.getList()
-    notifications.value = data || []
+    try {
+      const { notificationApi } = await import('@/api/modules/notification')
+      const data = await notificationApi.getList()
+      notifications.value = data || []
+    } catch {
+      // 通知接口失败时静默处理，不影响主流程
+    }
   }
 
   async function markNotificationRead(id: number) {

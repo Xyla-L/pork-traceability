@@ -80,12 +80,13 @@
 
 <script setup>
 import { ref, reactive, onMounted, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { User, Lock, Key, Loading } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 
 const loginFormRef = ref(null)
@@ -228,7 +229,10 @@ async function handleLogin() {
     await authStore.login(loginForm.username, loginForm.password)
     handleRememberPassword()
     ElMessage.success('登录成功，正在跳转...')
-    setTimeout(() => { router.push('/admin') }, 800)
+    setTimeout(() => {
+      const redirect = route.query.redirect
+      router.push(typeof redirect === 'string' && redirect ? redirect : '/admin')
+    }, 800)
   } catch {
     // 错误提示由 request 拦截器统一处理（如「用户名或密码错误」），这里只需刷新验证码
     refreshCaptcha()

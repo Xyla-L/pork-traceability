@@ -72,7 +72,7 @@ defineEmits(['view', 'edit', 'delete'])
 const breedMap = {
   'changbai': '长白猪',
   'dabai': '大白猪',
-  'du洛克': '杜洛克',
+  'duroc': '杜洛克',
   'dulock': '杜洛克',
   'pitelan': '皮特兰'
 }

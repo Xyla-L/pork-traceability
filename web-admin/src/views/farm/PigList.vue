@@ -124,6 +124,7 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { Search, Refresh, Plus } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/utils/request'
@@ -131,6 +132,8 @@ import PigTable from './PigTable.vue'
 import PigFormDialog from './PigFormDialog.vue'
 
 // ==================== 搜索相关 ====================
+
+const router = useRouter()
 
 const birthDateRange = ref(null)
 
@@ -262,8 +265,7 @@ const handleEdit = (row) => {
 }
 
 const handleView = (row) => {
-  // 跳转详情页（可根据路由配置实现）
-  console.log('查看详情:', row)
+  router.push(`/admin/farm/pigs/${row.id}`)
 }
 
 const handleFormSubmit = async (formData) => {

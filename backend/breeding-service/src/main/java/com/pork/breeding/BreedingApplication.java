@@ -8,7 +8,7 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 /**
  * 养殖免疫模块启动类
  */
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = "com.pork")
 @EnableDiscoveryClient
 @MapperScan("com.pork.breeding.mapper")
 public class BreedingApplication {

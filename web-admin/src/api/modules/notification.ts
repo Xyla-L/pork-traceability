@@ -6,7 +6,7 @@ export const notificationApi = {
    * 获取当前用户通知列表（未读优先）
    */
   getList(params?: { read?: boolean }): Promise<AppNotification[]> {
-    return request.get('/notification/list', { params })
+    return request.get('/notification/list', { params, skipAuthRedirect: true } as any)
   },
 
   /**
