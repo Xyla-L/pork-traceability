@@ -35,3 +35,8 @@ export const verifyProduct = async (qrCode) => {
     data: { qrCode },
   })
 }
+
+// 产品搜索：支持二维码号 / 批次号（后端 /trace/search 内部按 QR- 前缀自动区分）
+export const searchProduct = async (keyword) => {
+  return request(`/trace/search?keyword=${encodeURIComponent(keyword)}`)
+}
