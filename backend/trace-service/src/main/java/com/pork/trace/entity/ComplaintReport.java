@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 投诉举报 - 实体类
@@ -54,7 +55,7 @@ public class ComplaintReport {
     /**
      * 上传的问题肉品照片/视频文件ID (JSON数组格式)
      */
-    private String fileIds;
+    private List<String> fileIds;
 
     /**
      * 处理状态：0待受理、1处理中、2已办结、3已驳回

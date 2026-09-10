@@ -17,6 +17,7 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -27,7 +28,7 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
     private static final String BLACKLIST_PREFIX = "auth:blacklist:token:";
     private static final List<String> PUBLIC_PATHS = List.of(
             "/api/v1/auth/login", "/api/v1/auth/register", "/api/v1/auth/refresh", "/api/v1/consumer/",
-            "/actuator/health", "/doc.html", "/v3/api-docs", "/swagger-ui"
+            "/actuator/health", "/doc.html", "/v3/api-docs", "/swagger-ui","/api/v1/trace/complaints"
     );
 
     private final ReactiveStringRedisTemplate redis;
@@ -70,7 +71,8 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
     }
 
     private boolean isPublic(String path) {
-        return PUBLIC_PATHS.stream().anyMatch(path::startsWith);
+        return PUBLIC_PATHS.stream()
+                .anyMatch(p -> path.equals(p) || path.startsWith(p));
     }
 
     private String bearer(String authorization) {
