@@ -95,8 +95,10 @@ function handleSearch() {
     uni.showToast({ title: '请输入搜索内容', icon: 'none' })
     return
   }
-  // 这里以批次号/二维码作为溯源查询条件
-  uni.navigateTo({ url: `/pages/scan-result/scan-result?qrCode=${encodeURIComponent(kw)}` })
+  // 区分二维码号 / 批次号：以 QR- 开头按二维码扫，否则按批次号搜索
+  const isQr = /^QR-/i.test(kw)
+  const query = isQr ? `qrCode=${encodeURIComponent(kw)}` : `keyword=${encodeURIComponent(kw)}`
+  uni.navigateTo({ url: `/pages/scan-result/scan-result?${query}` })
 }
 
 function handleOpen(item) {
