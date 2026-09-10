@@ -32,9 +32,9 @@ public class ComplaintController {
     /**
      * 查询举报详情
      */
-    @GetMapping("/{id}")
-    public Result<ComplaintReportVO> getDetail(@PathVariable Long id) {
-        ComplaintReportVO vo = complaintReportService.getReportDetail(id);
+    @GetMapping("/{userId}")
+    public Result<ComplaintReportVO> getDetail(@PathVariable Long userId) {
+        ComplaintReportVO vo = complaintReportService.getReportDetail(userId);
         return Result.success(vo);
     }
 }

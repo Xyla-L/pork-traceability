@@ -2,7 +2,9 @@ package com.pork.auth.service;
 
 import com.pork.auth.dto.AuthRequests;
 import com.pork.auth.dto.LoginDTO;
+import com.pork.auth.dto.RegisterDTO;
 import com.pork.auth.vo.LoginVO;
+import com.pork.auth.vo.RegisterVO;
 import com.pork.auth.vo.UserInfoVO;
 
 public interface AuthService {
@@ -17,6 +19,14 @@ public interface AuthService {
 
 
     LoginVO refresh(String refreshToken);
+
+    /**
+     * 用户注册
+     *
+     * @param dto 注册请求参数
+     * @return 注册结果
+     */
+    RegisterVO register(RegisterDTO dto);
 
     /**
      * 获取当前登录用户信息

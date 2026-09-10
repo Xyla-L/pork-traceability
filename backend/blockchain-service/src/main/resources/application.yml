@@ -27,7 +27,19 @@ spring:
       discovery:
         server-addr: ${NACOS_ADDR:127.0.0.1:8848}
 blockchain:
+  # local=数据库模拟账本（开发调试用）；evm=真实上链（EVM 兼容链）
   type: ${BLOCKCHAIN_TYPE:local}
+  evm:
+    # 本地 Ganache 默认 http://localhost:8545；Sepolia 测试网可用 https://rpc.sepolia.org
+    rpc-url: ${EVM_RPC_URL:http://localhost:8545}
+    # Ganache 默认 1337；Sepolia 为 11155111
+    chain-id: ${EVM_CHAIN_ID:1337}
+    # 上链账户私钥；本地可用 Ganache 确定性账户，测试网请配置环境变量
+    private-key: ${EVM_PRIVATE_KEY:}
+    # 已部署合约地址；留空则启动时自动部署（自动部署地址会打印在日志中）
+    contract-address: ${EVM_CONTRACT_ADDRESS:}
+    gas-limit: ${EVM_GAS_LIMIT:2000000}
+    deploy-gas-limit: ${EVM_DEPLOY_GAS_LIMIT:4000000}
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true

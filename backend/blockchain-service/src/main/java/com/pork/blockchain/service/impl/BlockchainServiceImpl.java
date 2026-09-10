@@ -47,7 +47,7 @@ public class BlockchainServiceImpl implements BlockchainService {
             mapper.insert(record);
         }
         try {
-            BlockchainAdapter.TxResult tx = adapter.storeOnChain(record.getBizKey(), record.getContentHash(), message.payload());
+            BlockchainAdapter.TxResult tx = adapter.storeOnChain(record.getBizType(), record.getBizKey(), record.getContentHash(), message.payload());
             record.setTxHash(tx.txHash());
             record.setBlockNumber(tx.blockNumber());
             record.setChainTime(tx.chainTime());

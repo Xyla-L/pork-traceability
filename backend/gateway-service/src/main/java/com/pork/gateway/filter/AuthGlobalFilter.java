@@ -26,7 +26,7 @@ import java.util.UUID;
 public class AuthGlobalFilter implements GlobalFilter, Ordered {
     private static final String BLACKLIST_PREFIX = "auth:blacklist:token:";
     private static final List<String> PUBLIC_PATHS = List.of(
-            "/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/consumer/",
+            "/api/v1/auth/login", "/api/v1/auth/register", "/api/v1/auth/refresh", "/api/v1/consumer/",
             "/actuator/health", "/doc.html", "/v3/api-docs", "/swagger-ui"
     );
 
@@ -46,6 +46,7 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
         }
 
         return redis.hasKey(BLACKLIST_PREFIX + token)
+                .doOnError(e -> log.error("gateway_redis_check_failed path={} err={}", path, e.toString()))
                 .onErrorReturn(true)
                 .flatMap(blacklisted -> {
                     if (blacklisted) return unauthorized(exchange, "未认证或令牌已失效");
@@ -78,6 +79,7 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
     }
 
     private Mono<Void> unauthorized(ServerWebExchange exchange, String message) {
+        log.warn("gateway_unauthorized path={} reason={}", exchange.getRequest().getURI().getPath(), message);
         ServerHttpResponse response = exchange.getResponse();
         response.setStatusCode(HttpStatus.UNAUTHORIZED);
         response.getHeaders().setContentType(MediaType.APPLICATION_JSON);

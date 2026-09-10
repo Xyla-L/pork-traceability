@@ -5,7 +5,7 @@ import java.util.Map;
 import java.util.Optional;
 
 public interface BlockchainAdapter {
-    TxResult storeOnChain(String bizKey, String contentHash, Map<String, Object> payload);
+    TxResult storeOnChain(String bizType, String bizKey, String contentHash, Map<String, Object> payload);
     Optional<ChainData> queryOnChain(String bizKey);
 
     default Verification verifyHash(String bizKey, String localHash) {

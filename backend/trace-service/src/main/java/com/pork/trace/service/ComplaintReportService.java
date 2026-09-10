@@ -20,8 +20,8 @@ public interface ComplaintReportService extends IService<ComplaintReport> {
 
     /**
      * 根据ID查询举报详情
-     * @param id 举报ID
+     * @param userId 举报ID
      * @return 举报详情VO
      */
-    ComplaintReportVO getReportDetail(Long id);
+    ComplaintReportVO getReportDetail(Long userId);
 }

@@ -55,6 +55,7 @@
         <hutool.version>5.8.27</hutool.version>
         <jjwt.version>0.12.5</jjwt.version>
         <rocketmq.version>2.3.0</rocketmq.version>
+        <web3j.version>4.12.3</web3j.version>
         <jcodec.version>0.2.5</jcodec.version>
     </properties>
 
@@ -245,6 +246,12 @@
                 <groupId>org.jcodec</groupId>
                 <artifactId>jcodec-javase</artifactId>
                 <version>${jcodec.version}</version>
+            </dependency>
+            <!-- Web3j：以太坊兼容链 Java SDK（真实上链适配器使用） -->
+            <dependency>
+                <groupId>org.web3j</groupId>
+                <artifactId>core</artifactId>
+                <version>${web3j.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

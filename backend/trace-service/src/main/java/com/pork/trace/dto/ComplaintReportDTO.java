@@ -3,6 +3,8 @@ package com.pork.trace.dto;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
+import java.util.List;
+
 /**
  * 投诉举报 - 请求数据传输对象
  */
@@ -29,5 +31,8 @@ public class ComplaintReportDTO {
     /**
      * 上传的问题肉品照片/视频文件ID，JSON数组格式
      */
-    private String fileIds;
+    private List<String> fileIds;
+
+    private String reporterPhone;
+
 }

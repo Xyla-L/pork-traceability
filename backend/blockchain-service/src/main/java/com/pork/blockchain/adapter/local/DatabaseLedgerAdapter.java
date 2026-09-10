@@ -20,7 +20,7 @@ public class DatabaseLedgerAdapter implements BlockchainAdapter {
     private final ChainLedgerMapper mapper;
 
     @Override
-    public TxResult storeOnChain(String bizKey, String contentHash, Map<String, Object> payload) {
+    public TxResult storeOnChain(String bizType, String bizKey, String contentHash, Map<String, Object> payload) {
         ChainLedger existing = mapper.selectOne(Wrappers.<ChainLedger>lambdaQuery()
                 .eq(ChainLedger::getBizKey, bizKey)
                 .eq(ChainLedger::getContentHash, contentHash)

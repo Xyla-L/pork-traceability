@@ -43,6 +43,11 @@
             <groupId>com.baomidou</groupId>
             <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
         </dependency>
+        <!-- Web3j：以太坊兼容链 Java SDK，用于 EVM 真实上链 -->
+        <dependency>
+            <groupId>org.web3j</groupId>
+            <artifactId>core</artifactId>
+        </dependency>
         <!-- MySQL -->
         <dependency>
             <groupId>com.mysql</groupId>

@@ -191,6 +191,18 @@ services:
       SERVICE_PORT: 8086
       DB_URL: jdbc:mysql://mysql:3306/db_common?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
 
+  ganache:
+    image: trufflesuite/ganache:v7.9.2
+    restart: unless-stopped
+    command: --chain.chainId 1337 --wallet.deterministic --miner.blockTime 2
+    ports: ["8545:8545"]
+    networks: [pork-net]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- --post-data '{\"jsonrpc\":\"2.0\",\"method\":\"eth_chainId\",\"params\":[],\"id\":1}' --header 'Content-Type: application/json' http://localhost:8545 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
   blockchain-service:
     <<: *app-defaults
     build:
@@ -201,12 +213,19 @@ services:
       MAIN_CLASS: com.pork.blockchain.BlockchainApplication
       SERVICE_PORT: 8087
       DB_URL: jdbc:mysql://mysql:3306/db_common?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-      BLOCKCHAIN_TYPE: local
+      # evm=真实上链到本地 Ganache；如需回退到数据库模拟账本，设置 BLOCKCHAIN_TYPE=local
+      BLOCKCHAIN_TYPE: ${BLOCKCHAIN_TYPE:-evm}
+      EVM_RPC_URL: ${EVM_RPC_URL:-http://ganache:8545}
+      EVM_CHAIN_ID: ${EVM_CHAIN_ID:-1337}
+      # Ganache --wallet.deterministic 首个账户（仅本地开发链，勿用于公网）
+      EVM_PRIVATE_KEY: ${EVM_PRIVATE_KEY:-0x4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d}
+      EVM_CONTRACT_ADDRESS: ${EVM_CONTRACT_ADDRESS:-}
     depends_on:
       mysql: { condition: service_healthy }
       redis: { condition: service_healthy }
       nacos: { condition: service_started }
       rabbitmq: { condition: service_healthy }
+      ganache: { condition: service_healthy }
 
   file-service:
     <<: *app-defaults

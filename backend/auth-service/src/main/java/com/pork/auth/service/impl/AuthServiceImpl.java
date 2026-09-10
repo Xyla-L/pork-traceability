@@ -3,12 +3,15 @@ package com.pork.auth.service.impl;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.pork.auth.dto.AuthRequests;
 import com.pork.auth.dto.LoginDTO;
+import com.pork.auth.dto.RegisterDTO;
 import com.pork.auth.entity.SysOrg;
 import com.pork.auth.entity.SysUser;
+import com.pork.auth.enums.RoleEnum;
 import com.pork.auth.mapper.SysOrgMapper;
 import com.pork.auth.mapper.SysUserMapper;
 import com.pork.auth.service.AuthService;
 import com.pork.auth.vo.LoginVO;
+import com.pork.auth.vo.RegisterVO;
 import com.pork.auth.vo.UserInfoVO;
 import com.pork.core.enums.ErrorCode;
 import com.pork.core.exception.BusinessException;
@@ -71,6 +74,36 @@ public class AuthServiceImpl implements AuthService {
         ensureEnabled(user);
         blacklist(refreshToken);
         return tokensFor(user);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public RegisterVO register(RegisterDTO dto) {
+        if (!dto.getPassword().equals(dto.getConfirmPassword())) {
+            throw new BusinessException(ErrorCode.PASSWORD_NOT_MATCH);
+        }
+        if (userMapper.selectCount(Wrappers.<SysUser>lambdaQuery()
+                .eq(SysUser::getUsername, dto.getUsername())) > 0) {
+            throw new BusinessException(ErrorCode.USERNAME_EXISTS);
+        }
+        String salt = newSalt();
+        SysUser user = new SysUser();
+        user.setUsername(dto.getUsername());
+        user.setPasswordSalt(salt);
+        user.setPasswordHash(SM3Util.hashWithSalt(dto.getPassword(), salt));
+        user.setRealName(dto.getRealName());
+        user.setPhone(dto.getPhone());
+        user.setRole(resolveRole(dto.getRole()));
+        user.setStatus(1);
+        user.setCreateTime(LocalDateTime.now());
+        user.setUpdateTime(LocalDateTime.now());
+        userMapper.insert(user);
+        return RegisterVO.builder()
+                .userId(user.getId())
+                .username(user.getUsername())
+                .realName(user.getRealName())
+                .role(user.getRole())
+                .build();
     }
 
     @Override
@@ -175,5 +208,18 @@ public class AuthServiceImpl implements AuthService {
 
     private String newSalt() {
         return UUID.randomUUID().toString().replace("-", "");
+    }
+
+    private String resolveRole(String role) {
+        if (!StringUtils.hasText(role)) return "USER";
+        String code = role.trim().toUpperCase();
+        if ("ADMIN".equals(code)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "不允许自助注册管理员账号");
+        }
+        try {
+            return RoleEnum.fromCode(code).getCode();
+        } catch (IllegalArgumentException exception) {
+            throw new BusinessException(ErrorCode.PARAM_ERROR, "未知角色: " + role);
+        }
     }
 }

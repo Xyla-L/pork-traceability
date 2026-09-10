@@ -29,10 +29,14 @@ public class BlockchainController {
     }
 
     @GetMapping("/records/{id}")
-    public Result<BlockchainRecord> record(@PathVariable Long id) { return Result.success(service.record(id)); }
+    public Result<BlockchainRecord> record(@PathVariable Long id) {
+        return Result.success(service.record(id));
+    }
 
     @PostMapping("/records/{id}/retry")
-    public Result<BlockchainRecord> retry(@PathVariable Long id) { return Result.success(service.retry(id)); }
+    public Result<BlockchainRecord> retry(@PathVariable Long id) {
+        return Result.success(service.retry(id));
+    }
 
     @PostMapping("/verify")
     public Result<BlockchainAdapter.Verification> verify(@Valid @RequestBody VerifyRequest request) {
@@ -40,7 +44,9 @@ public class BlockchainController {
     }
 
     @GetMapping("/status/{batchNo}")
-    public Result<List<BlockchainRecord>> status(@PathVariable String batchNo) { return Result.success(service.status(batchNo)); }
+    public Result<List<BlockchainRecord>> status(@PathVariable String batchNo) {
+        return Result.success(service.status(batchNo));
+    }
 
     @GetMapping("/audit-logs")
     public Result<PageResult<BlockchainRecord>> auditLogs(String operType, String operator, @Valid PageQuery page) {
@@ -48,7 +54,10 @@ public class BlockchainController {
     }
 
     @GetMapping("/audit-stats")
-    public Result<Map<String, Long>> stats() { return Result.success(service.stats()); }
+    public Result<Map<String, Long>> stats() {
+        return Result.success(service.stats());
+    }
 
-    public record VerifyRequest(@NotBlank String bizType, @NotNull Long bizId) { }
+    public record VerifyRequest(@NotBlank String bizType, @NotNull Long bizId) {
+    }
 }

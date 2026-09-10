@@ -2,6 +2,8 @@ package com.pork.trace.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
+import lombok.Getter;
+
 import java.time.LocalDateTime;
 
 /**
@@ -10,6 +12,7 @@ import java.time.LocalDateTime;
  */
 @Data
 @TableName("complaint_report")
+@Getter
 public class ComplaintReport {
 
     /**
@@ -79,4 +82,6 @@ public class ComplaintReport {
      */
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
+
+    private Long userId;
 }

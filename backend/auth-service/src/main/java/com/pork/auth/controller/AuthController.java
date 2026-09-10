@@ -2,8 +2,10 @@ package com.pork.auth.controller;
 
 import com.pork.auth.dto.AuthRequests;
 import com.pork.auth.dto.LoginDTO;
+import com.pork.auth.dto.RegisterDTO;
 import com.pork.auth.service.AuthService;
 import com.pork.auth.vo.LoginVO;
+import com.pork.auth.vo.RegisterVO;
 import com.pork.auth.vo.UserInfoVO;
 import com.pork.core.result.Result;
 import jakarta.validation.Valid;
@@ -33,8 +35,16 @@ public class AuthController {
     }
 
     /**
+     * 用户注册
+     */
+    @PostMapping("/register")
+    public Result<RegisterVO> register(@Valid @RequestBody RegisterDTO dto) {
+        return Result.success(authService.register(dto));
+    }
+
+    /**
      * 获取当前登录用户信息
-     * GET /api/v1/auth/info
+     * GET /api/v1/auth/me（经网关访问）；直连服务调试时为 /auth/me
      * 需要携带 Authorization: Bearer &lt;token&gt; 请求头
      */
     @GetMapping("/me")

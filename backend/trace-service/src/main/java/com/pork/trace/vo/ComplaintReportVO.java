@@ -21,4 +21,5 @@ public class ComplaintReportVO {
     private String handleNote;
     private LocalDateTime createTime;
     private LocalDateTime handleTime;
+    private String reporterPhone;
 }

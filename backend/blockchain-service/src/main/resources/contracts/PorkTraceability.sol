@@ -68,15 +68,29 @@ contract PorkTraceability {
         emit EvidenceStored(bizType, bizKey, contentHash, version, block.timestamp);
     }
 
-    function latestEvidence(string calldata bizKey) external view returns (Evidence memory) {
+    function latestEvidence(string calldata bizKey) external view returns (
+        string memory bizType,
+        string memory contentHash,
+        string memory payload,
+        uint256 timestamp,
+        uint256 version
+    ) {
         Evidence[] storage history = evidenceHistory[bizKey];
         require(history.length > 0, "evidence not found");
-        return history[history.length - 1];
+        Evidence storage latest = history[history.length - 1];
+        return (latest.bizType, latest.contentHash, latest.payload, latest.timestamp, latest.version);
     }
 
-    function evidenceAt(string calldata bizKey, uint256 version) external view returns (Evidence memory) {
+    function evidenceAt(string calldata bizKey, uint256 version) external view returns (
+        string memory bizType,
+        string memory contentHash,
+        string memory payload,
+        uint256 timestamp,
+        uint256 foundVersion
+    ) {
         require(version > 0 && version <= evidenceHistory[bizKey].length, "invalid version");
-        return evidenceHistory[bizKey][version - 1];
+        Evidence storage found = evidenceHistory[bizKey][version - 1];
+        return (found.bizType, found.contentHash, found.payload, found.timestamp, found.version);
     }
 
     function versionCount(string calldata bizKey) external view returns (uint256) {

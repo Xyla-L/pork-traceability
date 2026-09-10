@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -45,6 +46,7 @@ public class ComplaintReportServiceImpl extends ServiceImpl<ComplaintReportMappe
         report.setReporterName("用户" + userId);
         report.setStatus(0);
         report.setCreateTime(LocalDateTime.now());
+        report.setUserId(userId);
 
         // 3. 保存到数据库
         if (!this.save(report)) throw new BusinessException(ErrorCode.DATABASE_ERROR, "举报保存失败");
@@ -53,8 +55,11 @@ public class ComplaintReportServiceImpl extends ServiceImpl<ComplaintReportMappe
     }
 
     @Override
-    public ComplaintReportVO getReportDetail(Long id) {
-        ComplaintReport report = this.getById(id);
+    public ComplaintReportVO getReportDetail(Long userId) {
+        ComplaintReport report = this.lambdaQuery()
+                .eq(ComplaintReport::getUserId,userId)
+                .one();
+
         if (report == null) {
             throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, "举报记录不存在");
         }
