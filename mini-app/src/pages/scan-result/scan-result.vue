@@ -77,6 +77,7 @@ import EmptyState from '@/components/EmptyState.vue'
 const productStore = useProductStore()
 const loading = ref(false)
 const qrCode = ref('')
+const keyword = ref('')
 const safeBuy = ref(null)
 
 const scanResult = computed(() => productStore.scanResult)
@@ -86,17 +87,24 @@ const safeBuyReports = computed(() => safeBuy.value?.reports || [])
 
 onLoad(async (options) => {
   qrCode.value = decodeURIComponent(options.qrCode || '')
+  keyword.value = decodeURIComponent(options.keyword || '')
   await load()
 })
 
 async function load() {
   loading.value = true
   try {
-    await productStore.fetchScan(qrCode.value)
-    try {
-      safeBuy.value = await productStore.fetchSafeBuy(qrCode.value)
-    } catch {
-      // 安心购数据失败不阻断主流程
+    if (qrCode.value) {
+      // 扫码 / 二维码搜索
+      await productStore.fetchScan(qrCode.value)
+      try {
+        safeBuy.value = await productStore.fetchSafeBuy(qrCode.value)
+      } catch {
+        safeBuy.value = null
+      }
+    } else if (keyword.value) {
+      // 批次号搜索
+      await productStore.fetchSearch(keyword.value)
       safeBuy.value = null
     }
   } finally {
