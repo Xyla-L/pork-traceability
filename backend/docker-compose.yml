@@ -198,7 +198,8 @@ services:
     ports: ["8545:8545"]
     networks: [pork-net]
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O- --post-data '{\"jsonrpc\":\"2.0\",\"method\":\"eth_chainId\",\"params\":[],\"id\":1}' --header 'Content-Type: application/json' http://localhost:8545 || exit 1"]
+      # ganache 镜像无 wget/curl，改用 bash 的 /dev/tcp 探测 RPC 端口是否监听
+      test: ["CMD-SHELL", "bash -c '(echo > /dev/tcp/localhost/8545) 2>/dev/null || exit 1'"]
       interval: 10s
       timeout: 5s
       retries: 12

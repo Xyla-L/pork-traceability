@@ -15,8 +15,11 @@ export const useComplaintStore = defineStore('complaint', {
     async fetchList(status) {
       this.loading = true
       try {
-        const res = await getComplaintList({ status })
-        this.list = res.list || []
+        // 全部时不传 status，避免把 null 序列化进查询串
+        const params = status === null || status === undefined ? {} : { status }
+        const res = await getComplaintList(params)
+        // 后端返回 MyBatis-Plus 分页对象 { records, total, ... }
+        this.list = res.records || []
         return this.list
       } finally {
         this.loading = false

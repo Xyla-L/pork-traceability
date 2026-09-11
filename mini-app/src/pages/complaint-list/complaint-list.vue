@@ -14,6 +14,8 @@
     </view>
 
     <!-- 列表 -->
+    <view class="device-hint">仅展示本设备提交的举报记录</view>
+
     <view v-if="loading" class="skeleton">
       <view class="sk-block"></view>
       <view class="sk-block"></view>
@@ -27,7 +29,7 @@
       <view v-for="item in list" :key="item.id" class="complaint-card" @click="openDetail(item)">
         <view class="cc-head">
           <text class="cc-no">{{ item.reportNo }}</text>
-          <text class="cc-status" :class="statusClass(item.status)">{{ item.statusLabel }}</text>
+          <text class="cc-status" :class="statusClass(item.status)">{{ item.statusText }}</text>
         </view>
         <view class="cc-text">{{ item.complaintText }}</view>
         <view class="cc-meta">
@@ -51,8 +53,8 @@ const currentStatus = ref('')
 
 const tabs = [
   { label: '全部', value: '' },
-  { label: '待处理', value: 0 },
-  { label: '已受理', value: 1 },
+  { label: '待受理', value: 0 },
+  { label: '处理中', value: 1 },
   { label: '已办结', value: 2 },
 ]
 
@@ -93,7 +95,7 @@ function openDetail(item) {
 .filter {
   display: flex;
   gap: 16rpx;
-  margin-bottom: 24rpx;
+  margin-bottom: 16rpx;
 
   .filter-item {
     flex: 1;
@@ -111,6 +113,12 @@ function openDetail(item) {
       font-weight: 600;
     }
   }
+}
+
+.device-hint {
+  font-size: 22rpx;
+  color: #c0c4cc;
+  margin-bottom: 16rpx;
 }
 
 .skeleton {

@@ -25,7 +25,7 @@ export const getComplaintList = async (params) => {
     const list = status === null || status === undefined
       ? mockComplaints
       : mockComplaints.filter((c) => c.status === status)
-    return { list }
+    return { records: list }
   }
   return request('/trace/complaints', { data: params })
 }

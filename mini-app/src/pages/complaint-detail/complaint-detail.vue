@@ -8,7 +8,7 @@
       <!-- 状态卡片 -->
       <view class="card status-card">
         <view class="status-badge" :class="statusClass(detail.status)">
-          {{ detail.statusLabel }}
+          {{ detail.statusText }}
         </view>
         <view class="status-no">{{ detail.reportNo }}</view>
         <view class="status-time">提交时间：{{ detail.createTime }}</view>
@@ -42,9 +42,9 @@
       <!-- 监管回复 -->
       <view class="card">
         <view class="section-title">处理回复</view>
-        <view v-if="detail.reply" class="reply">
-          <view class="reply-content">{{ detail.reply }}</view>
-          <view class="reply-time">{{ detail.replyTime }}</view>
+        <view v-if="detail.handleNote" class="reply">
+          <view class="reply-content">{{ detail.handleNote }}</view>
+          <view class="reply-time">{{ detail.handleTime }}</view>
         </view>
         <view v-else class="reply-empty">暂未处理回复</view>
       </view>
