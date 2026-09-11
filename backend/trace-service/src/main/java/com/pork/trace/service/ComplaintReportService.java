@@ -17,12 +17,12 @@ public interface ComplaintReportService extends IService<ComplaintReport> {
      * @param userId 当前登录用户ID
      * @return 举报编号
      */
-    String submitComplaint(ComplaintReportDTO dto, Long userId);
+    String submitComplaint(ComplaintReportDTO dto, Long userId, String deviceId);
 
     Page<ComplaintReportVO> pageReports(String reportNo, String reporterName, String targetBatch,
-                                         Integer status, long pageNum, long pageSize);
+                                         Integer status, String deviceId, long pageNum, long pageSize);
 
-    ComplaintReportVO getReportDetail(Long id);
+    ComplaintReportVO getReportDetail(Long id, String deviceId);
 
-    void handleComplaint(Long id, Integer status, String handleNote, String handler);
+    void handleComplaint(Long id, Integer status, String handleNote, Long handlerUserId);
 }

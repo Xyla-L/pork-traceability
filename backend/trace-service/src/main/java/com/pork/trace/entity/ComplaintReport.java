@@ -87,4 +87,9 @@ public class ComplaintReport {
     private LocalDateTime createTime;
 
     private Long userId;
+
+    /**
+     * 提交设备ID（小程序端匿名举报标识）
+     */
+    private String deviceId;
 }

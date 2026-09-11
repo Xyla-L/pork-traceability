@@ -80,10 +80,13 @@ CREATE TABLE IF NOT EXISTS complaint_report (
     target_qr_code VARCHAR(64), target_batch VARCHAR(64), complaint_text VARCHAR(1024) NOT NULL,
     file_ids JSON, status TINYINT DEFAULT 0, handler VARCHAR(32), handle_note VARCHAR(512),
     handle_time DATETIME, create_time DATETIME DEFAULT CURRENT_TIMESTAMP, user_id BIGINT,
-    UNIQUE KEY uk_report_no (report_no), INDEX idx_status (status), INDEX idx_batch (target_batch), INDEX idx_user (user_id)
+    device_id VARCHAR(64),
+    UNIQUE KEY uk_report_no (report_no), INDEX idx_status (status), INDEX idx_batch (target_batch), INDEX idx_user (user_id),
+    INDEX idx_device (device_id)
 ) ENGINE=InnoDB COMMENT='消费者举报信息';
 
 ALTER TABLE complaint_report ADD COLUMN IF NOT EXISTS user_id BIGINT;
+ALTER TABLE complaint_report ADD COLUMN IF NOT EXISTS device_id VARCHAR(64);
 
 CREATE TABLE IF NOT EXISTS user_notification (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
