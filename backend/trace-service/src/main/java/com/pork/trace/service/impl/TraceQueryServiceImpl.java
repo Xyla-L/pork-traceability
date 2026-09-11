@@ -4,6 +4,7 @@ import com.pork.core.enums.ErrorCode;
 import com.pork.core.exception.BusinessException;
 import com.pork.trace.client.TraceRemoteClient;
 import com.pork.trace.service.TraceQueryService;
+import com.pork.trace.vo.SafeBuyVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -85,11 +86,66 @@ public class TraceQueryServiceImpl implements TraceQueryService {
     }
 
     @Override
-    public Map<String, Object> safeBuy(String qrCode) {
-        Map<String, Object> scan = scan(qrCode);
-        Map<String, Object> verification = map(scan.get("verification"));
-        return Map.of("qrCode", qrCode, "product", scan.get("product"), "traceChain", scan.get("traceChain"),
-                "blockchain", Map.of("verified", verification.get("verified"), "records", verification.get("details")));
+    public SafeBuyVO safeBuy(String qrCode) {
+        // 1. 获取基础扫码结果
+        Map<String, Object> scanResult = scan(qrCode);
+        if (scanResult == null) {
+            throw new RuntimeException("未查询到溯源信息");
+        }
+
+        // 2. 提取各部分数据并安全转换类型 (解决 List<?> 转 List<Object> 报错)
+        Map<String, Object> product = map(scanResult.get("product"));
+        Map<String, Object> verification = map(scanResult.get("verification"));
+
+        // 提取溯源记录 (即 chainRecords)
+        List<Object> chainRecords = new ArrayList<>();
+        if (scanResult.get("traceChain") instanceof List) {
+            chainRecords = new ArrayList<>((List<?>) scanResult.get("traceChain"));
+        }
+
+        // 提取证书链 (尝试从 scanResult 中获取，如果没有则给空列表兜底)
+        List<Object> certChain = new ArrayList<>();
+        if (scanResult.get("certChain") instanceof List) {
+            certChain = new ArrayList<>((List<?>) scanResult.get("certChain"));
+        }
+
+        // 提取检测报告 (尝试从 scanResult 中获取，如果没有则给空列表兜底)
+        List<Object> reports = new ArrayList<>();
+        if (scanResult.get("reports") instanceof List) {
+            reports = new ArrayList<>((List<?>) scanResult.get("reports"));
+        }
+
+        // 3. 组装区块链验证信息
+        Map<String, Object> blockchain = Map.of(
+                "verified", verification != null ? verification.get("verified") : false,
+                "records", verification != null ? verification.get("details") : List.of()
+        );
+
+        // 4. 组装最终的 SafeBuyVO 返回给前端
+        SafeBuyVO vo = new SafeBuyVO();
+        vo.setQrCode(qrCode);
+        vo.setProduct(product != null ? product : Map.of());
+        vo.setCertChain(certChain);
+        vo.setReports(reports);
+        vo.setChainRecords(chainRecords);
+        vo.setRecordCount(chainRecords.size()); // 记录总数即为溯源链条的条数
+        vo.setBlockchain(blockchain);
+
+        return vo;
+    }
+
+// --- 以下是你需要补充的伪代码方法 ---
+
+    private List<Object> getCertChainByProduct(Map<String, Object> product) {
+        // TODO: 根据 product 中的信息（如 batchNo）去数据库查询证书链数据
+        // 例如：certificateMapper.selectByBatchNo(...)
+        return List.of();
+    }
+
+    private List<Object> getReportsByProduct(Map<String, Object> product) {
+        // TODO: 根据 product 中的信息去数据库查询检测报告数据
+        // 例如：inspectionMapper.selectByBatchNo(...)
+        return List.of();
     }
 
     private Object nodeData(Object tree) {

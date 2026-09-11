@@ -1,6 +1,8 @@
 package com.pork.trace.service.impl;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.pork.trace.dto.ComplaintReportDTO;
 import com.pork.trace.entity.ComplaintReport;
 import com.pork.trace.mapper.ComplaintReportMapper;
@@ -43,7 +45,7 @@ public class ComplaintReportServiceImpl extends ServiceImpl<ComplaintReportMappe
         ComplaintReport report = new ComplaintReport();
         BeanUtils.copyProperties(dto, report);
         report.setReportNo(reportNo);
-        report.setReporterName("用户" + userId);
+        report.setReporterName(userId == null ? "匿名用户" : "用户" + userId);
         report.setStatus(0);
         report.setCreateTime(LocalDateTime.now());
         report.setUserId(userId);
@@ -57,7 +59,7 @@ public class ComplaintReportServiceImpl extends ServiceImpl<ComplaintReportMappe
     @Override
     public ComplaintReportVO getReportDetail(Long userId) {
         ComplaintReport report = this.lambdaQuery()
-                .eq(ComplaintReport::getUserId,userId)
+                .eq(ComplaintReport::getId, userId)
                 .one();
 
         if (report == null) {
@@ -66,6 +68,48 @@ public class ComplaintReportServiceImpl extends ServiceImpl<ComplaintReportMappe
         ComplaintReportVO vo = new ComplaintReportVO();
         BeanUtils.copyProperties(report, vo);
         // 转换状态码为文本
+        vo.setStatusText(getStatusText(report.getStatus()));
+        return vo;
+    }
+
+    @Override
+    public Page<ComplaintReportVO> pageReports(String reportNo, String reporterName, String targetBatch,
+                                                Integer status, long pageNum, long pageSize) {
+        long safePage = Math.max(pageNum, 1);
+        long safeSize = Math.min(Math.max(pageSize, 1), 100);
+        Page<ComplaintReport> page = new Page<>(safePage, safeSize);
+        Page<ComplaintReport> result = page(page, Wrappers.<ComplaintReport>lambdaQuery()
+                .like(reportNo != null && !reportNo.isBlank(), ComplaintReport::getReportNo, reportNo)
+                .like(reporterName != null && !reporterName.isBlank(), ComplaintReport::getReporterName, reporterName)
+                .like(targetBatch != null && !targetBatch.isBlank(), ComplaintReport::getTargetBatch, targetBatch)
+                .eq(status != null, ComplaintReport::getStatus, status)
+                .orderByDesc(ComplaintReport::getCreateTime));
+        Page<ComplaintReportVO> views = new Page<>(result.getCurrent(), result.getSize(), result.getTotal());
+        views.setRecords(result.getRecords().stream().map(this::toView).toList());
+        return views;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void handleComplaint(Long id, Integer status, String handleNote, String handler) {
+        if (status == null || status < 1 || status > 3) {
+            throw new BusinessException(ErrorCode.PARAM_ERROR, "举报处理状态无效");
+        }
+        ComplaintReport report = getById(id);
+        if (report == null) throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, "举报记录不存在");
+        if (handleNote == null || handleNote.isBlank()) {
+            throw new BusinessException(ErrorCode.PARAM_MISSING, "处理回复不能为空");
+        }
+        report.setStatus(status);
+        report.setHandler(handler);
+        report.setHandleNote(handleNote.trim());
+        report.setHandleTime(LocalDateTime.now());
+        if (!updateById(report)) throw new BusinessException(ErrorCode.DATABASE_ERROR, "举报处理保存失败");
+    }
+
+    private ComplaintReportVO toView(ComplaintReport report) {
+        ComplaintReportVO vo = new ComplaintReportVO();
+        BeanUtils.copyProperties(report, vo);
         vo.setStatusText(getStatusText(report.getStatus()));
         return vo;
     }

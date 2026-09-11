@@ -21,8 +21,26 @@ spring:
     nacos:
       discovery:
         server-addr: ${NACOS_ADDR:127.0.0.1:8848}
+        namespace: ${NACOS_NAMESPACE:}
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      # Local Redis is intentionally passwordless. The Docker profile below
+      # enables authentication from REDIS_PASSWORD.
+      #password:
+      database: ${REDIS_DATABASE:0}
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
   global-config:
     banner: false
+
+---
+spring:
+  config:
+    activate:
+      on-profile: docker
+  data:
+    redis:
+      password: ${REDIS_PASSWORD:}

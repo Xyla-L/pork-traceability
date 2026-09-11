@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.pork.trace.dto.ComplaintReportDTO;
 import com.pork.trace.entity.ComplaintReport;
 import com.pork.trace.vo.ComplaintReportVO;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 
 /**
  * 投诉举报 - Service 接口
@@ -18,10 +19,10 @@ public interface ComplaintReportService extends IService<ComplaintReport> {
      */
     String submitComplaint(ComplaintReportDTO dto, Long userId);
 
-    /**
-     * 根据ID查询举报详情
-     * @param userId 举报ID
-     * @return 举报详情VO
-     */
-    ComplaintReportVO getReportDetail(Long userId);
+    Page<ComplaintReportVO> pageReports(String reportNo, String reporterName, String targetBatch,
+                                         Integer status, long pageNum, long pageSize);
+
+    ComplaintReportVO getReportDetail(Long id);
+
+    void handleComplaint(Long id, Integer status, String handleNote, String handler);
 }

@@ -1,6 +1,7 @@
 package com.pork.trace.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import lombok.Data;
 import lombok.Getter;
 
@@ -12,7 +13,7 @@ import java.util.List;
  * 对应数据库表: complaint_report
  */
 @Data
-@TableName("complaint_report")
+@TableName(value = "complaint_report", autoResultMap = true)
 @Getter
 public class ComplaintReport {
 
@@ -55,6 +56,7 @@ public class ComplaintReport {
     /**
      * 上传的问题肉品照片/视频文件ID (JSON数组格式)
      */
+    @TableField(typeHandler = JacksonTypeHandler.class)
     private List<String> fileIds;
 
     /**
