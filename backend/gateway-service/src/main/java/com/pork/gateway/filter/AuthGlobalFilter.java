@@ -25,10 +25,11 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AuthGlobalFilter implements GlobalFilter, Ordered {
     private static final String BLACKLIST_PREFIX = "auth:blacklist:token:";
+    private static final String COMPLAINTS_PATH = "/api/v1/trace/complaints";
     private static final List<String> PUBLIC_PATHS = List.of(
             "/api/v1/auth/login", "/api/v1/auth/register", "/api/v1/auth/refresh", "/api/v1/consumer/",
             "/actuator/health", "/doc.html", "/v3/api-docs", "/swagger-ui",
-            "/api/v1/trace/complaints", "/api/v1/trace/search"
+            "/api/v1/trace/search"
     );
 
     private final ReactiveStringRedisTemplate redis;
@@ -37,8 +38,13 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
         String path = request.getURI().getPath();
-        if (isPublic(path) || "OPTIONS".equals(request.getMethod().name())) {
-            return chain.filter(exchange);
+        if (isPublic(path, request.getMethod().name()) || "OPTIONS".equals(request.getMethod().name())) {
+            // 公开路径同样剥离身份头，防止调用方伪造 X-User-Id / X-User-Role
+            ServerHttpRequest stripped = request.mutate().headers(headers -> {
+                headers.remove("X-User-Id");
+                headers.remove("X-User-Role");
+            }).build();
+            return chain.filter(exchange.mutate().request(stripped).build());
         }
 
         String token = bearer(request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION));
@@ -70,9 +76,15 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
         return -100;
     }
 
-    private boolean isPublic(String path) {
-        return PUBLIC_PATHS.stream()
-                .anyMatch(p -> path.equals(p) || path.startsWith(p));
+    private boolean isPublic(String path, String method) {
+        if (PUBLIC_PATHS.stream().anyMatch(p -> path.equals(p) || path.startsWith(p))) {
+            return true;
+        }
+        // 举报提交(POST)/列表与详情(GET)对小程序公开；handle 等写操作必须认证
+        if (path.equals(COMPLAINTS_PATH)) {
+            return true;
+        }
+        return "GET".equals(method) && path.startsWith(COMPLAINTS_PATH + "/");
     }
 
     private String bearer(String authorization) {

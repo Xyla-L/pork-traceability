@@ -35,4 +35,9 @@ public class ComplaintReportDTO {
 
     private String reporterPhone;
 
+    /**
+     * 举报人姓名（可匿名）
+     */
+    private String reporterName;
+
 }
