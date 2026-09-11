@@ -47,6 +47,7 @@ import { ref, reactive } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useComplaintStore } from '@/stores/complaint'
 import PhotoUpload from '@/components/PhotoUpload.vue'
+import { uploadFile } from '@/api/modules/file'
 
 const complaintStore = useComplaintStore()
 const photoRef = ref()
@@ -90,7 +91,10 @@ async function handleSubmit() {
       if (!res.confirm) return
       submitting.value = true
       try {
-        await complaintStore.submit({ ...form })
+        const fileIds = form.fileIds.length
+          ? await Promise.all(form.fileIds.map((filePath) => uploadFile(filePath).then((result) => result.fileId || result)))
+          : []
+        await complaintStore.submit({ ...form, fileIds })
         uni.showToast({ title: '举报提交成功', icon: 'success' })
         setTimeout(() => {
           uni.redirectTo({ url: '/pages/complaint-list/complaint-list' })

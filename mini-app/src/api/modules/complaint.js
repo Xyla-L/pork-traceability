@@ -30,6 +30,13 @@ export const getComplaintList = async (params) => {
   return request('/trace/complaints', { data: params })
 }
 
+export const complaintStatusLabel = (status) => ({
+  0: '待处理',
+  1: '处理中',
+  2: '已办结',
+  3: '已驳回',
+}[status] || '未知状态')
+
 // 举报详情
 export const getComplaintDetail = async (id) => {
   if (USE_MOCK) {

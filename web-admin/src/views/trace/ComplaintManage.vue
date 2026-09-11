@@ -141,6 +141,7 @@ import { Search, Refresh, PictureFilled } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import type { EpTagType } from '@/types/common'
+import { traceApi } from '@/api/modules/trace'
 
 const router = useRouter()
 const searchForm = reactive({ reportNo: '', reporterName: '', targetBatch: '', status: null as number | null })
@@ -178,27 +179,21 @@ function handleReject(row: any) { currentRow.value = row; handleForm.action = 'r
 function previewPhoto(_photo: any) { ElMessage.info('查看照片大图') }
 function goToTrace(row: any) { router.push(`/admin/trace/search`) }
 
-function submitDeal() {
+async function submitDeal() {
+  if (!currentRow.value || !handleForm.note.trim()) {
+    ElMessage.warning('请输入处理回复内容')
+    return
+  }
   submitting.value = true
-  setTimeout(() => {
-    if (currentRow.value) {
-      if (handleForm.action === 'reject') {
-        currentRow.value.status = 3
-        ElMessage.warning('举报已驳回')
-      } else if (handleForm.action === 'accept') {
-        currentRow.value.status = 1
-        ElMessage.success('举报已受理')
-      } else if (handleForm.action === 'complete') {
-        currentRow.value.status = 2
-        ElMessage.success('举报已办结')
-      }
-      currentRow.value.handler = '当前用户'
-      currentRow.value.handleTime = new Date().toLocaleString()
-      currentRow.value.handleNote = handleForm.note
-    }
+  try {
+    const status = handleForm.action === 'reject' ? 3 : handleForm.action === 'accept' ? 1 : 2
+    await traceApi.handleComplaint(currentRow.value.id, { status, handleNote: handleForm.note.trim() })
+    ElMessage.success(status === 3 ? '举报已驳回' : status === 1 ? '举报已受理' : '举报已办结')
     dialogVisible.value = false
+    await fetchList()
+  } finally {
     submitting.value = false
-  }, 600)
+  }
 }
 
 function handleStatusTabChange(val: string | number | boolean | undefined) {
@@ -213,37 +208,15 @@ function handleReset() { Object.assign(searchForm, { reportNo: '', reporterName:
 function handleSizeChange() { pagination.pageNum = 1; fetchList() }
 function handlePageChange() { fetchList() }
 
-function fetchList() {
+async function fetchList() {
   loading.value = true
-  const texts = [
-    '买到的猪肉颜色异常，有异味', '产品二维码无法扫描识别', '包装上标注的产地信息与实际不符',
-    '猪肉表面有不明斑点', '产品已过保质期仍在销售', '怀疑产品未经检疫私自销售'
-  ]
-  const list = Array.from({ length: 36 }, (_, i) => ({
-    id: i + 1,
-    reportNo: `CP202407${String(1500 + i).padStart(4, '0')}`,
-    reporterName: i % 7 === 0 ? '' : ['张先生', '李女士', '王先生', '赵女士', '刘先生'][i % 5],
-    reporterPhone: i % 7 === 0 ? '' : `138${String(10000000 + i * 12345).substring(0, 8)}`,
-    targetQrCode: `QR-PORK-2024071${String(5 + Math.floor(i / 6)).padStart(1, '0')}${String(i + 1).padStart(3, '0')}`,
-    targetBatch: `B202407${String(1500 + i).padStart(4, '0')}`,
-    complaintText: texts[i % texts.length],
-    photos: i % 3 === 0 ? [] : Array.from({ length: i % 5 + 1 }, (_, j) => `photo_${i}_${j}.jpg`),
-    status: i < 8 ? 0 : i < 16 ? 1 : i < 30 ? 2 : 3,
-    handler: i >= 8 ? ['王监管', '李监管', '张监管'][i % 3] : '',
-    handleNote: i >= 8 ? '经核实，已处理' : '',
-    handleTime: i >= 8 ? `2024-07-${String(16 + Math.floor(i / 8)).padStart(2, '0')} 10:00:00` : '',
-    createTime: `2024-07-${String(14 + i).padStart(2, '0')} ${String(8 + i % 12).padStart(2, '0')}:${String(i * 7 % 60).padStart(2, '0')}:00`,
-  }))
-  const filtered = list.filter(item => {
-    if (searchForm.reportNo && !item.reportNo.includes(searchForm.reportNo)) return false
-    if (searchForm.reporterName && !(item.reporterName || '').includes(searchForm.reporterName)) return false
-    if (searchForm.targetBatch && !item.targetBatch.includes(searchForm.targetBatch)) return false
-    if (searchForm.status !== null && item.status !== searchForm.status) return false
-    return true
-  })
-  tableData.value = filtered.slice((pagination.pageNum - 1) * pagination.pageSize, pagination.pageNum * pagination.pageSize)
-  pagination.total = filtered.length
-  loading.value = false
+  try {
+    const result = await traceApi.getComplaints({ ...searchForm, pageNum: pagination.pageNum, pageSize: pagination.pageSize })
+    tableData.value = result?.records || []
+    pagination.total = result?.total || 0
+  } finally {
+    loading.value = false
+  }
 }
 
 onMounted(() => fetchList())

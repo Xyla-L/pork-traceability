@@ -27,7 +27,7 @@
       <view v-for="item in list" :key="item.id" class="complaint-card" @click="openDetail(item)">
         <view class="cc-head">
           <text class="cc-no">{{ item.reportNo }}</text>
-          <text class="cc-status" :class="statusClass(item.status)">{{ item.statusLabel }}</text>
+          <text class="cc-status" :class="statusClass(item.status)">{{ item.statusLabel || statusLabel(item.status) }}</text>
         </view>
         <view class="cc-text">{{ item.complaintText }}</view>
         <view class="cc-meta">
@@ -44,6 +44,7 @@ import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useComplaintStore } from '@/stores/complaint'
 import EmptyState from '@/components/EmptyState.vue'
+import { complaintStatusLabel } from '@/api/modules/complaint'
 
 const complaintStore = useComplaintStore()
 const loading = ref(false)
@@ -77,8 +78,10 @@ function switchTab(val) {
 }
 
 function statusClass(status) {
-  return { 0: 'pending', 1: 'processing', 2: 'done' }[status] || ''
+  return { 0: 'pending', 1: 'processing', 2: 'done', 3: 'rejected' }[status] || ''
 }
+
+function statusLabel(status) { return complaintStatusLabel(status) }
 
 function openDetail(item) {
   uni.navigateTo({ url: `/pages/complaint-detail/complaint-detail?id=${item.id}` })
@@ -158,6 +161,11 @@ function openDetail(item) {
       &.done {
         background: #f0f9eb;
         color: #67c23a;
+      }
+
+      &.rejected {
+        background: #f4f4f5;
+        color: #909399;
       }
     }
   }
