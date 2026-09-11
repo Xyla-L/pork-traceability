@@ -1,5 +1,7 @@
 -- Idempotent end-to-end demo data. Loaded after all service schemas.
 
+SET NAMES utf8mb4;
+
 USE db_breeding;
 
 INSERT INTO farm (farm_name, license_no, address, contact_person, contact_phone, scale, status)
