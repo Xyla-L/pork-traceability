@@ -14,6 +14,8 @@
     </view>
 
     <!-- 列表 -->
+    <view class="device-hint">仅展示本设备提交的举报记录</view>
+
     <view v-if="loading" class="skeleton">
       <view class="sk-block"></view>
       <view class="sk-block"></view>
@@ -27,7 +29,7 @@
       <view v-for="item in list" :key="item.id" class="complaint-card" @click="openDetail(item)">
         <view class="cc-head">
           <text class="cc-no">{{ item.reportNo }}</text>
-          <text class="cc-status" :class="statusClass(item.status)">{{ item.statusLabel || statusLabel(item.status) }}</text>
+          <text class="cc-status" :class="statusClass(item.status)">{{ item.statusText }}</text>
         </view>
         <view class="cc-text">{{ item.complaintText }}</view>
         <view class="cc-meta">
@@ -44,7 +46,6 @@ import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useComplaintStore } from '@/stores/complaint'
 import EmptyState from '@/components/EmptyState.vue'
-import { complaintStatusLabel } from '@/api/modules/complaint'
 
 const complaintStore = useComplaintStore()
 const loading = ref(false)
@@ -52,8 +53,8 @@ const currentStatus = ref('')
 
 const tabs = [
   { label: '全部', value: '' },
-  { label: '待处理', value: 0 },
-  { label: '已受理', value: 1 },
+  { label: '待受理', value: 0 },
+  { label: '处理中', value: 1 },
   { label: '已办结', value: 2 },
 ]
 
@@ -78,10 +79,8 @@ function switchTab(val) {
 }
 
 function statusClass(status) {
-  return { 0: 'pending', 1: 'processing', 2: 'done', 3: 'rejected' }[status] || ''
+  return { 0: 'pending', 1: 'processing', 2: 'done' }[status] || ''
 }
-
-function statusLabel(status) { return complaintStatusLabel(status) }
 
 function openDetail(item) {
   uni.navigateTo({ url: `/pages/complaint-detail/complaint-detail?id=${item.id}` })
@@ -96,7 +95,7 @@ function openDetail(item) {
 .filter {
   display: flex;
   gap: 16rpx;
-  margin-bottom: 24rpx;
+  margin-bottom: 16rpx;
 
   .filter-item {
     flex: 1;
@@ -114,6 +113,12 @@ function openDetail(item) {
       font-weight: 600;
     }
   }
+}
+
+.device-hint {
+  font-size: 22rpx;
+  color: #c0c4cc;
+  margin-bottom: 16rpx;
 }
 
 .skeleton {
@@ -161,11 +166,6 @@ function openDetail(item) {
       &.done {
         background: #f0f9eb;
         color: #67c23a;
-      }
-
-      &.rejected {
-        background: #f4f4f5;
-        color: #909399;
       }
     }
   }

@@ -21,7 +21,7 @@
         v-model="keyword"
         class="search-input"
         type="text"
-        placeholder="输入批次号 / 产品名搜索"
+        placeholder="输入批次号 / 二维码搜索"
         confirm-type="search"
         @confirm="handleSearch"
       />

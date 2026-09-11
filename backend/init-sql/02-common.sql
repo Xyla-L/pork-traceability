@@ -1,3 +1,5 @@
+SET NAMES utf8mb4;
+
 USE db_common;
 
 CREATE TABLE IF NOT EXISTS sys_org (

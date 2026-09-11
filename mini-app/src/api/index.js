@@ -8,6 +8,7 @@
 
 // 使用 mock 数据（后端 consumer API 未就绪前）
 import { USE_MOCK } from './mock'
+import { getDeviceId } from '@/utils/device'
 
 const BASE_URL = import.meta.env.VITE_API_BASE || '/api/v1'
 
@@ -19,6 +20,7 @@ const request = (url, options = {}) => {
       data: options.data,
       header: {
         'Content-Type': 'application/json',
+        'X-Device-Id': getDeviceId(),
         ...options.header,
       },
       success: (res) => {

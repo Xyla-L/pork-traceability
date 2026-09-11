@@ -8,7 +8,7 @@
       <!-- 状态卡片 -->
       <view class="card status-card">
         <view class="status-badge" :class="statusClass(detail.status)">
-          {{ detail.statusLabel || statusLabel(detail.status) }}
+          {{ detail.statusText }}
         </view>
         <view class="status-no">{{ detail.reportNo }}</view>
         <view class="status-time">提交时间：{{ detail.createTime }}</view>
@@ -42,9 +42,9 @@
       <!-- 监管回复 -->
       <view class="card">
         <view class="section-title">处理回复</view>
-        <view v-if="detail.reply || detail.handleNote" class="reply">
-          <view class="reply-content">{{ detail.reply || detail.handleNote }}</view>
-          <view class="reply-time">{{ detail.replyTime || detail.handleTime }}</view>
+        <view v-if="detail.handleNote" class="reply">
+          <view class="reply-content">{{ detail.handleNote }}</view>
+          <view class="reply-time">{{ detail.handleTime }}</view>
         </view>
         <view v-else class="reply-empty">暂未处理回复</view>
       </view>
@@ -61,7 +61,6 @@ import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useComplaintStore } from '@/stores/complaint'
 import EmptyState from '@/components/EmptyState.vue'
-import { complaintStatusLabel } from '@/api/modules/complaint'
 
 const complaintStore = useComplaintStore()
 const loading = ref(false)
@@ -83,10 +82,8 @@ async function load() {
 }
 
 function statusClass(status) {
-  return { 0: 'pending', 1: 'processing', 2: 'done', 3: 'rejected' }[status] || ''
+  return { 0: 'pending', 1: 'processing', 2: 'done' }[status] || ''
 }
-
-function statusLabel(status) { return complaintStatusLabel(status) }
 </script>
 
 <style lang="scss" scoped>
@@ -131,11 +128,6 @@ function statusLabel(status) { return complaintStatusLabel(status) }
     &.done {
       background: #f0f9eb;
       color: #67c23a;
-    }
-
-    &.rejected {
-      background: #f4f4f5;
-      color: #909399;
     }
   }
 

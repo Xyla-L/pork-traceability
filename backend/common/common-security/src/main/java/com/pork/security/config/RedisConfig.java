@@ -17,7 +17,8 @@ public class RedisConfig {
 
     @Bean
     @ConditionalOnBean(RedisConnectionFactory.class)  // 只有容器里有这个 Bean 才注册
-    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory factory) {
+    // 命名为 saTokenRedisTemplate，避免与 Redisson starter 自动配置的 redisTemplate 重名冲突
+    public RedisTemplate<String, Object> saTokenRedisTemplate(RedisConnectionFactory factory) {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
         template.setConnectionFactory(factory);
 
