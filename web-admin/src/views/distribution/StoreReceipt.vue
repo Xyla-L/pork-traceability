@@ -124,6 +124,24 @@
         <el-button type="primary" @click="confirmReceipt" :loading="submitting">确认签收</el-button>
       </template>
     </el-dialog>
+
+    <!-- 签收详情弹窗 -->
+    <el-dialog v-model="detailVisible" title="门店签收详情" width="560px">
+      <el-descriptions :column="2" border>
+        <el-descriptions-item label="门店">{{ detailData.storeName }}</el-descriptions-item>
+        <el-descriptions-item label="签收人">{{ detailData.receiver }}</el-descriptions-item>
+        <el-descriptions-item label="联系电话">{{ detailData.receiverPhone || '--' }}</el-descriptions-item>
+        <el-descriptions-item label="签收时间">{{ detailData.receiptTime }}</el-descriptions-item>
+        <el-descriptions-item label="到货温度(℃)">{{ detailData.tempValue ?? '--' }}</el-descriptions-item>
+        <el-descriptions-item label="温度核验">{{ detailData.tempCheck === 1 ? '✅ 正常' : detailData.tempCheck === 0 ? '⚠️ 异常' : '--' }}</el-descriptions-item>
+        <el-descriptions-item label="数量核验">{{ detailData.qtyCheck === 1 ? '✅ 一致' : detailData.qtyCheck === 0 ? '⚠️ 不符' : '--' }}</el-descriptions-item>
+        <el-descriptions-item label="包装完好">{{ detailData.packageIntact === 1 ? '✅ 完好' : detailData.packageIntact === 0 ? '⚠️ 破损' : '--' }}</el-descriptions-item>
+        <el-descriptions-item label="内容哈希" :span="2">
+          <span v-if="detailData.contentHash" class="hash-text">{{ detailData.contentHash }}</span>
+          <span v-else>--</span>
+        </el-descriptions-item>
+      </el-descriptions>
+    </el-dialog>
   </div>
 </template>
 
@@ -184,7 +202,13 @@ function confirmReceipt() {
   }, 800)
 }
 
-function handleView(row: any) { ElMessage.info(`查看签收详情: ${row.receiptNo}`) }
+const detailVisible = ref(false)
+const detailData = ref<any>({})
+
+function handleView(row: any) {
+  detailData.value = row
+  detailVisible.value = true
+}
 function handleVerify(row: any) { ElMessage.success(`区块链验真通过: ${row.receiptNo}`) }
 function handlePrint(row: any) { ElMessage.success(`回单 ${row.receiptNo} 已发送打印`) }
 
@@ -234,4 +258,5 @@ onMounted(() => fetchList())
 .sign-actions { display: flex; align-items: center; gap: 12px; }
 .sign-hint { font-size: 12px; color: #c0c4cc; }
 .unit-hint { font-size: 13px; color: #909399; }
+.hash-text { font-family: 'Courier New', monospace; font-size: 12px; color: #909399; word-break: break-all; }
 </style>

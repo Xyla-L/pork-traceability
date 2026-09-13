@@ -4,10 +4,27 @@
     <div class="toolbar">
       <div class="toolbar-left">
         <h2 class="page-title">📦 分割操作</h2>
+        <el-select
+          v-model="currentBatchNo"
+          placeholder="选择批次"
+          filterable
+          style="width: 220px"
+          @change="handleBatchChange"
+        >
+          <el-option
+            v-for="b in batchOptions"
+            :key="b.batchNo"
+            :label="b.batchNo"
+            :value="b.batchNo"
+          />
+        </el-select>
         <el-input v-model="batchSearch" placeholder="输入批次号搜索..." size="default" clearable
           style="width: 260px" @keyup.enter="highlightBatch" @clear="clearHighlight">
           <template #prefix><el-icon><Search /></el-icon></template>
         </el-input>
+        <el-button type="primary" plain @click="highlightBatch">
+          <el-icon><Search /></el-icon>搜索
+        </el-button>
         <el-button @click="handleExpandAll">{{ allExpanded ? '折叠全部' : '展开全部' }}</el-button>
         <el-button @click="handleExport">
           <el-icon><Download /></el-icon>导出关系图
@@ -27,28 +44,10 @@
         </div>
       </template>
       <div class="tree-wrapper">
-        <!-- 根节点 -->
+        <!-- 根节点（TreeNode 内部递归渲染全部子节点） -->
         <div class="tree-root" :class="{ highlighted: highlightedBatch === splitTree.batchNo }">
           <TreeNode :node="splitTree" :highlighted="highlightedBatch === splitTree.batchNo"
             @view-detail="showDetail" @split="handleCreateSplitFrom" @chain-info="showChainInfo" />
-        </div>
-
-        <!-- 子节点树 -->
-        <div v-if="splitTree.children && splitTree.children.length" class="tree-children">
-          <div v-for="child in splitTree.children" :key="child.batchNo" class="tree-branch">
-            <div class="branch-connector"></div>
-            <TreeNode :node="child" :highlighted="highlightedBatch === child.batchNo"
-              @view-detail="showDetail" @split="handleCreateSplitFrom" @chain-info="showChainInfo" />
-
-            <!-- 递归子节点 -->
-            <template v-if="child.children && child.children.length">
-              <div v-for="grandKid in child.children" :key="grandKid.batchNo" class="tree-sub-branch">
-                <div class="sub-branch-connector"></div>
-                <TreeNode :node="grandKid" :highlighted="highlightedBatch === grandKid.batchNo"
-                  @view-detail="showDetail" @split="handleCreateSplitFrom" @chain-info="showChainInfo" />
-              </div>
-            </template>
-          </div>
         </div>
       </div>
     </el-card>
@@ -89,8 +88,22 @@
     <!-- 新建分割弹窗 -->
     <el-dialog v-model="splitDialogVisible" title="新建分割操作" width="560px" destroy-on-close>
       <el-form ref="splitFormRef" :model="splitForm" :rules="splitRules" label-width="100px">
-        <el-form-item label="父批次" prop="parentBatchNo">
-          <el-input :model-value="splitForm.parentBatchNo" disabled />
+        <el-form-item label="父批次" prop="parentId">
+          <el-select
+            v-model="splitForm.parentId"
+            placeholder="请选择父批次"
+            filterable
+            :disabled="parentLocked"
+            style="width: 100%"
+            @change="handleParentChange"
+          >
+            <el-option
+              v-for="opt in parentOptions"
+              :key="opt.value"
+              :label="opt.batchNo"
+              :value="opt.value"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="分割层级" prop="splitLevel">
           <el-input-number v-model="splitForm.splitLevel" :min="1" :max="5" disabled />
@@ -131,7 +144,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, h, defineComponent, onMounted } from 'vue'
+import { ref, reactive, computed, h, defineComponent, onMounted, provide, inject, watch } from 'vue'
 import { Search, Plus, Download } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import BlockchainVerifyBadge from '@/components/common/BlockchainVerifyBadge.vue'
@@ -145,6 +158,10 @@ const TreeNode = defineComponent({
   emits: ['view-detail', 'split', 'chain-info'],
   setup(props, { emit }) {
     const isExpanded = ref(true)
+    const globalExpand = inject<any>('splitTreeExpand', null)
+    watch(globalExpand, (val: boolean) => {
+      if (val != null) isExpanded.value = val
+    })
     const node = computed(() => props.node as any)
     const hasChildren = computed(() => node.value.children && node.value.children.length > 0)
     const style = computed(() => props.highlighted ? { border: '2px solid #409eff', boxShadow: '0 0 12px rgba(64,158,255,0.3)' } : {})
@@ -166,21 +183,19 @@ const TreeNode = defineComponent({
           h('el-button', { size: 'small', type: 'info', link: true, onClick: () => emit('chain-info', node.value) }, { default: () => '链上' }),
         ]),
       ]),
-      h('el-collapse-transition', null, {
-        default: () => isExpanded.value && hasChildren.value
-          ? h('div', { class: 'tree-node-children' },
-              node.value.children.map((child: any) =>
-                h(TreeNode, {
-                  node: child,
-                  highlighted: false,
-                  onViewDetail: (n: any) => emit('view-detail', n),
-                  onSplit: (n: any) => emit('split', n),
-                  onChainInfo: (n: any) => emit('chain-info', n),
-                })
-              )
+      isExpanded.value && hasChildren.value
+        ? h('div', { class: 'tree-node-children' },
+            node.value.children.map((child: any) =>
+              h(TreeNode, {
+                node: child,
+                highlighted: false,
+                onViewDetail: (n: any) => emit('view-detail', n),
+                onSplit: (n: any) => emit('split', n),
+                onChainInfo: (n: any) => emit('chain-info', n),
+              })
             )
-          : null,
-      }),
+          )
+        : null,
     ])
   },
 })
@@ -211,10 +226,15 @@ const batchSearch = ref('')
 const highlightedBatch = ref('')
 const allExpanded = ref(true)
 const drawerTitle = ref('')
+const batchOptions = ref<Array<{ batchNo: string }>>([])
+const currentBatchNo = ref('')
+
+// 通过 provide/inject 让所有 TreeNode 共享展开/折叠状态
+provide('splitTreeExpand', allExpanded)
 
 // 批次树
 interface SplitNode {
-  id: number; batchNo: string; parentBatchId: number | null; splitLevel: number
+  id: number; type?: string; batchNo: string; parentBatchId: number | null; splitLevel: number
   productName: string; weightKg: number; packageCount: number;
   splitTime: string; workshop: string; operator: string; fileIds: string[]
   contentHash: string; txHash?: string; createTime: string; children?: SplitNode[]
@@ -232,12 +252,58 @@ const splitDialogVisible = ref(false)
 const splitting = ref(false)
 const splitFormRef = ref()
 const splitForm = reactive({
-  parentBatchNo: '', parentId: 0, splitLevel: 1, productName: '',
+  parentId: '', splitLevel: 1, productName: '',
   weightKg: 10, packageCount: 5, maxWeight: 500, workshop: '分割车间A组', note: '',
 })
 const splitRules = {
+  parentId: [{ required: true, message: '请选择父批次', trigger: 'change' }],
   productName: [{ required: true, message: '请选择或输入产品名', trigger: 'change' }],
   weightKg: [{ required: true, message: '请输入重量', trigger: 'blur' }],
+}
+
+// 父批次下拉选项（当前批次树里的所有节点）
+// 胴体批次与分割批次分属两张表、id 可能重复，value 用「类型:id」复合键消歧
+interface ParentOption { value: string; id: number; type: string; batchNo: string; productName?: string }
+const parentOptions = ref<ParentOption[]>([])
+// 从树节点点「分割」时锁定父批次；顶部「新建分割」时可自由选择
+const parentLocked = ref(false)
+
+// 递归收集树里所有节点
+function collectAllNodes(tree: SplitNode | null): SplitNode[] {
+  if (!tree) return []
+  const result: SplitNode[] = [tree]
+  if (tree.children) {
+    for (const child of tree.children) result.push(...collectAllNodes(child))
+  }
+  return result
+}
+
+// 节点类型：后端树中根节点为 CARCASS，其余为 SPLIT
+function nodeType(n: SplitNode): string {
+  return n.type || (n.parentBatchId == null ? 'CARCASS' : 'SPLIT')
+}
+function nodeOptionValue(n: SplitNode): string {
+  return `${nodeType(n)}:${n.id}`
+}
+
+function refreshParentOptions() {
+  parentOptions.value = collectAllNodes(splitTree.value).map((n) => ({
+    value: nodeOptionValue(n),
+    id: n.id,
+    type: nodeType(n),
+    batchNo: n.batchNo,
+    productName: n.productName,
+  }))
+}
+
+// 切换父批次时，重新计算层级和可用重量
+function handleParentChange(value: string) {
+  const node = collectAllNodes(splitTree.value).find((n) => nodeOptionValue(n) === value)
+  if (node) {
+    splitForm.splitLevel = nodeType(node) === 'CARCASS' ? 1 : (node.splitLevel || 0) + 1
+    splitForm.maxWeight = node.weightKg || node.totalWeightKg || 100
+    splitForm.weightKg = Math.min(10, splitForm.maxWeight)
+  }
 }
 
 // ========== 操作 ==========
@@ -247,13 +313,14 @@ function showDetail(node: SplitNode) {
   drawerVisible.value = true
 }
 
-function handleCreateSplitFrom(node?: SplitNode) {
-  const parent = node || splitTree.value
-  if (!parent) return
-  splitForm.parentBatchNo = parent.batchNo
-  splitForm.parentId = parent.id
-  splitForm.splitLevel = (parent.splitLevel || 0) + 1
-  splitForm.maxWeight = parent.weightKg || parent.totalWeightKg || 100
+// 顶部「新建分割」：父批次默认为当前查看的根批次（显示其批次号），仍可自由改选
+function handleCreateSplit() {
+  refreshParentOptions()
+  parentLocked.value = false
+  const root = splitTree.value
+  splitForm.parentId = root ? nodeOptionValue(root) : ''
+  splitForm.splitLevel = 1
+  splitForm.maxWeight = root?.weightKg || root?.totalWeightKg || 500
   splitForm.productName = ''
   splitForm.weightKg = Math.min(10, splitForm.maxWeight)
   splitForm.packageCount = 5
@@ -262,13 +329,29 @@ function handleCreateSplitFrom(node?: SplitNode) {
   splitDialogVisible.value = true
 }
 
-function handleCreateSplit() { handleCreateSplitFrom() }
+// 从树节点点「分割」：父批次锁定为该节点
+function handleCreateSplitFrom(node: SplitNode) {
+  if (!node) return
+  refreshParentOptions()
+  parentLocked.value = true
+  splitForm.parentId = nodeOptionValue(node)
+  splitForm.splitLevel = nodeType(node) === 'CARCASS' ? 1 : (node.splitLevel || 0) + 1
+  splitForm.maxWeight = node.weightKg || node.totalWeightKg || 100
+  splitForm.productName = ''
+  splitForm.weightKg = Math.min(10, splitForm.maxWeight)
+  splitForm.packageCount = 5
+  splitForm.workshop = '分割车间A组'
+  splitForm.note = ''
+  splitDialogVisible.value = true
+}
 
 async function doSplit() {
   splitting.value = true
   try {
+    // 复合键「类型:id」还原为后端所需的数字主键（层级已决定查哪张表）
+    const parentId = Number(splitForm.parentId.split(':')[1])
     await distributionApi.createSplit({
-      parentBatchId: splitForm.parentId,
+      parentBatchId: parentId,
       productName: splitForm.productName,
       weightKg: splitForm.weightKg,
       packageCount: splitForm.packageCount,
@@ -298,11 +381,23 @@ function clearHighlight() { highlightedBatch.value = '' }
 
 function handleExpandAll() {
   allExpanded.value = !allExpanded.value
-  // 刷新展开状态 (实际项目中需要递归设置)
 }
 
 function handleExport() {
-  ElMessage.success('批次关系图导出中...')
+  const data = splitTree.value
+  if (!data) {
+    ElMessage.warning('暂无批次数据可导出')
+    return
+  }
+  const json = JSON.stringify(data, null, 2)
+  const blob = new Blob([json], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `批次拆分树-${data.batchNo || 'export'}.json`
+  a.click()
+  URL.revokeObjectURL(url)
+  ElMessage.success('关系图已导出为 JSON')
 }
 
 function countNodes(tree: SplitNode | null): number {
@@ -317,16 +412,40 @@ function countNodes(tree: SplitNode | null): number {
 // ========== 初始化 ==========
 async function loadTree() {
   try {
-    // 后端无「分割列表」接口，先从胴体批次列表取第一个根批次号，再拉取该批次的拆分树
-    const batches: any = await distributionApi.getBatches({ current: 1, size: 1 })
-    const rootBatchNo = batches?.records?.[0]?.batchNo || batches?.list?.[0]?.batchNo
-    if (!rootBatchNo) {
+    // 拉取所有胴体批次作为可选项
+    const batches: any = await distributionApi.getBatches({ current: 1, size: 100 })
+    const records = batches?.records || batches?.list || []
+    batchOptions.value = records.map((r: any) => ({ batchNo: r.batchNo }))
+
+    if (records.length === 0) {
       splitTree.value = null
       return
     }
-    const tree: any = await distributionApi.getSplitTree(rootBatchNo)
-    // 后端 tree 结构为 { batchNo, type, data, children }，转成 SplitNode
+
+    // 默认选中第一个（最新）批次；若当前已选中则保持
+    if (!currentBatchNo.value || !records.some((r: any) => r.batchNo === currentBatchNo.value)) {
+      currentBatchNo.value = records[0].batchNo
+    }
+
+    const tree: any = await distributionApi.getSplitTree(currentBatchNo.value)
     splitTree.value = normalizeTree(tree)
+  } catch {
+    splitTree.value = null
+  }
+}
+
+function handleBatchChange(batchNo: string) {
+  currentBatchNo.value = batchNo
+  loadSingleTree(batchNo)
+}
+
+async function loadSingleTree(batchNo: string) {
+  try {
+    const tree: any = await distributionApi.getSplitTree(batchNo)
+    splitTree.value = normalizeTree(tree)
+    // 切换批次后重置展开状态为全部展开
+    allExpanded.value = true
+    highlightedBatch.value = ''
   } catch {
     splitTree.value = null
   }
@@ -337,6 +456,7 @@ function normalizeTree(node: any): any {
   const data = node.data || node
   const out: any = {
     ...data,
+    type: node.type || data.type,
     batchNo: data.batchNo || node.batchNo,
     id: data.id ?? node.id,
     parentBatchId: data.parentBatchId ?? null,

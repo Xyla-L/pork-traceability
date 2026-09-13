@@ -116,7 +116,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:visible', 'submit'])
+const emit = defineEmits(['update:visible', 'saved'])
 
 const formRef = ref(null)
 const submitting = ref(false)
@@ -237,11 +237,25 @@ const handleSubmit = async () => {
     return
   }
 
+  // 提交前兜底校验：pigId 未选则提示
+  if (!formData.pigId) {
+    ElMessage.warning('请先选择生猪')
+    return
+  }
+
   submitting.value = true
   try {
-    emit('submit', { ...formData })
-    handleClose()
+    // 由本组件直接调用后端：成功后才关弹窗，失败保持弹窗打开（错误由 request 拦截器提示）
+    await request.post(`/breeding/pigs/${formData.pigId}/vaccines`, {
+      vaccineName: formData.vaccineName,
+      batchNo: formData.batchNo,
+      injectTime: formData.injectTime,
+      dosage: formData.dosage,
+      operator: formData.operator,
+    })
     ElMessage.success('录入成功')
+    emit('saved')
+    handleClose()
   } finally {
     submitting.value = false
   }

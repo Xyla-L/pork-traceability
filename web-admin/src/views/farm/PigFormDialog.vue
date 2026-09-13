@@ -32,7 +32,7 @@
           <el-option
             v-for="farm in farmList"
             :key="farm.id"
-            :label="farm.name"
+            :label="farm.farmName || farm.name"
             :value="farm.id"
           />
         </el-select>
@@ -101,7 +101,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:visible', 'submit'])
+const emit = defineEmits(['update:visible', 'saved'])
 
 const formRef = ref(null)
 const submitting = ref(false)
@@ -199,9 +199,15 @@ const handleSubmit = async () => {
 
   submitting.value = true
   try {
-    emit('submit', { ...formData })
-    handleClose()
+    // 由本组件直接调用后端：成功后才关弹窗，失败时保持弹窗打开（错误由 request 拦截器提示）
+    if (isEdit.value) {
+      await request.put(`/breeding/pigs/${props.editData.id}`, { ...formData })
+    } else {
+      await request.post('/breeding/pigs', { ...formData })
+    }
     ElMessage.success(isEdit.value ? '编辑成功' : '新建成功')
+    emit('saved')
+    handleClose()
   } finally {
     submitting.value = false
   }

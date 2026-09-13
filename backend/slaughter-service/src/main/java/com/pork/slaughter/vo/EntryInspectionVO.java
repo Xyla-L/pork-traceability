@@ -14,6 +14,8 @@ public class EntryInspectionVO {
     private java.math.BigDecimal weight;
     private String quarantineCert;
     private String vehicleNo;
+    private Integer healthCheck; // 1通过 0异常
+    private Integer certVerified; // 1通过 0异常
     private String healthCheckLabel; // "通过" 或 "异常"
     private String certVerifiedLabel;
     private String abnormalNote;

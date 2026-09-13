@@ -64,7 +64,7 @@
     <!-- 录入疫苗弹窗 -->
     <VaccineFormDialog
       v-model:visible="formDialogVisible"
-      @submit="handleFormSubmit"
+      @saved="handleFormSaved"
     />
   </div>
 </template>
@@ -175,22 +175,9 @@ const handleCreate = () => {
   formDialogVisible.value = true
 }
 
-const handleFormSubmit = async (formData) => {
-  try {
-    await request.post(`/breeding/pigs/${formData.pigId}/vaccines`, {
-      vaccineName: formData.vaccineName,
-      batchNo: formData.batchNo,
-      injectTime: formData.injectTime,
-      dosage: formData.dosage,
-      operator: formData.operator,
-      certPhoto: formData.certPhoto
-    })
-    ElMessage.success('录入成功')
-    fetchList()
-  } catch (error) {
-    console.error('录入疫苗失败:', error)
-    ElMessage.error('录入疫苗失败')
-  }
+const handleFormSaved = () => {
+  // 提交已在 VaccineFormDialog 内部完成并成功，这里只需刷新列表
+  fetchList()
 }
 
 // ==================== 删除 ====================

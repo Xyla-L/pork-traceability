@@ -11,11 +11,7 @@
       <el-table-column prop="vaccineName" label="疫苗名称" min-width="140" show-overflow-tooltip />
       <el-table-column prop="batchNo" label="疫苗批次号" min-width="140" show-overflow-tooltip />
       <el-table-column prop="injectTime" label="注射时间" min-width="160" align="center" />
-      <el-table-column prop="dosage" label="剂量" min-width="100" align="center">
-        <template #default="{ row }">
-          {{ row.dosage ? `${row.dosage} ml` : '-' }}
-        </template>
-      </el-table-column>
+      <el-table-column prop="dosage" label="剂量" min-width="100" align="center" />
       <el-table-column prop="operator" label="操作人" min-width="100" show-overflow-tooltip />
       <el-table-column label="操作" width="160" fixed="right" align="center">
         <template #default="{ row }">
@@ -48,7 +44,7 @@
           <el-descriptions-item label="疫苗名称">{{ currentCert.vaccineName }}</el-descriptions-item>
           <el-descriptions-item label="疫苗批次号">{{ currentCert.batchNo }}</el-descriptions-item>
           <el-descriptions-item label="注射时间">{{ currentCert.injectTime }}</el-descriptions-item>
-          <el-descriptions-item label="剂量">{{ currentCert.dosage }} ml</el-descriptions-item>
+          <el-descriptions-item label="剂量">{{ currentCert.dosage }}</el-descriptions-item>
           <el-descriptions-item label="操作人">{{ currentCert.operator }}</el-descriptions-item>
         </el-descriptions>
         <div v-if="currentCert.certPhoto" class="cert-photo">

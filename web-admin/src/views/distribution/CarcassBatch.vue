@@ -78,6 +78,22 @@
         <el-button type="primary" @click="handleSubmit" :loading="submitting">确认创建</el-button>
       </template>
     </el-dialog>
+
+    <!-- 批次详情弹窗 -->
+    <el-dialog v-model="detailVisible" title="胴体批次详情" width="560px">
+      <el-descriptions :column="2" border>
+        <el-descriptions-item label="批次号">{{ detailData.batchNo }}</el-descriptions-item>
+        <el-descriptions-item label="屠宰场">{{ detailData.slaughterhouse || '--' }}</el-descriptions-item>
+        <el-descriptions-item label="生猪数量">{{ detailData.pigCount ?? (detailData.pigIds?.length || 0) }}</el-descriptions-item>
+        <el-descriptions-item label="总重量(kg)">{{ detailData.totalWeightKg }}</el-descriptions-item>
+        <el-descriptions-item label="操作人">{{ detailData.operator || '--' }}</el-descriptions-item>
+        <el-descriptions-item label="创建时间">{{ detailData.createTime }}</el-descriptions-item>
+        <el-descriptions-item label="关联生猪" :span="2">
+          <el-tag v-for="ear in (detailData.pigEarNos || [])" :key="ear" size="small" style="margin-right: 4px; margin-bottom: 2px;">{{ ear }}</el-tag>
+          <span v-if="!(detailData.pigEarNos || []).length">--</span>
+        </el-descriptions-item>
+      </el-descriptions>
+    </el-dialog>
   </div>
 </template>
 
@@ -87,6 +103,7 @@ import { Search, Refresh, Plus, Grid } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { distributionApi } from '@/api/modules/distribution'
+import { pigApi } from '@/api/modules/breeding'
 
 const router = useRouter()
 const searchForm = reactive({ batchNo: '', operator: '' })
@@ -120,14 +137,33 @@ async function handleSubmit() {
   } catch { /* 错误已由拦截器提示 */ } finally { submitting.value = false }
 }
 
-function handleView(row: any) { ElMessage.info(`查看批次详情: ${row.batchNo}`) }
+const detailVisible = ref(false)
+const detailData = ref<any>({})
+
+function handleView(row: any) {
+  detailData.value = row
+  detailVisible.value = true
+}
 function handleSplit(row: any) { router.push('/admin/distribution/split') }
-function handleChainInfo(row: any) { ElMessage.success(`链上状态: 已确认, 交易哈希: ${row.contentHash}`) }
+function handleChainInfo(row: any) { ElMessage.info(`批次 ${row.batchNo} 暂未上链`) }
 
 function handleSearch() { pagination.pageNum = 1; fetchList() }
 function handleReset() { searchForm.batchNo = ''; searchForm.operator = ''; createDate.value = null; handleSearch() }
 function handleSizeChange() { pagination.pageNum = 1; fetchList() }
 function handlePageChange() { fetchList() }
+
+// 根据猪 ID 数组批量反查耳标号
+async function resolvePigEars(pigIds: number[]): Promise<string[]> {
+  if (!Array.isArray(pigIds) || pigIds.length === 0) return []
+  const ears: string[] = []
+  await Promise.all(pigIds.map(async (id) => {
+    try {
+      const pig = await pigApi.detail(id)
+      if (pig?.earTagNo) ears.push(pig.earTagNo)
+    } catch { /* 忽略单只猪查询失败 */ }
+  }))
+  return ears
+}
 
 async function fetchList() {
   loading.value = true
@@ -137,9 +173,15 @@ async function fetchList() {
       size: pagination.pageSize,
       batchNo: searchForm.batchNo || undefined,
     })
-    const list = (res?.records || res?.list || []).map((r: any) => ({
-      ...r,
-      pigCount: Array.isArray(r.pigIds) ? r.pigIds.length : 0,
+    const records = res?.records || res?.list || []
+    const list = await Promise.all(records.map(async (r: any) => {
+      const pigIds = Array.isArray(r.pigIds) ? r.pigIds : []
+      const pigEarNos = await resolvePigEars(pigIds)
+      return {
+        ...r,
+        pigCount: pigIds.length,
+        pigEarNos,
+      }
     }))
     tableData.value = list
     pagination.total = res?.total || list.length || 0

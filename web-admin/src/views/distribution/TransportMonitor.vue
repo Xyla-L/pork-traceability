@@ -203,6 +203,7 @@ async function loadTransport() {
     if (!t) return
     Object.assign(transportInfo, t)
     checkInForm.recorder = t.driverName || ''
+    buildTimeline(t)
     loadTemperatureLogs()
   } catch { /* 忽略 */ }
 }
@@ -215,6 +216,28 @@ async function loadTemperatureLogs() {
     if (checkInList.value.length) currentTemp.value = checkInList.value[0].temperature
     nextTick(() => initTempChart())
   } catch { checkInList.value = [] }
+}
+
+// 根据运输状态与时间生成时间轴
+function buildTimeline(t: any) {
+  const status = t.status
+  const departTime = t.departTime || t.plannedDepart || ''
+  const arriveTime = t.arriveTime || t.plannedArrive || ''
+  const nodes: any[] = [
+    {
+      title: '🚛 发车', time: departTime, desc: `车牌 ${t.vehicleNo || '--'} 从 ${t.origin || '--'} 出发`,
+      done: status >= 2, active: status === 1,
+    },
+    {
+      title: '📝 运输途中', time: departTime ? departTime : '--', desc: '冷链运输中，全程温控记录',
+      done: status >= 3, active: status === 2,
+    },
+    {
+      title: '🏁 到达签收', time: arriveTime, desc: `到达 ${t.destination || '--'}，门店签收确认`,
+      done: status >= 3, active: status === 3,
+    },
+  ]
+  transportTimeline.value = nodes
 }
 
 onMounted(() => {

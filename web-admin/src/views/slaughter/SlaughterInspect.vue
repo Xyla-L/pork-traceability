@@ -87,9 +87,8 @@
     <InspectTable
       :data="tableData"
       :loading="tableLoading"
-      @view="handleView"
       @edit="handleEdit"
-      @report="handleReport"
+      @delete="handleDelete"
     />
 
     <!-- 分页 -->
@@ -220,17 +219,19 @@ const handleEdit = (row) => {
   formDialogVisible.value = true
 }
 
-const handleView = (row) => {
-  console.log('查看详情:', row)
-}
-
-const handleReport = (row) => {
-  console.log('出具报告:', row)
-  ElMessage.success('报告出具功能待实现')
-}
-
 const handleFormSubmit = () => {
   fetchList()
+}
+
+const handleDelete = async (row) => {
+  try {
+    await request.delete(`/slaughter/inspections/${row.id}`)
+    ElMessage.success('删除成功')
+    fetchList()
+  } catch (error) {
+    console.error('删除失败:', error)
+    ElMessage.error('删除失败')
+  }
 }
 
 // ==================== 初始化 ====================

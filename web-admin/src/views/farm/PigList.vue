@@ -117,7 +117,7 @@
     <PigFormDialog
       v-model:visible="formDialogVisible"
       :edit-data="currentEditData"
-      @submit="handleFormSubmit"
+      @saved="handleFormSaved"
     />
   </div>
 </template>
@@ -268,22 +268,9 @@ const handleView = (row) => {
   router.push(`/admin/farm/pigs/${row.id}`)
 }
 
-const handleFormSubmit = async (formData) => {
-  try {
-    if (currentEditData.value) {
-      // 编辑模式
-      await request.put(`/breeding/pigs/${currentEditData.value.id}`, formData)
-      ElMessage.success('编辑成功')
-    } else {
-      // 新建模式
-      await request.post('/breeding/pigs', formData)
-      ElMessage.success('新建成功')
-    }
-    fetchList()
-  } catch (error) {
-    console.error('提交失败:', error)
-    ElMessage.error('操作失败')
-  }
+const handleFormSaved = () => {
+  // 提交已在 PigFormDialog 内部完成并成功，这里只需刷新列表
+  fetchList()
 }
 
 // ==================== 删除 ====================

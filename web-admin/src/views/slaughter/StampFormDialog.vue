@@ -1,7 +1,7 @@
 <template>
   <el-dialog
     :model-value="visible"
-    :title="editData ? '编辑盖章记录' : '新增盖章记录'"
+    :title="editData ? '编辑检疫盖章' : '新增检疫盖章'"
     width="600px"
     @update:model-value="handleVisibleChange"
     @close="handleClose"
@@ -10,13 +10,33 @@
       ref="formRef"
       :model="formData"
       :rules="formRules"
-      label-width="100px"
+      label-width="110px"
     >
+      <el-form-item label="生猪耳标号" prop="earTagNo">
+        <el-select
+          v-model="formData.earTagNo"
+          placeholder="输入耳标号搜索生猪"
+          filterable
+          remote
+          :remote-method="searchPigs"
+          :loading="pigSearchLoading"
+          :disabled="!!editData"
+          style="width: 100%"
+          @change="handlePigSelect"
+        >
+          <el-option
+            v-for="pig in pigOptions"
+            :key="pig.id"
+            :label="pig.earTagNo"
+            :value="pig.earTagNo"
+          />
+        </el-select>
+      </el-form-item>
       <el-form-item label="盖章编号" prop="stampNo">
         <el-input v-model="formData.stampNo" placeholder="请输入盖章编号" />
       </el-form-item>
       <el-form-item label="批次号" prop="batchNo">
-        <el-input v-model="formData.batchNo" placeholder="请输入批次号" />
+        <el-input v-model="formData.batchNo" placeholder="请输入屠宰批次号" />
       </el-form-item>
       <el-form-item label="胴体编号" prop="carcassNo">
         <el-input v-model="formData.carcassNo" placeholder="请输入胴体编号" />
@@ -38,20 +58,14 @@
           style="width: 100%"
         />
       </el-form-item>
-      <el-form-item label="检疫员" prop="inspector">
-        <el-input v-model="formData.inspector" placeholder="请输入检疫员姓名" />
-      </el-form-item>
-      <el-form-item label="区块链上链" prop="isVerified">
-        <el-switch v-model="formData.isVerified" />
-      </el-form-item>
-      <el-form-item label="交易哈希" prop="blockchainTxHash">
-        <el-input v-model="formData.blockchainTxHash" placeholder="区块链交易哈希" :disabled="!formData.isVerified" />
+      <el-form-item label="官方兽医" prop="veterinary">
+        <el-input v-model="formData.veterinary" placeholder="请输入官方兽医姓名" />
       </el-form-item>
       <el-form-item label="状态" prop="status">
         <el-select v-model="formData.status" placeholder="请选择状态" style="width: 100%">
-          <el-option label="待盖章" value="待盖章" />
-          <el-option label="已盖章" value="已盖章" />
-          <el-option label="已作废" value="已作废" />
+          <el-option label="待盖章" :value="0" />
+          <el-option label="已盖章" :value="1" />
+          <el-option label="已作废" :value="2" />
         </el-select>
       </el-form-item>
       <el-form-item label="备注" prop="remark">
@@ -85,48 +99,103 @@ const emit = defineEmits(['update:visible', 'submit'])
 
 const formRef = ref(null)
 const submitting = ref(false)
+const pigSearchLoading = ref(false)
+const pigOptions = ref([])
 
 const formData = reactive({
+  pigId: null,
+  earTagNo: '',
   stampNo: '',
   batchNo: '',
   carcassNo: '',
   stampType: '检疫合格章',
   stampTime: '',
-  inspector: '',
-  isVerified: false,
-  blockchainTxHash: '',
-  status: '待盖章',
+  veterinary: '',
+  status: 0,
   remark: ''
 })
 
 const formRules = {
+  earTagNo: [{ required: true, message: '请选择生猪', trigger: 'change' }],
   stampNo: [{ required: true, message: '请输入盖章编号', trigger: 'blur' }],
   batchNo: [{ required: true, message: '请输入批次号', trigger: 'blur' }],
   carcassNo: [{ required: true, message: '请输入胴体编号', trigger: 'blur' }],
   stampType: [{ required: true, message: '请选择印章类型', trigger: 'change' }],
   stampTime: [{ required: true, message: '请选择盖章时间', trigger: 'change' }],
-  inspector: [{ required: true, message: '请输入检疫员', trigger: 'blur' }],
+  veterinary: [{ required: true, message: '请输入官方兽医', trigger: 'blur' }],
   status: [{ required: true, message: '请选择状态', trigger: 'change' }]
 }
 
+const searchPigs = async (query) => {
+  if (!query) {
+    pigOptions.value = []
+    return
+  }
+  pigSearchLoading.value = true
+  try {
+    const res = await request.get('/breeding/pigs', { params: { earTagNo: query, size: 20 } })
+    pigOptions.value = res?.records || res?.list || []
+  } catch (error) {
+    console.error('搜索生猪失败:', error)
+  } finally {
+    pigSearchLoading.value = false
+  }
+}
+
+const handlePigSelect = (earTagNo) => {
+  const pig = pigOptions.value.find((p) => p.earTagNo === earTagNo)
+  if (pig) {
+    formData.pigId = pig.id
+  }
+}
+
+// 编辑时按 pigId 反查生猪耳标号，用于回填下拉框显示
+const fetchPigByEdit = async (pigId) => {
+  try {
+    const pig = await request.get(`/breeding/pigs/${pigId}`)
+    if (pig) {
+      formData.earTagNo = pig.earTagNo || ''
+      pigOptions.value = [{ id: pig.id, earTagNo: pig.earTagNo, breed: pig.breed }]
+    }
+  } catch (error) {
+    console.error('反查生猪耳标号失败:', error)
+  }
+}
+
 const resetForm = () => {
+  formData.pigId = null
+  formData.earTagNo = ''
   formData.stampNo = ''
   formData.batchNo = ''
   formData.carcassNo = ''
   formData.stampType = '检疫合格章'
   formData.stampTime = ''
-  formData.inspector = ''
-  formData.isVerified = false
-  formData.blockchainTxHash = ''
-  formData.status = '待盖章'
+  formData.veterinary = ''
+  formData.status = 0
   formData.remark = ''
+  pigOptions.value = []
   formRef.value?.clearValidate()
 }
 
 watch(() => props.visible, (val) => {
   if (val) {
     if (props.editData) {
-      Object.assign(formData, props.editData)
+      formData.pigId = props.editData.pigId ?? null
+      formData.earTagNo = props.editData.earTagNo || ''
+      formData.stampNo = props.editData.stampNo || ''
+      formData.batchNo = props.editData.batchNo || ''
+      formData.carcassNo = props.editData.carcassNo || ''
+      formData.stampType = props.editData.stampType || '检疫合格章'
+      formData.stampTime = props.editData.stampTime || ''
+      formData.veterinary = props.editData.veterinary || ''
+      formData.status = props.editData.status ?? 0
+      formData.remark = props.editData.remark || ''
+      // 后端列表不返回耳标号，编辑时按 pigId 反查补全耳标号
+      if (formData.pigId) {
+        fetchPigByEdit(formData.pigId)
+      } else if (formData.earTagNo) {
+        pigOptions.value = [{ id: formData.pigId, earTagNo: formData.earTagNo, breed: '' }]
+      }
     } else {
       resetForm()
     }
@@ -146,14 +215,15 @@ const handleSubmit = async () => {
   try {
     await formRef.value.validate()
     submitting.value = true
+    const payload = { ...formData }
     if (props.editData) {
-      await request.put(`/slaughter/stamps/${props.editData.id}`, formData)
+      await request.put(`/slaughter/stamps/${props.editData.id}`, payload)
       ElMessage.success('编辑成功')
     } else {
-      await request.post('/slaughter/stamps', formData)
+      await request.post('/slaughter/stamps', payload)
       ElMessage.success('新增成功')
     }
-    emit('submit', formData)
+    emit('submit', payload)
     emit('update:visible', false)
   } catch (error) {
     if (error !== false) {

@@ -20,28 +20,50 @@
       </el-table-column>
       <el-table-column prop="status" label="状态" min-width="100" align="center">
         <template #default="{ row }">
-          <status-tag :status="row.status" />
+          <el-tag :type="stampStatusTag(row.status)" size="small">{{ stampStatusLabel(row.status) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="200" fixed="right" align="center">
+      <el-table-column label="操作" width="180" fixed="right" align="center">
         <template #default="{ row }">
-          <el-button type="primary" link size="small" @click="$emit('view', row)">
+          <el-button type="primary" link size="small" @click="handleView(row)">
             查看
           </el-button>
           <el-button type="warning" link size="small" @click="$emit('edit', row)">
             编辑
           </el-button>
-          <el-button type="success" link size="small" @click="$emit('stamp', row)">
-            盖章
-          </el-button>
+          <el-popconfirm title="确定删除该盖章记录吗？" @confirm="$emit('delete', row)">
+            <template #reference>
+              <el-button type="danger" link size="small">删除</el-button>
+            </template>
+          </el-popconfirm>
         </template>
       </el-table-column>
     </el-table>
+
+    <!-- 查看详情弹窗 -->
+    <el-dialog v-model="viewVisible" title="检疫盖章详情" width="560px">
+      <el-descriptions :column="2" border>
+        <el-descriptions-item label="盖章编号">{{ currentView.stampNo }}</el-descriptions-item>
+        <el-descriptions-item label="批次号">{{ currentView.batchNo }}</el-descriptions-item>
+        <el-descriptions-item label="胴体编号">{{ currentView.carcassNo }}</el-descriptions-item>
+        <el-descriptions-item label="印章类型">{{ currentView.stampType }}</el-descriptions-item>
+        <el-descriptions-item label="盖章时间">{{ currentView.stampTime }}</el-descriptions-item>
+        <el-descriptions-item label="官方兽医">{{ currentView.veterinary }}</el-descriptions-item>
+        <el-descriptions-item label="盖章部位">{{ currentView.stampPosition || '--' }}</el-descriptions-item>
+        <el-descriptions-item label="状态">
+          <el-tag :type="stampStatusTag(currentView.status)" size="small">{{ stampStatusLabel(currentView.status) }}</el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="内容哈希" :span="2">
+          <span v-if="currentView.contentHash" class="hash-text">{{ currentView.contentHash }}</span>
+          <span v-else>--</span>
+        </el-descriptions-item>
+      </el-descriptions>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import StatusTag from '@/components/common/StatusTag.vue'
+import { ref } from 'vue'
 import BlockchainVerifyBadge from '@/components/common/BlockchainVerifyBadge.vue'
 
 defineProps({
@@ -55,11 +77,29 @@ defineProps({
   }
 })
 
-defineEmits(['view', 'edit', 'stamp'])
+defineEmits(['edit', 'delete'])
+
+const viewVisible = ref(false)
+const currentView = ref({})
+
+const handleView = (row) => {
+  currentView.value = row
+  viewVisible.value = true
+}
+
+// 状态：0=待盖章 1=已盖章 2=已作废
+const stampStatusLabel = (s) => ({ 0: '待盖章', 1: '已盖章', 2: '已作废' }[s] ?? '--')
+const stampStatusTag = (s) => ({ 0: 'info', 1: 'success', 2: 'danger' }[s] ?? 'info')
 </script>
 
 <style lang="scss" scoped>
 .stamp-table {
   width: 100%;
+}
+.hash-text {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: #909399;
+  word-break: break-all;
 }
 </style>

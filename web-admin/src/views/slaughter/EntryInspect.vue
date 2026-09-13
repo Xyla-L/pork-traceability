@@ -75,9 +75,8 @@
     <EntryTable
       :data="tableData"
       :loading="tableLoading"
-      @view="handleView"
       @edit="handleEdit"
-      @inspect="handleInspect"
+      @delete="handleDelete"
     />
 
     <!-- 分页 -->
@@ -94,10 +93,11 @@
       />
     </div>
 
-    <!-- 新建/编辑弹窗 -->
+    <!-- 新建/编辑/查验弹窗 -->
     <EntryFormDialog
       v-model:visible="formDialogVisible"
       :edit-data="currentEditData"
+      :mode="dialogMode"
       @submit="handleFormSubmit"
     />
   </div>
@@ -194,28 +194,33 @@ const handlePageChange = (page) => {
 
 const formDialogVisible = ref(false)
 const currentEditData = ref(null)
+const dialogMode = ref('create')
 
 const handleCreate = () => {
   currentEditData.value = null
+  dialogMode.value = 'create'
   formDialogVisible.value = true
 }
 
 const handleEdit = (row) => {
   currentEditData.value = { ...row }
-  formDialogVisible.value = true
-}
-
-const handleView = (row) => {
-  console.log('查看详情:', row)
-}
-
-const handleInspect = (row) => {
-  currentEditData.value = { ...row, status: '合格' }
+  dialogMode.value = 'edit'
   formDialogVisible.value = true
 }
 
 const handleFormSubmit = () => {
   fetchList()
+}
+
+const handleDelete = async (row) => {
+  try {
+    await request.delete(`/slaughter/entries/${row.id}`)
+    ElMessage.success('删除成功')
+    fetchList()
+  } catch (error) {
+    console.error('删除失败:', error)
+    ElMessage.error('删除失败')
+  }
 }
 
 // ==================== 初始化 ====================

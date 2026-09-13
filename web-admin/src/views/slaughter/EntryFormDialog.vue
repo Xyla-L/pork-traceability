@@ -1,7 +1,7 @@
 <template>
   <el-dialog
     :model-value="visible"
-    :title="editData ? '编辑入场记录' : '新增入场记录'"
+    :title="dialogTitle"
     width="600px"
     @update:model-value="handleVisibleChange"
     @close="handleClose"
@@ -10,20 +10,37 @@
       ref="formRef"
       :model="formData"
       :rules="formRules"
-      label-width="100px"
+      label-width="110px"
     >
-      <el-form-item label="批次号" prop="batchNo">
-        <el-input v-model="formData.batchNo" placeholder="请输入批次号" />
-      </el-form-item>
-      <el-form-item label="耳标号" prop="earTagNo">
-        <el-input v-model="formData.earTagNo" placeholder="请输入耳标号" />
+      <el-form-item label="生猪耳标号" prop="earTagNo">
+        <el-select
+          v-model="formData.earTagNo"
+          placeholder="输入耳标号搜索生猪"
+          filterable
+          remote
+          :remote-method="searchPigs"
+          :loading="pigSearchLoading"
+          :disabled="isEdit"
+          style="width: 100%"
+          @change="handlePigSelect"
+        >
+          <el-option
+            v-for="pig in pigOptions"
+            :key="pig.id"
+            :label="`${pig.earTagNo}${pig.breed ? ' (' + pig.breed + ')' : ''}`"
+            :value="pig.earTagNo"
+          />
+        </el-select>
       </el-form-item>
       <el-form-item label="来源养殖场" prop="sourceFarm">
-        <el-input v-model="formData.sourceFarm" placeholder="请输入来源养殖场" />
+        <el-input v-model="formData.sourceFarm" placeholder="选择生猪后自动带出" readonly />
       </el-form-item>
-      <el-form-item label="入场时间" prop="arrivalTime">
+      <el-form-item label="批次号" prop="batchNo">
+        <el-input v-model="formData.batchNo" placeholder="请输入屠宰批次号" />
+      </el-form-item>
+      <el-form-item label="入场时间" prop="arriveTime">
         <el-date-picker
-          v-model="formData.arrivalTime"
+          v-model="formData.arriveTime"
           type="datetime"
           placeholder="选择入场时间"
           value-format="YYYY-MM-DD HH:mm:ss"
@@ -36,14 +53,29 @@
       <el-form-item label="检疫证明" prop="quarantineCert">
         <el-input v-model="formData.quarantineCert" placeholder="请输入检疫证明编号" />
       </el-form-item>
+      <el-form-item label="车辆牌号" prop="vehicleNo">
+        <el-input v-model="formData.vehicleNo" placeholder="请输入运输车辆牌号" />
+      </el-form-item>
       <el-form-item label="查验员" prop="inspector">
         <el-input v-model="formData.inspector" placeholder="请输入查验员姓名" />
       </el-form-item>
+      <el-form-item label="健康检查" prop="healthCheck">
+        <el-select v-model="formData.healthCheck" style="width: 100%">
+          <el-option label="通过" :value="1" />
+          <el-option label="异常" :value="0" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="检疫证核验" prop="certVerified">
+        <el-select v-model="formData.certVerified" style="width: 100%">
+          <el-option label="通过" :value="1" />
+          <el-option label="异常" :value="0" />
+        </el-select>
+      </el-form-item>
       <el-form-item label="状态" prop="status">
         <el-select v-model="formData.status" placeholder="请选择状态" style="width: 100%">
-          <el-option label="待查验" value="待查验" />
-          <el-option label="合格" value="合格" />
-          <el-option label="不合格" value="不合格" />
+          <el-option label="待查验" :value="0" />
+          <el-option label="合格" :value="1" />
+          <el-option label="不合格" :value="2" />
         </el-select>
       </el-form-item>
       <el-form-item label="查验意见" prop="remark">
@@ -58,7 +90,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
 
@@ -70,6 +102,11 @@ const props = defineProps({
   editData: {
     type: Object,
     default: null
+  },
+  // create = 新增，edit = 编辑
+  mode: {
+    type: String,
+    default: 'edit'
   }
 })
 
@@ -77,45 +114,120 @@ const emit = defineEmits(['update:visible', 'submit'])
 
 const formRef = ref(null)
 const submitting = ref(false)
+const pigSearchLoading = ref(false)
+const pigOptions = ref([])
+
+const isEdit = computed(() => props.mode !== 'create')
+const dialogTitle = computed(() => {
+  return props.mode === 'create' ? '新增入场记录' : '编辑入场记录'
+})
 
 const formData = reactive({
-  batchNo: '',
+  pigId: null,
   earTagNo: '',
   sourceFarm: '',
-  arrivalTime: '',
+  batchNo: '',
+  arriveTime: '',
   weight: 0,
   quarantineCert: '',
+  vehicleNo: '',
   inspector: '',
-  status: '待查验',
+  healthCheck: 1,
+  certVerified: 1,
+  status: 0,
   remark: ''
 })
 
 const formRules = {
+  earTagNo: [{ required: true, message: '请选择生猪', trigger: 'change' }],
+  sourceFarm: [{ required: true, message: '请选择生猪以带出来源养殖场', trigger: 'change' }],
   batchNo: [{ required: true, message: '请输入批次号', trigger: 'blur' }],
-  earTagNo: [{ required: true, message: '请输入耳标号', trigger: 'blur' }],
-  sourceFarm: [{ required: true, message: '请输入来源养殖场', trigger: 'blur' }],
-  arrivalTime: [{ required: true, message: '请选择入场时间', trigger: 'change' }],
+  arriveTime: [{ required: true, message: '请选择入场时间', trigger: 'change' }],
   weight: [{ required: true, message: '请输入重量', trigger: 'blur' }],
+  healthCheck: [{ required: true, message: '请选择健康检查结果', trigger: 'change' }],
+  certVerified: [{ required: true, message: '请选择检疫证核验结果', trigger: 'change' }],
   status: [{ required: true, message: '请选择状态', trigger: 'change' }]
 }
 
+// 远程搜索生猪
+const searchPigs = async (query) => {
+  if (!query) {
+    pigOptions.value = []
+    return
+  }
+  pigSearchLoading.value = true
+  try {
+    const res = await request.get('/breeding/pigs', {
+      params: { earTagNo: query, size: 20 }
+    })
+    pigOptions.value = res?.records || res?.list || []
+  } catch (error) {
+    console.error('搜索生猪失败:', error)
+  } finally {
+    pigSearchLoading.value = false
+  }
+}
+
+// 选择生猪后自动带出 pigId 和来源养殖场
+const handlePigSelect = async (earTagNo) => {
+  const pig = pigOptions.value.find((p) => p.earTagNo === earTagNo)
+  if (!pig) return
+  formData.pigId = pig.id
+  // 优先用猪档案自带的 farmName；为空则按 farmId 再查一次养殖场
+  if (pig.farmName) {
+    formData.sourceFarm = pig.farmName
+  } else if (pig.farmId) {
+    try {
+      const farm = await request.get(`/breeding/farms/${pig.farmId}`)
+      formData.sourceFarm = farm?.farmName || farm?.name || ''
+    } catch (e) {
+      console.error('获取养殖场名称失败:', e)
+      formData.sourceFarm = ''
+    }
+  } else {
+    formData.sourceFarm = ''
+  }
+}
+
 const resetForm = () => {
-  formData.batchNo = ''
+  formData.pigId = null
   formData.earTagNo = ''
   formData.sourceFarm = ''
-  formData.arrivalTime = ''
+  formData.batchNo = ''
+  formData.arriveTime = ''
   formData.weight = 0
   formData.quarantineCert = ''
+  formData.vehicleNo = ''
   formData.inspector = ''
-  formData.status = '待查验'
+  formData.healthCheck = 1
+  formData.certVerified = 1
+  formData.status = 0
   formData.remark = ''
+  pigOptions.value = []
   formRef.value?.clearValidate()
 }
 
 watch(() => props.visible, (val) => {
   if (val) {
     if (props.editData) {
-      Object.assign(formData, props.editData)
+      // 编辑模式回填
+      formData.pigId = props.editData.pigId ?? null
+      formData.earTagNo = props.editData.earTagNo || ''
+      formData.sourceFarm = props.editData.sourceFarm || ''
+      formData.batchNo = props.editData.batchNo || ''
+      formData.arriveTime = props.editData.arriveTime || ''
+      formData.weight = props.editData.weight ?? 0
+      formData.quarantineCert = props.editData.quarantineCert || ''
+      formData.vehicleNo = props.editData.vehicleNo || ''
+      formData.inspector = props.editData.inspector || ''
+      formData.healthCheck = props.editData.healthCheck ?? 1
+      formData.certVerified = props.editData.certVerified ?? 1
+      formData.status = props.editData.status ?? 0
+      formData.remark = props.editData.remark || ''
+      // 编辑时把当前耳标号放入选项，保证下拉能显示
+      if (formData.earTagNo) {
+        pigOptions.value = [{ id: formData.pigId, earTagNo: formData.earTagNo, breed: '', farmName: formData.sourceFarm }]
+      }
     } else {
       resetForm()
     }
@@ -135,14 +247,15 @@ const handleSubmit = async () => {
   try {
     await formRef.value.validate()
     submitting.value = true
+    const payload = { ...formData }
     if (props.editData) {
-      await request.put(`/slaughter/entries/${props.editData.id}`, formData)
+      await request.put(`/slaughter/entries/${props.editData.id}`, payload)
       ElMessage.success('编辑成功')
     } else {
-      await request.post('/slaughter/entries', formData)
+      await request.post('/slaughter/entries', payload)
       ElMessage.success('新增成功')
     }
-    emit('submit', formData)
+    emit('submit', payload)
     emit('update:visible', false)
   } catch (error) {
     if (error !== false) {
