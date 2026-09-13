@@ -130,6 +130,7 @@ import {
   CaretTop, CaretBottom, QuestionFilled,
 } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
+import { dashboardApi } from '@/api/modules/dashboard'
 
 const router = useRouter()
 
@@ -143,41 +144,24 @@ interface StatCard {
   trend?: number
 }
 
-const statCards = reactive<StatCard[]>([
-  {
-    key: 'pigCount', icon: User, label: '在养生猪数', value: 1256,
-    gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', trend: 3.2,
-  },
-  {
-    key: 'slaughterCount', icon: KnifeFork, label: '今日屠宰量', value: 86,
-    gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', trend: -5.1,
-  },
-  {
-    key: 'transportCount', icon: Box, label: '在途批次', value: 23,
-    gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', trend: 12.5,
-  },
-  {
-    key: 'expireCount', icon: Warning, label: '临期产品数', value: 15,
-    gradient: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', trend: 8.7,
-  },
-  {
-    key: 'complaintCount', icon: ChatLineRound, label: '待处理举报', value: 3,
-    gradient: 'linear-gradient(135deg, #f5576c 0%, #ff6b6b 100%)', trend: -25.0,
-  },
-  {
-    key: 'chainCount', icon: Coin, label: '本月上链数', value: 892,
-    gradient: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)', trend: 18.3,
-  },
-])
+// 后端只返回 key/value/trend，图标与渐变色由前端按 key 映射
+const ICON_MAP: Record<string, any> = {
+  pigCount: User, slaughterCount: KnifeFork, transportCount: Box,
+  expireCount: Warning, complaintCount: ChatLineRound, chainCount: Coin,
+}
+const GRADIENT_MAP: Record<string, string> = {
+  pigCount: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+  slaughterCount: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+  transportCount: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+  expireCount: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+  complaintCount: 'linear-gradient(135deg, #f5576c 0%, #ff6b6b 100%)',
+  chainCount: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+}
+
+const statCards = reactive<StatCard[]>([])
 
 // ==================== 最近预警数据 ====================
-const recentWarnings = ref([
-  { productName: '猪前腿肉 500g', batchNo: 'B20240715001', warningLevel: '临期3天', expireDate: '2024-07-18', storeName: 'XX超市' },
-  { productName: '猪五花肉 300g', batchNo: 'B20240714002', warningLevel: '临期1天', expireDate: '2024-07-16', storeName: 'XX便利店' },
-  { productName: '猪里脊 400g', batchNo: 'B20240713003', warningLevel: '已过期', expireDate: '2024-07-15', storeName: 'XX生鲜店' },
-  { productName: '猪蹄 500g', batchNo: 'B20240712004', warningLevel: '临期3天', expireDate: '2024-07-19', storeName: 'XX超市' },
-  { productName: '猪肝 200g', batchNo: 'B20240711005', warningLevel: '临期1天', expireDate: '2024-07-16', storeName: 'XX市场' },
-])
+const recentWarnings = ref<any[]>([])
 
 const warningTagType = (level: string) => {
   if (level === '已过期') return 'danger'
@@ -186,13 +170,7 @@ const warningTagType = (level: string) => {
 }
 
 // ==================== 待办事项 ====================
-const todoList = ref([
-  { title: '审批出栏申报单 #SA20240715001', type: '出栏审批', time: '2024-07-15 10:30', status: '待审批' },
-  { title: '处理举报 #CP20240714003', type: '举报处理', time: '2024-07-14 16:20', status: '待处理' },
-  { title: '审核瘦肉精检测记录', type: '检测审核', time: '2024-07-15 09:00', status: '待审核' },
-  { title: '确认门店签收 #S20240715001', type: '配送签收', time: '2024-07-15 11:00', status: '待确认' },
-  { title: '查看召回进度 #RC20240713001', type: '产品召回', time: '2024-07-13 08:00', status: '进行中' },
-])
+const todoList = ref<any[]>([])
 
 const todoTagType = (type: string): 'warning' | 'danger' | 'info' | 'primary' | 'success' => {
   const map: Record<string, 'warning' | 'danger' | 'info' | 'primary' | 'success'> = { '出栏审批': 'warning', '举报处理': 'danger', '检测审核': 'info', '配送签收': 'primary', '产品召回': 'danger' }
@@ -211,9 +189,16 @@ let chainTxBarChart: echarts.ECharts | null = null
 let warningChart: echarts.ECharts | null = null
 
 // ==================== 初始化桑基图 ====================
-function initSankeyChart() {
+function initSankeyChart(data: any) {
   if (!sankeyChartRef.value) return
   sankeyChart = echarts.init(sankeyChartRef.value)
+
+  const nodes = (data?.nodes || []).map((n: any) => ({ name: n.name, value: n.value }))
+  const links = (data?.links || []).map((l: any) => ({ source: l.source, target: l.target, value: l.value }))
+  const colorMap: Record<string, string> = {
+    '养殖免疫': '#5470c6', '屠宰检疫': '#ee6666', '分割配送': '#73c0de',
+    '市场销售': '#9a60b4', '消费者': '#67c23a',
+  }
 
   sankeyChart.setOption({
     tooltip: {
@@ -232,19 +217,8 @@ function initSankeyChart() {
       emphasis: { focus: 'adjacency' },
       nodeWidth: 24,
       nodeGap: 16,
-      data: [
-        { name: '养殖免疫', value: 1256, itemStyle: { color: '#5470c6' } },
-        { name: '屠宰检疫', value: 1245, itemStyle: { color: '#ee6666' } },
-        { name: '分割配送', value: 1210, itemStyle: { color: '#73c0de' } },
-        { name: '市场销售', value: 1180, itemStyle: { color: '#9a60b4' } },
-        { name: '消费者',    value: 1150, itemStyle: { color: '#67c23a' } },
-      ],
-      links: [
-        { source: '养殖免疫', target: '屠宰检疫', value: 1245 },
-        { source: '屠宰检疫', target: '分割配送', value: 1210 },
-        { source: '分割配送', target: '市场销售', value: 1180 },
-        { source: '市场销售', target: '消费者',    value: 1150 },
-      ],
+      data: nodes.map((n: any) => ({ ...n, itemStyle: { color: colorMap[n.name] || '#5470c6' } })),
+      links,
       lineStyle: { color: 'gradient', curveness: 0.5, opacity: 0.3 },
       label: { show: true, fontSize: 13, fontWeight: 'bold' },
     }],
@@ -252,9 +226,12 @@ function initSankeyChart() {
 }
 
 // ==================== 初始化临期分布饼图 ====================
-function initExpirePieChart() {
+function initExpirePieChart(data: any[]) {
   if (!expirePieRef.value) return
   expirePieChart = echarts.init(expirePieRef.value)
+  const colorMap: Record<string, string> = {
+    '安全（>7天）': '#67c23a', '临期3天': '#e6a23c', '临期1天': '#f56c6c', '已过期': '#909399',
+  }
   expirePieChart.setOption({
     tooltip: { trigger: 'item', formatter: '{b}: {c} 件 ({d}%)' },
     legend: { bottom: 0, textStyle: { fontSize: 12 } },
@@ -265,30 +242,18 @@ function initExpirePieChart() {
       avoidLabelOverlap: false,
       itemStyle: { borderRadius: 8, borderColor: '#fff', borderWidth: 3 },
       emphasis: { label: { show: true, fontSize: 16, fontWeight: 'bold' } },
-      data: [
-        { value: 128, name: '安全（>7天）', itemStyle: { color: '#67c23a' } },
-        { value: 15, name: '临期3天', itemStyle: { color: '#e6a23c' } },
-        { value: 8, name: '临期1天', itemStyle: { color: '#f56c6c' } },
-        { value: 5, name: '已过期', itemStyle: { color: '#909399' } },
-      ],
+      data: (data || []).map((d: any) => ({ value: d.value, name: d.name, itemStyle: { color: colorMap[d.name] || '#909399' } })),
     }],
   })
 }
 
 // ==================== 初始化每日上链量柱状图 ====================
-function initChainTxBarChart() {
+function initChainTxBarChart(data: any[]) {
   if (!chainTxBarRef.value) return
   chainTxBarChart = echarts.init(chainTxBarRef.value)
 
-  const dates: string[] = []
-  const txData: number[] = []
-  const now = new Date()
-  for (let i = 29; i >= 0; i--) {
-    const d = new Date(now)
-    d.setDate(d.getDate() - i)
-    dates.push(`${d.getMonth() + 1}/${d.getDate()}`)
-    txData.push(Math.floor(Math.random() * 30) + 15 + Math.floor(Math.random() * 20))
-  }
+  const dates = (data || []).map((d: any) => d.date)
+  const txData = (data || []).map((d: any) => d.count)
 
   chainTxBarChart.setOption({
     tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
@@ -321,9 +286,12 @@ function initChainTxBarChart() {
 }
 
 // ==================== 初始化预警级别饼图 ====================
-function initWarningChart() {
+function initWarningChart(data: any[]) {
   if (!warningChartRef.value) return
   warningChart = echarts.init(warningChartRef.value)
+  const colorMap: Record<string, string> = {
+    '临期3天': '#e6a23c', '临期1天': '#f56c6c', '已过期': '#909399', '已召回': '#409eff',
+  }
   warningChart.setOption({
     tooltip: { trigger: 'item' },
     legend: { bottom: 0, textStyle: { fontSize: 12 } },
@@ -333,14 +301,32 @@ function initWarningChart() {
       center: ['50%', '45%'],
       roseType: 'area',
       itemStyle: { borderRadius: 6 },
-      data: [
-        { value: 42, name: '临期3天', itemStyle: { color: '#e6a23c' } },
-        { value: 18, name: '临期1天', itemStyle: { color: '#f56c6c' } },
-        { value: 8, name: '已过期', itemStyle: { color: '#909399' } },
-        { value: 5, name: '已召回', itemStyle: { color: '#409eff' } },
-      ],
+      data: (data || []).map((d: any) => ({ value: d.value, name: d.name, itemStyle: { color: colorMap[d.name] || '#909399' } })),
     }],
   })
+}
+
+// ==================== 数据加载 ====================
+async function loadOverview() {
+  try {
+    const data = await dashboardApi.getOverview()
+    statCards.length = 0
+    const cards = (data.statCards || []).map((c: any) => ({
+      key: c.key, label: c.label, value: c.value, trend: c.trend,
+      icon: ICON_MAP[c.key] || Warning, gradient: GRADIENT_MAP[c.key] || 'linear-gradient(135deg,#909399,#606266)',
+    }))
+    statCards.push(...cards)
+    recentWarnings.value = data.recentWarnings || []
+    todoList.value = data.todoList || []
+
+    await nextTick()
+    initSankeyChart(data.sankey)
+    initExpirePieChart(data.expireDistribution)
+    initChainTxBarChart(data.chainTxTrend)
+    initWarningChart(data.warningDistribution)
+  } catch (e) {
+    console.error('加载工作台数据失败:', e)
+  }
 }
 
 // ==================== 生命周期 ====================
@@ -356,12 +342,7 @@ function handleResize() {
 }
 
 onMounted(() => {
-  nextTick(() => {
-    initSankeyChart()
-    initExpirePieChart()
-    initChainTxBarChart()
-    initWarningChart()
-  })
+  loadOverview()
   window.addEventListener('resize', handleResize)
 })
 

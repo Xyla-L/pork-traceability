@@ -12,7 +12,7 @@
       <el-table-column prop="earTagNo" label="耳标号" min-width="140" show-overflow-tooltip />
       <el-table-column prop="inspectType" label="检验类型" min-width="120" align="center" />
       <el-table-column prop="inspectTime" label="检验时间" min-width="160" align="center" />
-      <el-table-column prop="inspector" label="检验员" min-width="100" align="center" />
+      <el-table-column prop="veterinary" label="检验员" min-width="100" align="center" />
       <el-table-column prop="temperature" label="体温(°C)" min-width="100" align="center" />
       <el-table-column prop="status" label="状态" min-width="100" align="center">
         <template #default="{ row }">

@@ -12,7 +12,7 @@
       <el-table-column prop="sampleNo" label="样本编号" min-width="140" show-overflow-tooltip />
       <el-table-column prop="testType" label="检测项目" min-width="120" align="center" />
       <el-table-column prop="testTime" label="检测时间" min-width="160" align="center" />
-      <el-table-column prop="tester" label="检测员" min-width="100" align="center" />
+      <el-table-column prop="operator" label="检测员" min-width="100" align="center" />
       <el-table-column prop="result" label="检测结果" min-width="120" align="center">
         <template #default="{ row }">
           <el-tag :type="row.result === '阴性' ? 'success' : row.result === '阳性' ? 'danger' : 'info'" size="small">

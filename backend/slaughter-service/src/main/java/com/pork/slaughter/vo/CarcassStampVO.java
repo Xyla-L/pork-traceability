@@ -10,13 +10,23 @@ public class CarcassStampVO {
 
     private Long pigId;
 
+    private String batchNo;
+
+    private String carcassNo;
+
     private String stampNo;
+
+    private String stampType;
 
     private LocalDateTime stampTime;
 
     private String stampPosition;
 
     private String veterinary;
+
+    private Integer status;
+
+    private String contentHash;
 
     private String eSignature;
 

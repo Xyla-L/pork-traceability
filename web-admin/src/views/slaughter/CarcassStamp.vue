@@ -165,8 +165,8 @@ const fetchList = async () => {
     }
 
     const res = await request.get('/slaughter/stamps', { params })
-    tableData.value = res.data?.records || res.data?.list || res.list || []
-    pagination.total = res.data?.total || res.total || 0
+    tableData.value = res?.records || res?.list || []
+    pagination.total = res?.total || 0
   } catch (error) {
     console.error('获取检疫盖章列表失败:', error)
     tableData.value = []

@@ -11,14 +11,26 @@ public class SlaughterInspectionVO {
 
     private Long pigId;
 
+    private String inspectNo;
+
+    private String batchNo;
+
+    private String earTagNo;
+
     private Integer inspectType;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     private LocalDateTime inspectTime;
 
+    private java.math.BigDecimal temperature;
+
     private String organCheck;
 
     private Integer result;
+
+    private Integer status;
+
+    private String conclusion;
 
     private String issueDesc;
 

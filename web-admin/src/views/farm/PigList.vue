@@ -22,7 +22,7 @@
             <el-option
               v-for="farm in farmOptions"
               :key="farm.id"
-              :label="farm.name"
+              :label="farm.farmName || farm.name"
               :value="farm.id"
             />
           </el-select>
@@ -167,11 +167,11 @@ const farmNameMap = ref({})
 const fetchFarmOptions = async () => {
   try {
     const res = await request.get('/breeding/farms')
-    const list = res.data || res.list || []
+    const list = res?.records || res?.list || []
     farmOptions.value = list
     const map = {}
     list.forEach((farm) => {
-      map[farm.id] = farm.name
+      map[farm.id] = farm.farmName || farm.name
     })
     farmNameMap.value = map
   } catch (error) {
@@ -207,8 +207,8 @@ const fetchList = async () => {
     }
 
     const res = await request.get('/breeding/pigs', { params, timeout: 5000 })
-    const list = res.data?.records || res.data?.list || res.list || []
-    const total = res.data?.total || res.total
+    const list = res?.records || res?.list || []
+    const total = res?.total
     tableData.value = Array.isArray(list) ? list : []
     pagination.total = total || list.length || 0
   } catch (error) {

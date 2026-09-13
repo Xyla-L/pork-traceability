@@ -147,7 +147,7 @@ const rules = {
 const fetchFarmList = async () => {
   try {
     const res = await request.get('/breeding/farms')
-    farmList.value = res.data || res.list || []
+    farmList.value = res?.records || res?.list || []
   } catch (error) {
     console.error('获取养殖场列表失败:', error)
   }

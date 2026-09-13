@@ -11,6 +11,14 @@ public class RactopamineTestVO {
 
     private Long pigId;
 
+    private String testNo;
+
+    private String batchNo;
+
+    private String sampleNo;
+
+    private String testType;
+
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     private LocalDateTime testTime;
 
@@ -22,9 +30,13 @@ public class RactopamineTestVO {
 
     private Integer result;
 
+    private Integer status;
+
     private String detectionLimit;
 
     private String operator;
+
+    private String reportUrl;
 
     private String fileIds;
 

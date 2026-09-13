@@ -106,7 +106,7 @@ const fetchList = async () => {
     }
 
     const pigRes = await request.get('/breeding/pigs', { params: pigParams, timeout: 5000 })
-    const pigs = pigRes.data?.records || pigRes.data?.list || pigRes.list || []
+    const pigs = pigRes?.records || pigRes?.list || []
 
     if (pigs.length === 0) { tableLoading.value = false; return }
 
@@ -114,7 +114,7 @@ const fetchList = async () => {
     const promises = pigs.map(async (pig) => {
       try {
         const vacRes = await request.get(`/breeding/pigs/${pig.id}/vaccines`, { timeout: 5000 })
-        const vaccines = vacRes.data || vacRes.list || []
+        const vaccines = vacRes?.records || vacRes?.list || []
         vaccines.forEach((v) => {
           allVaccines.push({ ...v, earTagNo: pig.earTagNo, pigId: pig.id })
         })

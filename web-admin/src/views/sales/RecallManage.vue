@@ -109,6 +109,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { WarningFilled } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { EpTagType } from '@/types/common'
+import { salesApi } from '@/api/modules/sales'
 
 const tableData = ref<any[]>([])
 const loading = ref(false)
@@ -147,16 +148,14 @@ async function handleSubmitRecall() {
   await formRef.value?.validate()
   submitting.value = true
   try {
-    tableData.value.unshift({
-      id: Date.now(), recallNo: `RC${Date.now()}`, reason: recallForm.reason,
-      riskLevel: recallForm.riskLevel, initiator: '当前用户',
-      initiateTime: new Date().toLocaleString(), status: 1,
-      affectedCount: recallForm.batchIds.length * 50 + Math.floor(Math.random() * 100),
-      recalledCount: 0, blockHash: `0x${Array.from({ length: 64 }, () => '0123456789abcdef'[Math.floor(Math.random() * 16)]).join('')}`
+    await salesApi.createRecall({
+      reason: recallForm.reason, riskLevel: recallForm.riskLevel,
+      batchIds: recallForm.batchIds, storeIds: recallForm.storeIds, note: recallForm.note,
     })
     ElMessage.success('召回指令已发布，数据已上链')
     dialogVisible.value = false
-  } finally { submitting.value = false }
+    fetchList()
+  } catch { /* 错误已由拦截器提示 */ } finally { submitting.value = false }
 }
 
 function handleUpdateProgress(row: any) {
@@ -168,20 +167,24 @@ function handleUpdateProgress(row: any) {
   progressVisible.value = true
 }
 
-function handleSubmitProgress() {
+async function handleSubmitProgress() {
   if (progressForm.row) {
-    progressForm.row.recalledCount = progressForm.recalled
-    if (progressForm.recalled >= progressForm.max) progressForm.row.status = 3
-    else if (progressForm.row.status === 1) progressForm.row.status = 2
-    ElMessage.success('召回进度已更新')
+    try {
+      await salesApi.updateRecallStatus(progressForm.row.id, { status: 3 })
+      ElMessage.success('召回进度已更新')
+      progressVisible.value = false
+      fetchList()
+    } catch { /* 错误已由拦截器提示 */ }
   }
-  progressVisible.value = false
 }
 
-function handleRevoke(row: any) {
-  ElMessageBox.confirm(`确认撤销召回 "${row.recallNo}" 吗？此操作不可逆`, '警告', { type: 'warning' }).then(() => {
-    row.status = 4
-    ElMessage.success('召回已撤销')
+async function handleRevoke(row: any) {
+  ElMessageBox.confirm(`确认撤销召回 "${row.recallNo}" 吗？此操作不可逆`, '警告', { type: 'warning' }).then(async () => {
+    try {
+      await salesApi.updateRecallStatus(row.id, { status: 4 })
+      ElMessage.success('召回已撤销')
+      fetchList()
+    } catch { /* 错误已由拦截器提示 */ }
   }).catch(() => {})
 }
 
@@ -190,22 +193,13 @@ function handleView(row: any) { ElMessage.info(`查看召回详情: ${row.recall
 function handleSizeChange() { pagination.pageNum = 1; fetchList() }
 function handlePageChange() { fetchList() }
 
-function fetchList() {
+async function fetchList() {
   loading.value = true
-  const reasons = ['检测到瘦肉精残留超标', '产品包装破损', '冷链温度异常', '消费者投诉质量问题', '批次标签错误']
-  const list = Array.from({ length: 18 }, (_, i) => ({
-    id: i + 1, recallNo: `RC202407${String(1500 + i).padStart(4, '0')}`,
-    reason: reasons[i % reasons.length], riskLevel: (i % 3 + 1) as 1 | 2 | 3,
-    initiator: ['张监管', '李监管'][i % 2],
-    initiateTime: `2024-07-${String(12 + i).padStart(2, '0')} ${String(10 + i % 8).padStart(2, '0')}:00:00`,
-    status: i < 5 ? 1 : i < 10 ? 2 : i < 15 ? 3 : 4,
-    affectedCount: (i + 1) * 50 + Math.floor(Math.random() * 50),
-    recalledCount: i < 5 ? 0 : i < 10 ? Math.floor(Math.random() * 30) : i < 15 ? (i + 1) * 50 + Math.floor(Math.random() * 50) : 0,
-    blockHash: `0x${Array.from({ length: 64 }, () => '0123456789abcdef'[Math.floor(Math.random() * 16)]).join('')}`,
-  }))
-  tableData.value = list.slice((pagination.pageNum - 1) * pagination.pageSize, pagination.pageNum * pagination.pageSize)
-  pagination.total = list.length
-  loading.value = false
+  try {
+    const res: any = await salesApi.getRecalls({ current: pagination.pageNum, size: pagination.pageSize })
+    tableData.value = res?.records || res?.list || []
+    pagination.total = res?.total || tableData.value.length || 0
+  } catch { tableData.value = []; pagination.total = 0 } finally { loading.value = false }
 }
 
 onMounted(() => fetchList())

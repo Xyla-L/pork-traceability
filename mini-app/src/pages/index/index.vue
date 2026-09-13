@@ -1,5 +1,7 @@
 <template>
   <view class="page">
+    <!-- 隐藏 canvas：用于从相册图片解析二维码像素 -->
+    <canvas id="scan-canvas" type="2d" class="scan-canvas" />
     <!-- 头部品牌区 -->
     <view class="hero">
       <view class="hero-logo">🐷</view>
@@ -66,26 +68,81 @@
 
 <script setup>
 import { ref } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
+import jsQR from 'jsqr'
 import EmptyState from '@/components/EmptyState.vue'
+import { getRecentScans } from '@/utils/recentScans'
 
 const keyword = ref('')
-const recentList = ref([
-  { qrCode: 'QR-PORK-2024071500101-A001', name: '猪前腿肉（真空包装）', time: '2024-07-16 10:20' },
-  { qrCode: 'QR-PORK-2024071200102-B003', name: '猪里脊肉', time: '2024-07-13 18:05' },
-  { qrCode: 'QR-PORK-2024070800103-C001', name: '五花肉', time: '2024-07-09 12:30' },
-])
+const recentList = ref(getRecentScans())
 
-function handleScan() {
-  uni.scanCode({
-    success: (res) => {
-      const qrCode = res.result
-      if (qrCode) {
-        uni.navigateTo({ url: `/pages/scan-result/scan-result?qrCode=${encodeURIComponent(qrCode)}` })
-      }
-    },
-    fail: () => {
-      // 用户取消扫码
-    },
+// 每次回到首页刷新缓存（扫完返回时能看到新记录）
+onShow(() => {
+  recentList.value = getRecentScans()
+})
+
+async function handleScan() {
+  let path = ''
+  try {
+    path = await chooseImage()
+    const qrCode = await decodeQr(path)
+    if (qrCode) {
+      uni.navigateTo({ url: `/pages/scan-result/scan-result?qrCode=${encodeURIComponent(qrCode)}` })
+    } else {
+      uni.showToast({ title: '未识别到二维码', icon: 'none' })
+    }
+  } catch (e) {
+    // 用户取消选图不提示
+    if (e?.message !== 'cancel') {
+      uni.showToast({ title: e?.message || '解析失败，请重试', icon: 'none' })
+    }
+  }
+}
+
+/** 从相册选择一张图片，返回临时路径；取消时 reject('cancel') */
+function chooseImage() {
+  return new Promise((resolve, reject) => {
+    uni.chooseImage({
+      count: 1,
+      success: (res) => {
+        const p = res.tempFilePaths?.[0]
+        p ? resolve(p) : reject(new Error('未选择图片'))
+      },
+      fail: () => reject(new Error('cancel')),
+    })
+  })
+}
+
+/** 读取图片尺寸，画到 canvas 上取像素，用 jsQR 解析二维码内容 */
+function decodeQr(path) {
+  return new Promise((resolve, reject) => {
+    uni.getImageInfo({
+      src: path,
+      success: (info) => {
+        const width = info.width
+        const height = info.height
+        uni.createSelectorQuery()
+          .select('#scan-canvas')
+          .fields({ node: true, size: true })
+          .exec((res) => {
+            const canvas = res?.[0]?.node
+            if (!canvas) return reject(new Error('画布初始化失败'))
+            canvas.width = width
+            canvas.height = height
+            const ctx = canvas.getContext('2d')
+            const img = canvas.createImage()
+            img.onload = () => {
+              ctx.drawImage(img, 0, 0, width, height)
+              const imageData = ctx.getImageData(0, 0, width, height)
+              const code = jsQR(imageData.data, width, height)
+              resolve(code?.data || '')
+            }
+            img.onerror = () => reject(new Error('图片加载失败'))
+            img.src = path
+          })
+      },
+      fail: () => reject(new Error('读取图片失败')),
+    })
   })
 }
 
@@ -113,6 +170,15 @@ function goComplaint() {
 <style lang="scss" scoped>
 .page {
   padding: 24rpx;
+}
+
+/* 隐藏 canvas：仅用于解析二维码像素，不占布局、不可见 */
+.scan-canvas {
+  position: fixed;
+  left: -9999rpx;
+  top: 0;
+  width: 300px;
+  height: 300px;
 }
 
 .hero {

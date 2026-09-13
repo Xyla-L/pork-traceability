@@ -123,22 +123,23 @@ import { CircleCheckFilled, Clock, WarningFilled, Upload } from '@element-plus/i
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import type { EpTagType } from '@/types/common'
+import { distributionApi } from '@/api/modules/distribution'
 
 // 运输信息
-const transportInfo = reactive({
-  transportNo: 'T2024071500123', vehicleNo: '京A·12345', driverName: '赵师傅',
-  driverPhone: '13800001234', departTime: '2024-07-03 08:00', arriveTime: '2024-07-03 14:00',
-  origin: 'XX市定点屠宰场', destination: 'XX社区超市', status: 2,
+const transportInfo = reactive<any>({
+  transportNo: '--', vehicleNo: '--', driverName: '--',
+  driverPhone: '--', departTime: '--', arriveTime: '--',
+  origin: '--', destination: '--', status: 1, id: null as number | null,
 })
 
 const statusTagType = (s: number): EpTagType => (({ 1: 'info', 2: 'warning', 3: 'success', 4: 'danger' } as Record<number, EpTagType>)[s] || 'info')
 const statusLabel = (s: number) => ({ 1: '待发', 2: '在途', 3: '已送达', 4: '异常' } as Record<number, string>)[s] || '未知'
 
 // 温度相关
-const currentTemp = ref(-12.5)
+const currentTemp = ref(0)
 const isTempNormal = computed(() => currentTemp.value >= -18 && currentTemp.value <= 0)
 const checkingIn = ref(false)
-const checkInForm = reactive({ temperature: -12.5, recorder: '赵师傅' })
+const checkInForm = reactive({ temperature: 0, recorder: '' })
 const checkInList = ref<any[]>([])
 
 // 图表
@@ -146,47 +147,31 @@ const tempChartRef = ref<HTMLElement>()
 let tempChart: echarts.ECharts | null = null
 
 // 运输时间轴
-const transportTimeline = ref([
-  { title: '🚛 发车', time: '08:00', desc: '车牌 京A·12345 从XX屠宰场出发', done: true, active: false },
-  { title: '📝 途中打卡 #1', time: '09:30', desc: '温度 -14.2℃，车辆正常运行', done: true, active: false },
-  { title: '📝 途中打卡 #2', time: '11:00', desc: '温度 -12.5℃，高速行驶中', done: false, active: true },
-  { title: '📝 途中打卡 #3', time: '12:30', desc: '待打卡...', done: false, active: false },
-  { title: '🏁 到达签收', time: '14:00', desc: '预计到达，门店签收确认', done: false, active: false },
-])
+const transportTimeline = ref<any[]>([])
 
-function handleCheckIn() {
+async function handleCheckIn() {
+  if (!transportInfo.id) { ElMessage.warning('未加载运输任务，无法打卡'); return }
   checkingIn.value = true
-  setTimeout(() => {
-    const isAbnormal = checkInForm.temperature > 0 || checkInForm.temperature < -18
-    checkInList.value.unshift({
-      id: Date.now(), recordTime: new Date().toLocaleString(),
-      temperature: checkInForm.temperature, isAbnormal: isAbnormal ? 1 : 0,
-      recorder: checkInForm.recorder || '系统',
-      note: isAbnormal ? '温度超出正常范围 (-18℃ ~ 0℃)' : '温度正常',
+  try {
+    await distributionApi.addTemperature(transportInfo.id, {
+      temperature: checkInForm.temperature, recorder: checkInForm.recorder,
     })
+    const isAbnormal = checkInForm.temperature > 0 || checkInForm.temperature < -18
     currentTemp.value = checkInForm.temperature
-    if (isAbnormal) {
-      ElMessage.warning('⚠️ 温度异常，请立即检查冷链设备！')
-    } else {
-      ElMessage.success('温度打卡成功')
-    }
-    checkingIn.value = false
-    updateChart()
-  }, 500)
+    if (isAbnormal) ElMessage.warning('⚠️ 温度异常，请立即检查冷链设备！')
+    else ElMessage.success('温度打卡成功')
+    loadTemperatureLogs()
+    initTempChart()
+  } catch { /* 错误已由拦截器提示 */ } finally { checkingIn.value = false }
 }
 
 function initTempChart() {
   if (!tempChartRef.value) return
   tempChart = echarts.init(tempChartRef.value)
 
-  const now = new Date()
-  const times: string[] = []
-  const temps: number[] = []
-  for (let i = 11; i >= 0; i--) {
-    const d = new Date(now.getTime() - i * 20 * 60000)
-    times.push(`${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`)
-    temps.push(-15 + Math.random() * 12 + (i === 0 ? -2 : 0))
-  }
+  const logs = checkInList.value.slice().reverse()
+  const times = logs.map((l: any) => (l.recordTime || '').slice(11, 16) || '--')
+  const temps = logs.map((l: any) => l.temperature)
 
   tempChart.setOption({
     tooltip: { trigger: 'axis', formatter: (params: any) => `${params[0].axisValue}<br/>温度: <b>${params[0].value}℃</b>` },
@@ -209,29 +194,32 @@ function initTempChart() {
   })
 }
 
-function updateChart() {
-  if (!tempChart) return
-  const option = tempChart.getOption() as any
-  const temps = option.series[0].data as number[]
-  const times = option.xAxis[0].data as string[]
-  const now = new Date()
-  times.push(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`)
-  temps.push(checkInForm.temperature)
-  if (temps.length > 20) { temps.shift(); times.shift() }
-  tempChart.setOption({ xAxis: { data: times }, series: [{ data: temps }] })
-}
-
 function handleResize() { tempChart?.resize() }
 
+async function loadTransport() {
+  try {
+    const res: any = await distributionApi.getTransports({ current: 1, size: 1 })
+    const t = res?.records?.[0] || res?.list?.[0]
+    if (!t) return
+    Object.assign(transportInfo, t)
+    checkInForm.recorder = t.driverName || ''
+    loadTemperatureLogs()
+  } catch { /* 忽略 */ }
+}
+
+async function loadTemperatureLogs() {
+  if (!transportInfo.id) return
+  try {
+    const logs: any = await distributionApi.getTemperatureLog(transportInfo.id)
+    checkInList.value = logs || []
+    if (checkInList.value.length) currentTemp.value = checkInList.value[0].temperature
+    nextTick(() => initTempChart())
+  } catch { checkInList.value = [] }
+}
+
 onMounted(() => {
-  nextTick(() => initTempChart())
   window.addEventListener('resize', handleResize)
-  // 模拟初始打卡记录
-  checkInList.value = [
-    { id: 1, recordTime: '2024-07-03 08:00:00', temperature: -15.2, isAbnormal: 0, recorder: '赵师傅', note: '发车时初始温度' },
-    { id: 2, recordTime: '2024-07-03 09:30:00', temperature: -14.2, isAbnormal: 0, recorder: '赵师傅', note: '温度正常' },
-    { id: 3, recordTime: '2024-07-03 11:00:00', temperature: -12.5, isAbnormal: 0, recorder: '赵师傅', note: '温度正常' },
-  ]
+  loadTransport()
 })
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)

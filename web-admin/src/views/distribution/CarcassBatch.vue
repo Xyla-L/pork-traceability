@@ -86,6 +86,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { Search, Refresh, Plus, Grid } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
+import { distributionApi } from '@/api/modules/distribution'
 
 const router = useRouter()
 const searchForm = reactive({ batchNo: '', operator: '' })
@@ -112,19 +113,11 @@ async function handleSubmit() {
   await formRef.value?.validate()
   submitting.value = true
   try {
-    const selectedPigs = batchForm.pigIds.map(id => pigOptions.find(p => p.value === id)!)
-    tableData.value.unshift({
-      id: Date.now(), batchNo: `B${Date.now().toString(36).toUpperCase()}`,
-      pigEarNos: selectedPigs.map(p => p.label.split(' —')[0]),
-      pigCount: batchForm.pigIds.length,
-      totalWeightKg: batchForm.totalWeightKg || selectedPigs.length * 118,
-      operator: '当前用户', createTime: new Date().toLocaleString(),
-      contentHash: `0x${Array.from({length:64},()=>'0123456789abcdef'[Math.floor(Math.random()*16)]).join('')}`,
-    })
-    pagination.total++
+    await distributionApi.createBatch({ pigIds: batchForm.pigIds, totalWeightKg: batchForm.totalWeightKg, note: batchForm.note })
     ElMessage.success('胴体批次创建成功，数据已上链')
     dialogVisible.value = false
-  } finally { submitting.value = false }
+    fetchList()
+  } catch { /* 错误已由拦截器提示 */ } finally { submitting.value = false }
 }
 
 function handleView(row: any) { ElMessage.info(`查看批次详情: ${row.batchNo}`) }
@@ -136,27 +129,21 @@ function handleReset() { searchForm.batchNo = ''; searchForm.operator = ''; crea
 function handleSizeChange() { pagination.pageNum = 1; fetchList() }
 function handlePageChange() { fetchList() }
 
-function fetchList() {
+async function fetchList() {
   loading.value = true
-  const list = Array.from({ length: 28 }, (_, i) => {
-    const count = 3 + Math.floor(Math.random() * 8)
-    return {
-      id: i + 1, batchNo: `B202407${String(1500 + i).padStart(4, '0')}`,
-      pigEarNos: Array.from({ length: count }, (_, j) => `ET202406${String(100 + i * 5 + j).padStart(3, '0')}`),
-      pigCount: count, totalWeightKg: +(count * 118 + Math.random() * 50).toFixed(1),
-      operator: ['张三', '李四', '王五'][i % 3],
-      createTime: `2024-07-${String(1 + i).padStart(2, '0')} ${String(8 + i % 10).padStart(2, '0')}:00:00`,
-      contentHash: `0x${Array.from({length:64},()=>'0123456789abcdef'[Math.floor(Math.random()*16)]).join('')}`,
-    }
-  })
-  const filtered = list.filter(item => {
-    if (searchForm.batchNo && !item.batchNo.includes(searchForm.batchNo)) return false
-    if (searchForm.operator && !item.operator.includes(searchForm.operator)) return false
-    return true
-  })
-  tableData.value = filtered.slice((pagination.pageNum - 1) * pagination.pageSize, pagination.pageNum * pagination.pageSize)
-  pagination.total = filtered.length
-  loading.value = false
+  try {
+    const res: any = await distributionApi.getBatches({
+      current: pagination.pageNum,
+      size: pagination.pageSize,
+      batchNo: searchForm.batchNo || undefined,
+    })
+    const list = (res?.records || res?.list || []).map((r: any) => ({
+      ...r,
+      pigCount: Array.isArray(r.pigIds) ? r.pigIds.length : 0,
+    }))
+    tableData.value = list
+    pagination.total = res?.total || list.length || 0
+  } catch { tableData.value = []; pagination.total = 0 } finally { loading.value = false }
 }
 
 onMounted(() => fetchList())

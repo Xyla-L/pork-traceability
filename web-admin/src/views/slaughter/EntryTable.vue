@@ -10,7 +10,7 @@
       <el-table-column prop="batchNo" label="批次号" min-width="140" show-overflow-tooltip />
       <el-table-column prop="earTagNo" label="耳标号" min-width="140" show-overflow-tooltip />
       <el-table-column prop="sourceFarm" label="来源养殖场" min-width="160" show-overflow-tooltip />
-      <el-table-column prop="arrivalTime" label="入场时间" min-width="160" align="center" />
+      <el-table-column prop="arriveTime" label="入场时间" min-width="160" align="center" />
       <el-table-column prop="weight" label="重量(kg)" min-width="100" align="center" />
       <el-table-column prop="quarantineCert" label="检疫证明" min-width="140" show-overflow-tooltip />
       <el-table-column prop="inspector" label="查验员" min-width="100" align="center" />

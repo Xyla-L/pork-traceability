@@ -12,10 +12,10 @@
       <el-table-column prop="carcassNo" label="胴体编号" min-width="140" show-overflow-tooltip />
       <el-table-column prop="stampType" label="印章类型" min-width="140" align="center" />
       <el-table-column prop="stampTime" label="盖章时间" min-width="160" align="center" />
-      <el-table-column prop="inspector" label="检疫员" min-width="100" align="center" />
+      <el-table-column prop="veterinary" label="检疫员" min-width="100" align="center" />
       <el-table-column prop="isVerified" label="区块链核验" min-width="120" align="center">
         <template #default="{ row }">
-          <blockchain-verify-badge :verified="row.isVerified" :tx-hash="row.blockchainTxHash" />
+          <blockchain-verify-badge :verified="!!row.contentHash" :tx-hash="row.contentHash" />
         </template>
       </el-table-column>
       <el-table-column prop="status" label="状态" min-width="100" align="center">

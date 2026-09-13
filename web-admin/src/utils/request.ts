@@ -13,10 +13,16 @@ const instance: AxiosInstance = axios.create({
 })
 
 // ========== 请求拦截器 ==========
+// 公开接口不注入 token：登录/注册/刷新本身不需要认证，若误带上残留的旧 token，
+// 后端 JWT 过滤器解析异常时会返回 401，导致登录一直卡在「登录中」。
+const PUBLIC_AUTH_PATHS = ['/auth/login', '/auth/register', '/auth/refresh']
+
 instance.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const authStore = useAuthStore()
-    if (authStore.token) {
+    const url = config.url || ''
+    const isPublicAuth = PUBLIC_AUTH_PATHS.some((p) => url.includes(p))
+    if (authStore.token && !isPublicAuth) {
       config.headers.Authorization = `Bearer ${authStore.token}`
     }
     return config

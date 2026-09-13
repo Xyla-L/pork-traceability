@@ -10,12 +10,12 @@
     <!-- 内容 -->
     <view v-else-if="scanResult">
       <!-- 产品信息 -->
-      <ProductInfoCard :product="scanResult.product" />
+      <ProductInfoCard :product="normalizedProduct" />
 
       <!-- 溯源链路 -->
       <view class="card">
         <view class="section-title">📍 溯源链路</view>
-        <TraceTimeline :chain="scanResult.traceChain" />
+        <TraceTimeline :chain="normalizedChain" />
       </view>
 
       <!-- 安心购面板 -->
@@ -35,9 +35,9 @@
       <view class="card">
         <view class="section-title">🔗 区块链存证</view>
         <view class="chain-count">
-          共 {{ scanResult.traceChain.blockchain.recordCount }} 条存证记录
+          共 {{ normalizedChain.blockchain.recordCount }} 条存证记录
         </view>
-        <view v-for="(rec, idx) in scanResult.traceChain.blockchain.records" :key="idx" class="chain-item">
+        <view v-for="(rec, idx) in normalizedChain.blockchain.records" :key="idx" class="chain-item">
           <text class="chain-type">{{ rec.type }}</text>
           <text class="chain-tx">{{ rec.txHash }}</text>
           <text class="chain-block">区块 {{ rec.blockNumber }}</text>
@@ -69,6 +69,7 @@
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useProductStore } from '@/stores/product'
+import { addRecentScan } from '@/utils/recentScans'
 import ProductInfoCard from '@/components/ProductInfoCard.vue'
 import TraceTimeline from '@/components/TraceTimeline.vue'
 import SafeBuyPanel from '@/components/SafeBuyPanel.vue'
@@ -81,9 +82,24 @@ const keyword = ref('')
 const safeBuy = ref(null)
 
 const scanResult = computed(() => productStore.scanResult)
-const blockchainVerified = computed(() => safeBuy.value?.blockchain?.verified ?? scanResult.value?.traceChain?.blockchain?.verified ?? false)
+const blockchainVerified = computed(() => safeBuy.value?.blockchain?.verified ?? scanResult.value?.verification?.verified ?? false)
 const safeBuyCerts = computed(() => safeBuy.value?.certChain || [])
 const safeBuyReports = computed(() => safeBuy.value?.reports || [])
+
+// 后端真实返回的是 upstream/downstream/breeding/slaughter/blockchain 树，
+// 而 TraceTimeline 组件期望 farm/slaughter/splitWorkshop/transport/storeReceipt 扁平结构，
+// 这里做一层转换。
+const normalizedChain = computed(() => normalizeTraceChain(scanResult.value?.traceChain))
+
+// 后端 product 没有 weight 字段，规格信息在 batchWeightKg / packageCount 里，补一个 weight 供卡片展示
+const normalizedProduct = computed(() => {
+  const p = scanResult.value?.product
+  if (!p) return p
+  const weight = p.batchWeightKg != null
+    ? `${p.batchWeightKg}kg · ${p.packageCount}包`
+    : (p.weight || '--')
+  return { ...p, weight }
+})
 
 onLoad(async (options) => {
   qrCode.value = decodeURIComponent(options.qrCode || '')
@@ -97,6 +113,8 @@ async function load() {
     if (qrCode.value) {
       // 扫码 / 二维码搜索
       await productStore.fetchScan(qrCode.value)
+      console.log('[scan-result] fetchScan 成功, qrCode=', qrCode.value, 'name=', productStore.scanResult?.product?.name)
+      addRecentScan({ qrCode: qrCode.value, name: productStore.scanResult?.product?.name, type: 'qr' })
       try {
         safeBuy.value = await productStore.fetchSafeBuy(qrCode.value)
       } catch {
@@ -105,11 +123,99 @@ async function load() {
     } else if (keyword.value) {
       // 批次号搜索
       await productStore.fetchSearch(keyword.value)
+      addRecentScan({ qrCode: keyword.value, name: productStore.scanResult?.product?.name, type: 'batch' })
       safeBuy.value = null
     }
   } finally {
     loading.value = false
   }
+}
+
+// 区块链存证类型 → 中文展示名（未收录的类型原样展示）
+const BIZ_TYPE_LABEL = {
+  RETAIL_SALE: '销售激活',
+  SPLIT_BATCH: '批次分割',
+  CARCASS_BATCH: '屠宰分割',
+}
+
+/**
+ * 把后端 traceChain（upstream/downstream/breeding/slaughter/blockchain）
+ * 转成 TraceTimeline 期望的扁平结构。
+ */
+function normalizeTraceChain(tc) {
+  const empty = {
+    farm: null, slaughter: null, splitWorkshop: null, transport: null, storeReceipt: null,
+    blockchain: { recordCount: 0, records: [] },
+  }
+  if (!tc) return empty
+  const upstream = Array.isArray(tc.upstream) ? tc.upstream : []
+  const breedingList = Array.isArray(tc.breeding) ? tc.breeding : []
+  const slaughterList = Array.isArray(tc.slaughter) ? tc.slaughter : []
+  const logistics = Array.isArray(tc.downstream?.logistics) ? tc.downstream.logistics : []
+  const sales = Array.isArray(tc.downstream?.sales) ? tc.downstream.sales : []
+
+  // 养殖：breeding 第一条 + 屠宰入场的 sourceFarm 作为养殖场名
+  const pig = breedingList[0] || {}
+  const entry = slaughterList[0]?.entries?.[0] || {}
+  const farm = {
+    name: entry.sourceFarm || pig.farmName || '--',
+    breed: pig.breed,
+    earTagNo: pig.earTagNo,
+  }
+
+  // 屠宰：upstream 里的 CARCASS 节点有屠宰场名；inspection 的 conclusion 为结论；瘦肉精检测记录存在即视为已检
+  const carcass = upstream.find((n) => n.type === 'CARCASS')
+  const carcassData = carcass?.data || {}
+  const inspections = slaughterList[0]?.inspections || []
+  const racto = slaughterList[0]?.ractopamineTests || []
+  const slaughter = {
+    slaughterhouse: carcassData.slaughterhouse,
+    inspectResult: inspections.find((i) => i.conclusion)?.conclusion || (inspections.length ? '合格' : '--'),
+    ractopamine: racto.length ? '阴性' : '--',
+  }
+
+  // 分割：upstream 里的第一个 SPLIT 节点（即当前产品）
+  const splitNode = upstream.find((n) => n.type === 'SPLIT')
+  const splitData = splitNode?.data || {}
+  const splitWorkshop = {
+    name: splitData.workshop,
+    productName: splitData.productName,
+    packageType: splitData.packageType,
+  }
+
+  // 运输：logistics 第一条的 transport + temperatureLogs 算均温
+  const logi = logistics[0]
+  const transportRaw = logi?.transport || {}
+  const temps = logi?.temperatureLogs || []
+  const avgTemp = temps.length
+    ? (temps.reduce((sum, t) => sum + (Number(t.temperature) || 0), 0) / temps.length).toFixed(1)
+    : '--'
+  const transport = {
+    transportNo: transportRaw.transportNo,
+    vehicleNo: transportRaw.vehicleNo,
+    avgTemp,
+  }
+
+  // 销售：logistics 的 receipt 优先，否则取 sales 第一条
+  const receipt = logi?.receipt
+  const sale = sales[0] || {}
+  const storeReceipt = {
+    storeName: receipt?.storeName || sale.storeName,
+    receiptTime: receipt?.receiptTime || sale.shelfTime,
+  }
+
+  // 区块链：后端返回数组，转成 { recordCount, records } 供页面展示
+  const chainArr = Array.isArray(tc.blockchain) ? tc.blockchain : []
+  const blockchain = {
+    recordCount: chainArr.length,
+    records: chainArr.map((r) => ({
+      type: BIZ_TYPE_LABEL[r.bizType] || r.bizType,
+      txHash: r.txHash,
+      blockNumber: r.blockNumber,
+    })),
+  }
+
+  return { farm, slaughter, splitWorkshop, transport, storeReceipt, blockchain }
 }
 
 function handleVerify() {

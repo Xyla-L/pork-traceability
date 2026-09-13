@@ -171,7 +171,7 @@ const searchPigs = async (query) => {
     const res = await request.get('/breeding/pigs', {
       params: { earTagNo: query, size: 20 }
     })
-    pigOptions.value = res.data?.records || res.data?.list || res.list || []
+    pigOptions.value = res?.records || res?.list || []
   } catch (error) {
     console.error('搜索生猪失败:', error)
   } finally {

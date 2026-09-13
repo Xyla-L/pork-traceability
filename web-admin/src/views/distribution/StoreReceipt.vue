@@ -199,7 +199,7 @@ async function fetchList() {
     const res = await request.get('/distribution/receipts', {
       params: { pageNum: pagination.pageNum, pageSize: pagination.pageSize, storeName: searchForm.storeName || undefined }
     })
-    const list = res.data?.records || res.data?.list || res.list || []
+    const list = res?.records || res?.list || []
     // 后端字段适配：transportId → transportNo；contentHash 存在视为已上链
     tableData.value = (Array.isArray(list) ? list : []).map((item: any) => ({
       ...item,
@@ -207,7 +207,7 @@ async function fetchList() {
       transportNo: item.transportNo || item.transportId || '',
       chainStatus: item.contentHash ? 'confirmed' : 'pending',
     }))
-    pagination.total = res.data?.total || res.total || 0
+    pagination.total = res?.total || 0
   } catch (error) {
     console.error('获取门店签收列表失败:', error)
     tableData.value = []

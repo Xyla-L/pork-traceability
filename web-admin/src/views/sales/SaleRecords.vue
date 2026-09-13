@@ -102,8 +102,8 @@ async function fetchList() {
       params: { pageNum: pagination.pageNum, pageSize: pagination.pageSize, ...searchForm,
         startDate: dateRange.value?.[0], endDate: dateRange.value?.[1] }
     }))
-    tableData.value = res.data?.records || res.data?.list || res.list || []
-    pagination.total = res.data?.total || res.total || 0
+    tableData.value = res?.records || res?.list || []
+    pagination.total = res?.total || 0
   } catch (error) {
     console.error('获取销售记录列表失败:', error)
     tableData.value = []

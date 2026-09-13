@@ -135,6 +135,8 @@ import { ref, reactive, computed, h, defineComponent, onMounted } from 'vue'
 import { Search, Plus, Download } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import BlockchainVerifyBadge from '@/components/common/BlockchainVerifyBadge.vue'
+import { distributionApi } from '@/api/modules/distribution'
+import request from '@/utils/request'
 
 // ========== TreeNode 组件 (内联递归) ==========
 const TreeNode = defineComponent({
@@ -262,13 +264,21 @@ function handleCreateSplitFrom(node?: SplitNode) {
 
 function handleCreateSplit() { handleCreateSplitFrom() }
 
-function doSplit() {
+async function doSplit() {
   splitting.value = true
-  setTimeout(() => {
+  try {
+    await distributionApi.createSplit({
+      parentBatchId: splitForm.parentId,
+      productName: splitForm.productName,
+      weightKg: splitForm.weightKg,
+      packageCount: splitForm.packageCount,
+      workshop: splitForm.workshop,
+      note: splitForm.note,
+    })
     ElMessage.success('分割操作完成，批次关系已上链')
     splitDialogVisible.value = false
-    splitting.value = false
-  }, 600)
+    loadTree()
+  } catch { /* 错误已由拦截器提示 */ } finally { splitting.value = false }
 }
 
 function showChainInfo(node: SplitNode) {
@@ -305,71 +315,39 @@ function countNodes(tree: SplitNode | null): number {
 }
 
 // ========== 初始化 ==========
-function buildMockTree() {
-  splitTree.value = {
-    id: 1, batchNo: 'B20240715001', parentBatchId: null, splitLevel: 0,
-    productName: '胴体批次', weightKg: 354.0, packageCount: 1,
-    splitTime: '2024-07-02 15:00', workshop: '待分割车间', operator: '王建国',
-    fileIds: [], contentHash: '0x7a3b8c2d1e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b',
-    txHash: '0x7a3b8c2d1e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b',
-    totalWeightKg: 354.0, createTime: '2024-07-02 15:00:00',
-    children: [
-      {
-        id: 11, batchNo: 'B20240715001-1', parentBatchId: 1, splitLevel: 1,
-        productName: '猪前腿肉', weightKg: 120.5, packageCount: 25,
-        splitTime: '2024-07-03 08:30', workshop: '分割车间A组', operator: '赵师傅',
-        fileIds: [], contentHash: '0x8c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d',
-        txHash: '0x8c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d',
-        createTime: '2024-07-03 08:30:00',
-        children: [
-          { id: 111, batchNo: 'B20240715001-1-A', parentBatchId: 11, splitLevel: 2,
-            productName: '猪前腿肉(小包装)', weightKg: 60.0, packageCount: 120,
-            splitTime: '2024-07-03 09:30', workshop: '分割车间A组', operator: '赵师傅',
-            fileIds: [], contentHash: '0x9d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e',
-            txHash: '0x9d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e',
-            createTime: '2024-07-03 09:30:00', children: [] },
-          { id: 112, batchNo: 'B20240715001-1-B', parentBatchId: 11, splitLevel: 2,
-            productName: '猪前腿肉(家庭装)', weightKg: 60.5, packageCount: 30,
-            splitTime: '2024-07-03 09:35', workshop: '分割车间A组', operator: '赵师傅',
-            fileIds: [], contentHash: '0xae6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f',
-            txHash: '0xae6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f',
-            createTime: '2024-07-03 09:35:00', children: [] },
-        ],
-      },
-      {
-        id: 12, batchNo: 'B20240715001-2', parentBatchId: 1, splitLevel: 1,
-        productName: '猪后腿肉', weightKg: 98.0, packageCount: 20,
-        splitTime: '2024-07-03 08:45', workshop: '分割车间A组', operator: '赵师傅',
-        fileIds: [], contentHash: '0xbf7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a',
-        createTime: '2024-07-03 08:45:00',
-        children: [
-          { id: 121, batchNo: 'B20240715001-2-A', parentBatchId: 12, splitLevel: 2,
-            productName: '猪后腿肉(精瘦)', weightKg: 50.0, packageCount: 100,
-            splitTime: '2024-07-03 10:00', workshop: '分割车间B组', operator: '钱师傅',
-            fileIds: [], contentHash: '0xc1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a',
-            createTime: '2024-07-03 10:00:00', children: [] },
-        ],
-      },
-      {
-        id: 13, batchNo: 'B20240715001-3', parentBatchId: 1, splitLevel: 1,
-        productName: '猪排骨', weightKg: 75.5, packageCount: 15,
-        splitTime: '2024-07-03 09:00', workshop: '分割车间B组', operator: '钱师傅',
-        fileIds: [], contentHash: '0xd2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b',
-        txHash: '0xd2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b',
-        createTime: '2024-07-03 09:00:00', children: [],
-      },
-      {
-        id: 14, batchNo: 'B20240715001-4', parentBatchId: 1, splitLevel: 1,
-        productName: '猪蹄/杂骨', weightKg: 60.0, packageCount: 30,
-        splitTime: '2024-07-03 09:15', workshop: '分割车间B组', operator: '钱师傅',
-        fileIds: [], contentHash: '0xe3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c',
-        createTime: '2024-07-03 09:15:00', children: [],
-      },
-    ],
+async function loadTree() {
+  try {
+    // 后端无「分割列表」接口，先从胴体批次列表取第一个根批次号，再拉取该批次的拆分树
+    const batches: any = await distributionApi.getBatches({ current: 1, size: 1 })
+    const rootBatchNo = batches?.records?.[0]?.batchNo || batches?.list?.[0]?.batchNo
+    if (!rootBatchNo) {
+      splitTree.value = null
+      return
+    }
+    const tree: any = await distributionApi.getSplitTree(rootBatchNo)
+    // 后端 tree 结构为 { batchNo, type, data, children }，转成 SplitNode
+    splitTree.value = normalizeTree(tree)
+  } catch {
+    splitTree.value = null
   }
 }
 
-onMounted(() => buildMockTree())
+function normalizeTree(node: any): any {
+  if (!node) return null
+  const data = node.data || node
+  const out: any = {
+    ...data,
+    batchNo: data.batchNo || node.batchNo,
+    id: data.id ?? node.id,
+    parentBatchId: data.parentBatchId ?? null,
+    splitLevel: data.splitLevel ?? 0,
+    totalWeightKg: data.totalWeightKg,
+    children: Array.isArray(node.children) ? node.children.map(normalizeTree).filter(Boolean) : [],
+  }
+  return out
+}
+
+onMounted(() => loadTree())
 </script>
 
 <style lang="scss" scoped>

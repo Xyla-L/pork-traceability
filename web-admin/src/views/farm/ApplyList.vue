@@ -99,9 +99,9 @@ const fetchList = async () => {
       size: pagination.pageSize,
     }
     const res = await request.get('/breeding/applies', { params, timeout: 5000 })
-    const list = res.data?.records || res.data?.list || res.list || []
+    const list = res?.records || res?.list || []
     tableData.value = Array.isArray(list) ? list : []
-    pagination.total = res.data?.total || res.total || list.length
+    pagination.total = res?.total || list.length
   } catch (error) {
     console.error('获取申报列表失败:', error)
     tableData.value = []

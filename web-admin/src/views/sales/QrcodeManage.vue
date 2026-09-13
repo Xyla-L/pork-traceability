@@ -122,6 +122,7 @@ import { Search, Refresh, PictureFilled, Printer } from '@element-plus/icons-vue
 import { ElMessage, ElMessageBox } from 'element-plus'
 import QRCode from 'qrcode'
 import type { EpTagType } from '@/types/common'
+import { salesApi } from '@/api/modules/sales'
 
 const searchForm = reactive({ batchNo: '', qrCode: '', status: null as number | null })
 const tableData = ref<any[]>([])
@@ -141,10 +142,7 @@ const genRules = {
   splitBatchId: [{ required: true, message: '请选择批次', trigger: 'change' }],
   count: [{ required: true, message: '请输入数量', trigger: 'blur' }],
 }
-const splitBatchOptions = [
-  { label: 'B20240715001 - 猪前腿肉', value: 1 }, { label: 'B20240714002 - 猪五花肉', value: 2 },
-  { label: 'B20240713003 - 猪里脊', value: 3 }, { label: 'B20240712004 - 猪排骨', value: 4 },
-]
+const splitBatchOptions = ref<any[]>([])
 
 // 预览
 const previewVisible = ref(false)
@@ -162,20 +160,11 @@ async function handleGenSubmit() {
   await genFormRef.value?.validate()
   genSubmitting.value = true
   try {
-    const newItems = Array.from({ length: genForm.count }, (_, i) => ({
-      id: Date.now() + i,
-      qrCode: `QR-PORK-${Date.now().toString(36).toUpperCase()}-${String(i + 1).padStart(3, '0')}`,
-      batchNo: splitBatchOptions.find(b => b.value === genForm.splitBatchId)?.label.split(' - ')[0] || '',
-      splitBatchId: genForm.splitBatchId,
-      status: 0 as const,
-      expireDate: `2024-08-${String(1 + i % 30).padStart(2, '0')}`,
-      createTime: new Date().toLocaleString(),
-    }))
-    tableData.value.unshift(...newItems)
-    pagination.total += genForm.count
+    await salesApi.generateQrcodes({ splitBatchId: genForm.splitBatchId!, count: genForm.count })
     ElMessage.success(`已成功生成 ${genForm.count} 个二维码`)
     genVisible.value = false
-  } finally { genSubmitting.value = false }
+    fetchList()
+  } catch { /* 错误已由拦截器提示 */ } finally { genSubmitting.value = false }
 }
 
 async function drawQrOnCanvas(canvas: HTMLCanvasElement | null, code: string) {
@@ -214,9 +203,8 @@ function handleBatchPrint() {
 
 function handleDelete(row: any) {
   ElMessageBox.confirm(`确定删除二维码 ${row.qrCode}？`, '确认', { type: 'warning' }).then(() => {
-    const idx = tableData.value.findIndex(i => i.id === row.id)
-    if (idx > -1) { tableData.value.splice(idx, 1); pagination.total-- }
-    ElMessage.success('已删除')
+    // 后端无删除接口，仅提示（二维码通常只读，不可删除）
+    ElMessage.info('后端暂未提供二维码删除接口')
   }).catch(() => {})
 }
 
@@ -225,30 +213,22 @@ function handleReset() { Object.assign(searchForm, { batchNo: '', qrCode: '', st
 function handleSizeChange() { pagination.pageNum = 1; fetchList() }
 function handlePageChange() { fetchList() }
 
-function fetchList() {
+async function fetchList() {
   loading.value = true
-  const batches = ['B20240715001', 'B20240714002', 'B20240713003', 'B20240712004']
-  const list = Array.from({ length: 42 }, (_, i) => ({
-    id: i + 1,
-    qrCode: `QR-PORK-2024071${String(5 + Math.floor(i / 10)).padStart(1, '0')}${String(i + 1).padStart(3, '0')}`,
-    batchNo: batches[i % batches.length],
-    splitBatchId: (i % 4) + 1,
-    status: i < 20 ? 2 : i < 30 ? 1 : i < 38 ? 0 : 3,
-    expireDate: `2024-08-${String(1 + i % 30).padStart(2, '0')}`,
-    createTime: `2024-07-${String(10 + Math.floor(i / 4)).padStart(2, '0')} 10:00:00`,
-  })) as any[]
-  const filtered = list.filter(item => {
-    if (searchForm.batchNo && !item.batchNo.includes(searchForm.batchNo)) return false
-    if (searchForm.qrCode && !item.qrCode.includes(searchForm.qrCode)) return false
-    if (searchForm.status !== null && item.status !== searchForm.status) return false
-    return true
-  })
-  tableData.value = filtered.slice((pagination.pageNum - 1) * pagination.pageSize, pagination.pageNum * pagination.pageSize)
-  pagination.total = filtered.length
-  loading.value = false
+  try {
+    const res: any = await salesApi.getQrcodes({
+      current: pagination.pageNum,
+      size: pagination.pageSize,
+      qrCode: searchForm.qrCode || undefined,
+      status: searchForm.status ?? undefined,
+    })
+    const list = res?.records || res?.list || []
+    tableData.value = list.map((r: any) => ({ ...r, batchNo: r.batchNo || `SP-${r.splitBatchId}` }))
+    pagination.total = res?.total || list.length || 0
+  } catch { tableData.value = []; pagination.total = 0 } finally { loading.value = false }
 }
 
-onMounted(() => fetchList())
+onMounted(() => { fetchList() })
 </script>
 
 <style lang="scss" scoped>

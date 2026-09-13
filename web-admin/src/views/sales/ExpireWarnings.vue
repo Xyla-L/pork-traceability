@@ -117,6 +117,7 @@ import { ref, reactive, h, onMounted } from 'vue'
 import { Search, Refresh } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
+import { salesApi } from '@/api/modules/sales'
 
 const router = useRouter()
 
@@ -169,13 +170,12 @@ async function handleSubmit() {
   submitting.value = true
   try {
     if (currentRow.value) {
-      currentRow.value.handled = 1
-      currentRow.value.handler = '当前用户'
-      currentRow.value.handleTime = new Date().toLocaleString()
+      await salesApi.handleWarning(currentRow.value.id, { handled: true, handler: '当前用户' })
     }
     ElMessage.success('预警处理成功')
     dialogVisible.value = false
-  } finally { submitting.value = false }
+    fetchList()
+  } catch { /* 错误已由拦截器提示 */ } finally { submitting.value = false }
 }
 
 function handleSearch() { pagination.pageNum = 1; fetchList() }
@@ -183,36 +183,24 @@ function handleReset() { Object.assign(searchForm, { productName: '', batchNo: '
 function handleSizeChange() { pagination.pageNum = 1; fetchList() }
 function handlePageChange() { fetchList() }
 
-function fetchList() {
+async function fetchList() {
   loading.value = true
-  const products = ['猪前腿肉 500g', '猪五花肉 300g', '猪里脊 400g', '猪排骨 600g', '猪蹄 500g', '猪肝 200g', '猪肚 350g']
-  const stores = ['XX社区超市', 'YY生鲜店', 'ZZ便利店', 'WW农贸市场', 'UU超市']
-  const list = Array.from({ length: 45 }, (_, i) => ({
-    id: i + 1,
-    productName: products[i % products.length],
-    productQrCode: `QR-PORK-202407${String(1500 + i).padStart(4, '0')}`,
-    storeName: stores[i % stores.length],
-    expireDate: `2024-07-${String(15 + Math.floor(i / 5)).padStart(2, '0')}`,
-    daysLeft: 2 - Math.floor(i / 5),
-    warningLevel: i < 25 ? 1 : i < 37 ? 2 : 3,
-    handled: i < 38 ? 0 : 1,
-    handler: i >= 38 ? '管理员' : '',
-    handleTime: i >= 38 ? `2024-07-${String(14 + i % 3).padStart(2, '0')} 14:00:00` : '',
-    warningTime: `2024-07-${String(12 + Math.floor(i / 3)).padStart(2, '0')} ${String(8 + i % 12).padStart(2, '0')}:00:00`,
-  }))
-  const filtered = list.filter(item => {
-    if (searchForm.productName && !item.productName.includes(searchForm.productName)) return false
-    if (searchForm.batchNo && !item.productQrCode.includes(searchForm.batchNo)) return false
-    if (searchForm.warningLevel && item.warningLevel !== searchForm.warningLevel) return false
-    if (searchForm.handled !== null && item.handled !== searchForm.handled) return false
-    return true
-  })
-  stats.expired = filtered.filter(i => i.warningLevel === 3).length
-  stats.urgent = filtered.filter(i => i.warningLevel === 2).length
-  stats.warning = filtered.filter(i => i.warningLevel === 1).length
-  tableData.value = filtered.slice((pagination.pageNum - 1) * pagination.pageSize, pagination.pageNum * pagination.pageSize)
-  pagination.total = filtered.length
-  loading.value = false
+  try {
+    const res: any = await salesApi.getWarnings({
+      current: pagination.pageNum,
+      size: pagination.pageSize,
+      productName: searchForm.productName || undefined,
+      batchNo: searchForm.batchNo || undefined,
+      warningLevel: searchForm.warningLevel ?? undefined,
+      handled: searchForm.handled ?? undefined,
+    })
+    const list = res?.records || res?.list || []
+    tableData.value = list
+    pagination.total = res?.total || list.length || 0
+    stats.expired = list.filter((i: any) => i.warningLevel === 3).length
+    stats.urgent = list.filter((i: any) => i.warningLevel === 2).length
+    stats.warning = list.filter((i: any) => i.warningLevel === 1).length
+  } catch { tableData.value = []; pagination.total = 0 } finally { loading.value = false }
 }
 
 onMounted(() => fetchList())
