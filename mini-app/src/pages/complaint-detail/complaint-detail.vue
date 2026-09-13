@@ -60,22 +60,22 @@
 import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useComplaintStore } from '@/stores/complaint'
+import { getDeviceId } from '@/utils/device'
 import EmptyState from '@/components/EmptyState.vue'
 
 const complaintStore = useComplaintStore()
 const loading = ref(false)
 const detail = ref(null)
-const id = ref('')
 
-onLoad((options) => {
-  id.value = options.id || ''
+onLoad(() => {
   load()
 })
 
 async function load() {
   loading.value = true
   try {
-    detail.value = await complaintStore.fetchDetail(id.value)
+    // 详情按当前设备（用户账号标识）查询，而非举报记录ID
+    detail.value = await complaintStore.fetchDetail(getDeviceId())
   } finally {
     loading.value = false
   }

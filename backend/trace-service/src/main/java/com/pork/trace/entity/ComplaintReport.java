@@ -86,8 +86,6 @@ public class ComplaintReport {
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 
-    private Long userId;
-
     /**
      * 提交设备ID（小程序端匿名举报标识）
      */

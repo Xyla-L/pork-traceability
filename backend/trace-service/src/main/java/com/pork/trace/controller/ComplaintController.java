@@ -27,19 +27,18 @@ public class ComplaintController {
      */
     @PostMapping
     public Result<String> submit(@Valid @RequestBody ComplaintReportDTO dto,
-                                 @RequestHeader(value = "X-User-Id", required = false) Long userId,
                                  @RequestHeader(value = "X-Device-Id", required = false) String deviceId) {
-        String reportNo = complaintReportService.submitComplaint(dto, userId, deviceId);
+        String reportNo = complaintReportService.submitComplaint(dto, deviceId);
         return Result.success("举报提交成功", reportNo);
     }
 
     /**
      * 查询举报详情
+     * 路径参数为举报用户的账号标识（小程序端即设备ID），按 device_id 查找该用户最新一条举报记录
      */
-    @GetMapping("/{id}")
-    public Result<ComplaintReportVO> getDetail(@PathVariable Long id,
-                                               @RequestHeader(value = "X-Device-Id", required = false) String deviceId) {
-        ComplaintReportVO vo = complaintReportService.getReportDetail(id, deviceId);
+    @GetMapping("/{deviceId}")
+    public Result<ComplaintReportVO> getDetail(@PathVariable String deviceId) {
+        ComplaintReportVO vo = complaintReportService.getReportDetail(deviceId);
         return Result.success(vo);
     }
 

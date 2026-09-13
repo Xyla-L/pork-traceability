@@ -82,8 +82,8 @@ function statusClass(status) {
   return { 0: 'pending', 1: 'processing', 2: 'done' }[status] || ''
 }
 
-function openDetail(item) {
-  uni.navigateTo({ url: `/pages/complaint-detail/complaint-detail?id=${item.id}` })
+function openDetail() {
+  uni.navigateTo({ url: '/pages/complaint-detail/complaint-detail' })
 }
 </script>
 

@@ -41,7 +41,7 @@ public class ComplaintReportServiceImpl extends ServiceImpl<ComplaintReportMappe
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public String submitComplaint(ComplaintReportDTO dto, Long userId, String deviceId) {
+    public String submitComplaint(ComplaintReportDTO dto, String deviceId) {
         String reportNo = nextReportNo();
 
         // 2. 转换 DTO 为 Entity
@@ -52,7 +52,6 @@ public class ComplaintReportServiceImpl extends ServiceImpl<ComplaintReportMappe
         report.setReporterName(reporterName == null || reporterName.isBlank() ? "匿名用户" : reporterName);
         report.setStatus(0);
         report.setCreateTime(LocalDateTime.now());
-        report.setUserId(userId);
         report.setDeviceId(deviceId);
 
         // 3. 保存到数据库
@@ -62,10 +61,14 @@ public class ComplaintReportServiceImpl extends ServiceImpl<ComplaintReportMappe
     }
 
     @Override
-    public ComplaintReportVO getReportDetail(Long id, String deviceId) {
+    public ComplaintReportVO getReportDetail(String deviceId) {
+        if (deviceId == null || deviceId.isBlank()) {
+            throw new BusinessException(ErrorCode.PARAM_MISSING, "设备ID不能为空");
+        }
         ComplaintReport report = this.lambdaQuery()
-                .eq(ComplaintReport::getId, id)
-                .eq(deviceId != null && !deviceId.isBlank(), ComplaintReport::getDeviceId, deviceId)
+                .eq(ComplaintReport::getDeviceId, deviceId)
+                .orderByDesc(ComplaintReport::getCreateTime)
+                .last("LIMIT 1")
                 .one();
 
         if (report == null) {

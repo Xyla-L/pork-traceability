@@ -14,15 +14,15 @@ public interface ComplaintReportService extends IService<ComplaintReport> {
     /**
      * 提交投诉举报
      * @param dto 请求参数
-     * @param userId 当前登录用户ID
+     * @param deviceId 提交设备ID（小程序端匿名举报标识）
      * @return 举报编号
      */
-    String submitComplaint(ComplaintReportDTO dto, Long userId, String deviceId);
+    String submitComplaint(ComplaintReportDTO dto, String deviceId);
 
     Page<ComplaintReportVO> pageReports(String reportNo, String reporterName, String targetBatch,
                                          Integer status, String deviceId, long pageNum, long pageSize);
 
-    ComplaintReportVO getReportDetail(Long id, String deviceId);
+    ComplaintReportVO getReportDetail(String deviceId);
 
     void handleComplaint(Long id, Integer status, String handleNote, Long handlerUserId);
 }

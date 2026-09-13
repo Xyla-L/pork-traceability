@@ -145,17 +145,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { Search, Refresh, CircleCheckFilled, WarningFilled } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import BlockchainVerifyBadge from '@/components/common/BlockchainVerifyBadge.vue'
+import { traceApi } from '@/api/modules/trace'
 
 // 搜索
-const keyword = ref('B20240715001')
+const keyword = ref('QR-PORK-DEMO-0001')
 const hasSearched = ref(false)
 const searching = ref(false)
-const searchHints = ['B20240715001', 'ET20240601001', 'QR-PORK-20240715001', '猪前腿肉']
+const searchHints = ['SP-DEMO-0002', 'CB-DEMO-0001', 'QR-PORK-DEMO-0001']
 
 // 溯源数据
 const traceData = ref<any>(null)
@@ -169,81 +170,186 @@ const nodeDetails = ref<any[]>([])
 const graphChartRef = ref<HTMLElement>()
 let graphChart: echarts.ECharts | null = null
 
-function handleSearch() {
-  if (!keyword.value.trim()) { ElMessage.warning('请输入搜索关键词'); return }
+const pick = (v: any, fallback: any = '-') =>
+  v === null || v === undefined || v === '' ? fallback : v
+
+function mapChainRecords(chain: any) {
+  const list = Array.isArray(chain) ? chain : []
+  return list.map((r: any) => ({
+    type: pick(r?.bizType),
+    txHash: r?.txHash ?? '',
+    blockNumber: r?.blockNumber ?? '-',
+  }))
+}
+
+function chainStatusOf(full: any): 'confirmed' | 'pending' | 'none' {
+  const records = Array.isArray(full?.blockchain) ? full.blockchain : []
+  if (!records.length) return 'none'
+  return records.every((r: any) => r?.status === 1) ? 'confirmed' : 'pending'
+}
+
+// 后端 search 返回两种结构：QR 扫码 {product, traceChain, verification}；批次号 full 结构
+// {batchNo, upstream, downstream, breeding, slaughter, blockchain}，统一映射为页面视图模型
+function buildTraceData(res: any, full: any, kw: string) {
+  const upstream: any[] = Array.isArray(full?.upstream) ? full.upstream : []
+  const splitNodes = upstream.filter(n => n?.type === 'SPLIT')
+  const carcass = upstream.find(n => n?.type === 'CARCASS')?.data
+  const currentSplit = splitNodes[0]?.data
+  const sales: any[] = Array.isArray(full?.downstream?.sales) ? full.downstream.sales : []
+  const sale = sales[0]
+  const product = res?.product && typeof res.product === 'object' ? res.product : {}
+  const weight = product.sellWeightKg ?? product.batchWeightKg ?? currentSplit?.weightKg ?? carcass?.totalWeightKg
+  return {
+    product: {
+      name: pick(product.name ?? currentSplit?.productName),
+      batchNo: pick(product.batchNo ?? full?.batchNo ?? kw),
+      weight: weight !== null && weight !== undefined ? `${weight} kg` : '-',
+      packageDate: pick(product.packageDate ?? currentSplit?.splitTime),
+      expireDate: pick(product.expireDate ?? sale?.expireDate),
+      qrCode: pick(product.productQrCode ?? sale?.productQrCode ?? (kw.toUpperCase().startsWith('QR-') ? kw : '')),
+    },
+    traceChain: {
+      blockchain: { records: mapChainRecords(full?.blockchain) },
+    },
+  }
+}
+
+function buildNodeDetails(full: any) {
+  const rows: any[] = []
+  const chainStatus = chainStatusOf(full)
+  const push = (title: string, time: any, org: any, keyInfo: string) => {
+    rows.push({ stage: String(rows.length + 1), title, time: pick(time), org: pick(org), keyInfo, chainStatus })
+  }
+
+  const breeding: any[] = Array.isArray(full?.breeding) ? full.breeding : []
+  breeding.forEach(pig => {
+    push('养殖场', pig?.birthDate ?? pig?.createTime, pig?.farmName,
+      `耳标${pick(pig?.earTagNo)} / ${pick(pig?.breed)}`)
+  })
+
+  const slaughter: any[] = Array.isArray(full?.slaughter) ? full.slaughter : []
+  slaughter.forEach(row => {
+    const entry = Array.isArray(row?.entries) ? row.entries[0] : null
+    if (entry) {
+      push('入场查验', entry.arriveTime, entry.sourceFarm,
+        `检疫证${pick(entry.quarantineCert)} / 健康检查${entry.healthCheck === 1 ? '通过' : '异常'}`)
+    }
+    const inspections = Array.isArray(row?.inspections) ? row.inspections : []
+    inspections.forEach((ins: any) => {
+      push('屠宰检验', ins.inspectTime, ins.veterinary ?? entry?.sourceFarm,
+        `${ins.inspectType === 1 ? '宰前检验' : ins.inspectType === 2 ? '宰后检验' : '检验'} / ${pick(ins.conclusion)}`)
+    })
+    const stamp = Array.isArray(row?.stamps) ? row.stamps[0] : null
+    if (stamp) {
+      push('检疫盖章', stamp.stampTime, stamp.veterinary, `印章${pick(stamp.stampNo)} / ${pick(stamp.stampType)}`)
+    }
+  })
+
+  // upstream 链路从当前分割批次回溯到胴体，倒序后即时间正序
+  const upstream: any[] = Array.isArray(full?.upstream) ? [...full.upstream].reverse() : []
+  upstream.forEach(node => {
+    const d = node?.data
+    if (!d) return
+    if (node.type === 'CARCASS') {
+      push('胴体批次', d.createTime, d.slaughterhouse, `批次${pick(d.batchNo)} / ${pick(d.totalWeightKg)}kg`)
+    } else {
+      push('分割加工', d.splitTime, d.workshop,
+        `${pick(d.productName)} / ${pick(d.packageType)} / ${pick(d.weightKg)}kg`)
+    }
+  })
+
+  const logistics: any[] = Array.isArray(full?.downstream?.logistics) ? full.downstream.logistics : []
+  logistics.forEach(item => {
+    const t = item?.transport
+    if (t) {
+      push('冷链运输', t.departTime ?? t.plannedDepart ?? t.createTime, t.vehicleNo,
+        `单号${pick(t.transportNo)} / ${pick(t.origin)}→${pick(t.destination)}`)
+    }
+    const r = item?.receipt
+    if (r) {
+      push('门店签收', r.receiptTime, r.storeName,
+        `签收人${pick(r.receiver)} / 温度${r.tempValue ?? '-'}℃`)
+    }
+  })
+
+  const sales: any[] = Array.isArray(full?.downstream?.sales) ? full.downstream.sales : []
+  sales.forEach(s => {
+    push('零售上架', s.shelfTime, s.storeName, `二维码${pick(s.productQrCode)}`)
+  })
+
+  if (!rows.length && full?.batchNo) {
+    push('批次信息', null, null, `批次${full.batchNo}`)
+  }
+  return rows
+}
+
+async function handleSearch() {
+  const kw = keyword.value.trim()
+  if (!kw) { ElMessage.warning('请输入搜索关键词'); return }
   searching.value = true
   hasSearched.value = true
   traceData.value = null
   verifyResult.value = null
+  nodeDetails.value = []
 
-  setTimeout(() => {
-    // 模拟溯源数据
-    traceData.value = {
-      product: {
-        name: '猪前腿肉 500g', batchNo: 'B20240715001', weight: '500g',
-        packageDate: '2024-07-03 10:00', expireDate: '2024-07-22', qrCode: 'QR-PORK-20240715001',
-      },
-      traceChain: {
-        farm: { name: 'XX养殖合作社', licenseNo: 'SC2023001', earTagNo: 'ET20240601001', breed: '长白猪' },
-        vaccines: [
-          { name: '猪瘟活疫苗', batchNo: 'CSF-20240601', time: '2024-06-05' },
-          { name: '口蹄疫O型灭活疫苗', batchNo: 'FMD-20240615', time: '2024-06-20' },
-        ],
-        quarantineCert: { certNo: 'QC2024070100123', issueOrg: 'XX县动物卫生监督所', issueTime: '2024-07-01', inspector: '李建国', caVerified: true },
-        slaughter: { slaughterhouse: 'XX市定点屠宰场', licenseNo: 'ST2023003', entryTime: '2024-07-02 06:30', inspectResult: '合格', ractopamine: '阴性', stampNo: 'ST2024070200123', veterinary: '王建国' },
-        splitWorkshop: { name: '分割车间A组', splitTime: '2024-07-03 08:00', workshopTemp: '10℃', productName: '猪前腿肉', packageType: '真空包装' },
-        transport: { transportNo: 'T2024070300123', vehicleNo: '京A·12345', vehicleType: '冷链车', departTime: '2024-07-03 14:00', arriveTime: '2024-07-03 18:00', temperatureLog: [], avgTemp: -13.5, abnormalCount: 0 },
-        storeReceipt: { storeName: 'XX社区超市', receiptTime: '2024-07-03 18:30', receiver: '钱店长', tempAtReceipt: '-12.0℃', packageIntact: '完好' },
-        blockchain: {
-          verified: true, recordCount: 5,
-          records: [
-            { type: '产地检疫', txHash: '0x7a3b8c2d1...', blockNumber: 284710 },
-            { type: '屠宰检验', txHash: '0x8c4d5e6f7a...', blockNumber: 284715 },
-            { type: '分割记录', txHash: '0x9d5e6f7a8b...', blockNumber: 284720 },
-            { type: '运输记录', txHash: '0xae6f7a8b9c...', blockNumber: 284725 },
-            { type: '门店签收', txHash: '0xbf7a8b9c0d...', blockNumber: 284730 },
-          ],
-        },
-      },
+  try {
+    const res: any = await traceApi.search(kw)
+    const full = res?.product ? res.traceChain : res
+    if (!full || typeof full !== 'object') {
+      traceData.value = null
+      return
     }
-
-    // 构建节点详情
-    const tc = traceData.value.traceChain
-    nodeDetails.value = [
-      { stage: '1', title: '养殖场', time: '2024-06-05', org: tc.farm.name, keyInfo: `耳标${tc.farm.earTagNo} / ${tc.farm.breed}`, chainStatus: 'confirmed' },
-      { stage: '2', title: '产地检疫', time: tc.quarantineCert.issueTime, org: tc.quarantineCert.issueOrg, keyInfo: `检疫证${tc.quarantineCert.certNo} / CA✅`, chainStatus: 'confirmed' },
-      { stage: '3', title: '屠宰检验', time: tc.slaughter.entryTime, org: tc.slaughter.slaughterhouse, keyInfo: `检验${tc.slaughter.inspectResult} / 瘦肉精${tc.slaughter.ractopamine}`, chainStatus: 'confirmed' },
-      { stage: '4', title: '分割加工', time: tc.splitWorkshop.splitTime, org: tc.splitWorkshop.name, keyInfo: `${tc.splitWorkshop.productName} / ${tc.splitWorkshop.packageType}`, chainStatus: 'confirmed' },
-      { stage: '5', title: '冷链运输', time: tc.transport.departTime, org: `${tc.transport.vehicleNo}`, keyInfo: `平均${tc.transport.avgTemp}℃ / 异常${tc.transport.abnormalCount}次`, chainStatus: 'confirmed' },
-      { stage: '6', title: '门店签收', time: tc.storeReceipt.receiptTime, org: tc.storeReceipt.storeName, keyInfo: `签收人${tc.storeReceipt.receiver} / 温度${tc.storeReceipt.tempAtReceipt}`, chainStatus: 'confirmed' },
-    ]
-
+    traceData.value = buildTraceData(res, full, kw)
+    nodeDetails.value = buildNodeDetails(full)
     searching.value = false
-    nextTick(() => initGraphChart())
-
-    // 自动执行验真
-    setTimeout(() => handleVerify(), 300)
-  }, 800)
+    await nextTick()
+    initGraphChart(full)
+    // 自动执行验真（无可验真二维码时静默跳过）
+    handleVerify(true)
+  } catch {
+    // 后端业务错误 / 网络错误已由请求拦截器统一提示
+    traceData.value = null
+    nodeDetails.value = []
+  } finally {
+    searching.value = false
+  }
 }
 
-function handleVerify() {
+async function handleVerify(silent: unknown = false) {
+  const productQr = traceData.value?.product?.qrCode
+  const kw = keyword.value.trim()
+  const qr = typeof productQr === 'string' && productQr.toUpperCase().startsWith('QR-')
+    ? productQr
+    : kw.toUpperCase().startsWith('QR-') ? kw : ''
+  if (!qr) {
+    if (silent !== true) ElMessage.warning('当前溯源结果中没有可验真的产品二维码')
+    return
+  }
   verifying.value = true
-  setTimeout(() => {
-    verifyResult.value = {
-      allVerified: true,
-      details: [
-        { bizType: '养殖免疫', bizName: '产地检疫证明', localHash: '0x7a3b8c2d1e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b', onChainHash: '0x7a3b8c2d1e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b', matched: true },
-        { bizType: '屠宰检疫', bizName: '宰前/宰后检验报告', localHash: '0x8c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d', onChainHash: '0x8c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d', matched: true },
-        { bizType: '分割配送', bizName: '批次拆分记录', localHash: '0x9d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e', onChainHash: '0x9d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e', matched: true },
-        { bizType: '冷链运输', bizName: '温度打卡记录', localHash: '0xae6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f', onChainHash: '0xae6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f', matched: true },
-        { bizType: '市场销售', bizName: '门店签收确认', localHash: '0xbf7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a', onChainHash: '0xbf7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a', matched: true },
-      ],
+  try {
+    const res: any = await traceApi.verify(qr)
+    if (!res || typeof res !== 'object') {
+      verifyResult.value = null
+      return
     }
+    verifyResult.value = {
+      allVerified: !!res.allVerified,
+      details: (Array.isArray(res.details) ? res.details : []).map((d: any) => ({
+        bizType: pick(d?.type),
+        bizName: `存证记录 #${pick(d?.bizId)}`,
+        localHash: d?.localHash ?? '',
+        onChainHash: d?.chainHash ?? '',
+        matched: d?.match === true,
+      })),
+    }
+  } catch {
+    verifyResult.value = null
+  } finally {
     verifying.value = false
-  }, 1200)
+  }
 }
 
-function initGraphChart() {
+function initGraphChart(full: any) {
   if (!graphChartRef.value) return
   graphChart?.dispose()
   graphChart = echarts.init(graphChartRef.value)
@@ -256,35 +362,78 @@ function initGraphChart() {
     { name: '消费者', itemStyle: { color: '#909399' } },
   ]
 
+  const data: any[] = []
+  const links: any[] = []
+  const seq: string[] = []
+  const used = new Set<string>()
+  const chain = (name: string, category: number, symbolSize: number, desc: string) => {
+    if (!name) return
+    if (!used.has(name)) {
+      used.add(name)
+      data.push({
+        name, category, symbolSize, desc,
+        itemStyle: { borderColor: categories[category].itemStyle.color, borderWidth: 2 },
+      })
+    }
+    seq.push(name)
+  }
+
+  const breeding: any[] = Array.isArray(full?.breeding) ? full.breeding : []
+  const pig = breeding[0]
+  if (pig) {
+    chain(pick(pig.farmName, '养殖场'), 0, 40, `耳标: ${pick(pig.earTagNo)}\n品种: ${pick(pig.breed)}`)
+  }
+
+  const upstream: any[] = Array.isArray(full?.upstream) ? [...full.upstream].reverse() : []
+  const carcass = upstream.find(n => n?.type === 'CARCASS')?.data
+  const slaughterRows: any[] = Array.isArray(full?.slaughter) ? full.slaughter : []
+  const entry = slaughterRows[0]?.entries?.[0]
+  const slaughterhouse = carcass?.slaughterhouse ?? entry?.sourceFarm
+  if (slaughterhouse || carcass) {
+    chain(pick(slaughterhouse, '屠宰场'), 1, 40,
+      carcass ? `胴体批次: ${pick(carcass.batchNo)}\n总重: ${pick(carcass.totalWeightKg)}kg` : '')
+  }
+  upstream.filter(n => n?.type === 'SPLIT').forEach(n => {
+    const d = n.data
+    chain(`${pick(d?.productName, '分割批次')} ${pick(d?.batchNo, '')}`.trim(), 2, 36,
+      `批次: ${pick(d?.batchNo)}\n${pick(d?.weightKg)}kg / ${pick(d?.packageType)}`)
+  })
+
+  const logistics: any[] = Array.isArray(full?.downstream?.logistics) ? full.downstream.logistics : []
+  logistics.forEach(item => {
+    const t = item?.transport
+    if (t) chain(`冷链 ${pick(t.vehicleNo, '')}`.trim(), 2, 30, `单号: ${pick(t.transportNo)}`)
+  })
+  const sales: any[] = Array.isArray(full?.downstream?.sales) ? full.downstream.sales : []
+  const receipt = logistics.map(i => i?.receipt).find(Boolean)
+  const storeName = sales[0]?.storeName ?? receipt?.storeName
+  if (storeName) {
+    chain(storeName, 3, 38, receipt ? `签收: ${pick(receipt.receiver)}` : '零售门店')
+  }
+  if (sales[0]?.productQrCode) {
+    chain('消费者', 4, 28, `扫码: ${sales[0].productQrCode}`)
+  }
+
+  // 数据不足时至少画出批次节点
+  if (!data.length) {
+    chain(`批次 ${pick(full?.batchNo, '')}`.trim(), 2, 40, '暂无上下游关联数据')
+  }
+  for (let i = 1; i < seq.length; i++) {
+    if (seq[i] !== seq[i - 1]) links.push({ source: seq[i - 1], target: seq[i] })
+  }
+
   graphChart.setOption({
     tooltip: { trigger: 'item', formatter: (params: any) => {
       if (params.dataType === 'edge') return `${params.data.source} → ${params.data.target}`
-      return `<b>${params.name}</b><br/>类型: ${categories[params.data.category]?.name}<br/>${params.data.desc || ''}`
+      return `<b>${params.name}</b><br/>类型: ${categories[params.data.category]?.name}<br/>${(params.data.desc || '').replace(/\n/g, '<br/>')}`
     }},
     legend: { bottom: 0, data: categories.map(c => c.name), textStyle: { fontSize: 12 } },
     series: [{
       type: 'graph', layout: 'force', roam: true, draggable: true,
       force: { repulsion: 300, edgeLength: [120, 260], gravity: 0.15 },
       categories,
-      data: [
-        { name: '养殖场', category: 0, symbolSize: 40, desc: 'XX养殖合作社\n耳标: ET20240601001', itemStyle: { borderColor: '#67c23a', borderWidth: 3 } },
-        { name: '产地检疫', category: 0, symbolSize: 28, desc: '检疫证: QC2024070100123', itemStyle: { borderColor: '#67c23a', borderWidth: 2 } },
-        { name: '屠宰场', category: 1, symbolSize: 40, desc: 'XX市定点屠宰场\n检验: 合格', itemStyle: { borderColor: '#409eff', borderWidth: 3 } },
-        { name: '检疫盖章', category: 1, symbolSize: 28, desc: '印章: ST2024070200123', itemStyle: { borderColor: '#409eff', borderWidth: 2 } },
-        { name: '分割车间', category: 2, symbolSize: 38, desc: '分割车间A组\n猪前腿肉 500g', itemStyle: { borderColor: '#e6a23c', borderWidth: 3 } },
-        { name: '冷链运输', category: 2, symbolSize: 32, desc: '京A·12345\n平均温度 -13.5℃', itemStyle: { borderColor: '#e6a23c', borderWidth: 2 } },
-        { name: '零售门店', category: 3, symbolSize: 40, desc: 'XX社区超市\n签收: 钱店长', itemStyle: { borderColor: '#9a60b4', borderWidth: 3 } },
-        { name: '消费者', category: 4, symbolSize: 30, desc: '扫码溯源验证', itemStyle: { borderColor: '#909399', borderWidth: 2 } },
-      ],
-      links: [
-        { source: '养殖场', target: '产地检疫' },
-        { source: '产地检疫', target: '屠宰场' },
-        { source: '屠宰场', target: '检疫盖章' },
-        { source: '检疫盖章', target: '分割车间' },
-        { source: '分割车间', target: '冷链运输' },
-        { source: '冷链运输', target: '零售门店' },
-        { source: '零售门店', target: '消费者' },
-      ],
+      data,
+      links,
       lineStyle: { color: '#c0c4cc', curveness: 0.2, width: 2, opacity: 0.8 },
       label: { show: true, fontSize: 12, position: 'right', formatter: '{b}' },
       emphasis: { focus: 'adjacency', lineStyle: { width: 4 } },
