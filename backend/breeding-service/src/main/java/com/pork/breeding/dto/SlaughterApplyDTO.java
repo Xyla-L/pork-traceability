@@ -1,7 +1,6 @@
 package com.pork.breeding.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -12,8 +11,8 @@ public class SlaughterApplyDTO {
     @Schema(description = "申报ID")
     private Long id;
 
-    @NotNull(message = "生猪ID不能为空")
-    @Schema(description = "生猪ID", requiredMode = Schema.RequiredMode.REQUIRED)
+    /** 由创建入口的路径变量 /pigs/{pigId}/apply 注入，请求体无需携带 */
+    @Schema(description = "生猪ID（由路径变量注入，请求体可省略）")
     private Long pigId;
 
     @Schema(description = "出栏体重")
