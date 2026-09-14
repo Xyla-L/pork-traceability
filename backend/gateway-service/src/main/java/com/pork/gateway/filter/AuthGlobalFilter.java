@@ -26,10 +26,17 @@ import java.util.UUID;
 public class AuthGlobalFilter implements GlobalFilter, Ordered {
     private static final String BLACKLIST_PREFIX = "auth:blacklist:token:";
     private static final String COMPLAINTS_PATH = "/api/v1/trace/complaints";
+    /**
+     * 消费者侧只读接口（小程序无需登录即可访问）：
+     * 扫码溯源 / 安心购 / 一键验真 / 溯源搜索
+     */
+    private static final List<String> CONSUMER_READ_PATHS = List.of(
+            "/api/v1/trace/safe-buy", "/api/v1/trace/verify"
+    );
     private static final List<String> PUBLIC_PATHS = List.of(
             "/api/v1/auth/login", "/api/v1/auth/register", "/api/v1/auth/refresh", "/api/v1/consumer/",
             "/actuator/health", "/doc.html", "/v3/api-docs", "/swagger-ui",
-            "/api/v1/trace/search"
+            "/api/v1/trace/search", "/api/v1/file/upload"
     );
 
     private final ReactiveStringRedisTemplate redis;
@@ -82,6 +89,10 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
         }
         // 举报提交(POST)/列表与详情(GET)对小程序公开；handle 等写操作必须认证
         if (path.equals(COMPLAINTS_PATH)) {
+            return true;
+        }
+        // 消费者侧只读接口（安心购 / 一键验真）对小程序公开，仅限 GET
+        if ("GET".equals(method) && CONSUMER_READ_PATHS.stream().anyMatch(path::startsWith)) {
             return true;
         }
         return "GET".equals(method) && path.startsWith(COMPLAINTS_PATH + "/");

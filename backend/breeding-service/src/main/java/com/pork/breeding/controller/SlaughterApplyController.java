@@ -1,12 +1,14 @@
 package com.pork.breeding.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.pork.breeding.dto.SlaughterApplyApproveDTO;
 import com.pork.breeding.service.SlaughterApplyService;
 import com.pork.breeding.vo.SlaughterApplyVO;
 import com.pork.core.result.PageResult;
 import com.pork.core.result.Result;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -33,5 +35,14 @@ public class SlaughterApplyController {
     public Result<SlaughterApplyVO> getDetail(@PathVariable Long id) {
         SlaughterApplyVO vo = slaughterApplyService.getDetail(id);
         return Result.success(vo);
+    }
+
+    @PutMapping("/{id}/approve")
+    @Operation(summary = "审批出栏申报")
+    public Result<Void> approve(@PathVariable Long id,
+                                @Valid @RequestBody SlaughterApplyApproveDTO dto,
+                                @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+        slaughterApplyService.approve(id, dto, userId);
+        return Result.success();
     }
 }

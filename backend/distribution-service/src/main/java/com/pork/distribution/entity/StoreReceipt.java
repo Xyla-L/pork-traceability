@@ -32,4 +32,6 @@ public class StoreReceipt {
     private String eSignature;
     private String contentHash;
     private LocalDateTime createTime;
+    @TableField(exist = false)
+    private String transportNo;
 }

@@ -219,6 +219,7 @@ async function fetchList() {
     const res: any = await salesApi.getQrcodes({
       current: pagination.pageNum,
       size: pagination.pageSize,
+      batchNo: searchForm.batchNo || undefined,
       qrCode: searchForm.qrCode || undefined,
       status: searchForm.status ?? undefined,
     })
