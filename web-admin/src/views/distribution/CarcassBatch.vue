@@ -172,6 +172,7 @@ async function fetchList() {
       current: pagination.pageNum,
       size: pagination.pageSize,
       batchNo: searchForm.batchNo || undefined,
+      operator: searchForm.operator || undefined,
     })
     const records = res?.records || res?.list || []
     const list = await Promise.all(records.map(async (r: any) => {

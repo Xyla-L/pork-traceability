@@ -28,12 +28,13 @@ public class DistributionController {
 
     @GetMapping("/batches")
     public Result<PageResult<CarcassBatch>> batches(String batchNo,
+                                                    @RequestParam(required = false) String operator,
                                                     @RequestParam(required = false) Integer current,
                                                     @RequestParam(required = false) Integer size,
                                                     @Valid PageQuery page) {
         long pageNum = current != null ? current : page.getPageNum();
         long pageSize = size != null ? size : page.getPageSize();
-        return Result.success(PageResult.of(service.pageBatches(batchNo, pageNum, pageSize)));
+        return Result.success(PageResult.of(service.pageBatches(batchNo, operator, pageNum, pageSize)));
     }
 
     @PostMapping("/splits")

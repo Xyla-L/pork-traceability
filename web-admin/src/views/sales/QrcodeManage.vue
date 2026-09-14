@@ -222,9 +222,14 @@ async function fetchList() {
       qrCode: searchForm.qrCode || undefined,
       status: searchForm.status ?? undefined,
     })
-    const list = res?.records || res?.list || []
-    tableData.value = list.map((r: any) => ({ ...r, batchNo: r.batchNo || `SP-${r.splitBatchId}` }))
-    pagination.total = res?.total || list.length || 0
+    let list = res?.records || res?.list || []
+    list = list.map((r: any) => ({ ...r, batchNo: r.batchNo || `SP-${r.splitBatchId}` }))
+    // 前端按批次号模糊过滤（后端暂不支持该参数）
+    if (searchForm.batchNo) {
+      list = list.filter((r: any) => r.batchNo?.includes(searchForm.batchNo))
+    }
+    tableData.value = list
+    pagination.total = list.length
   } catch { tableData.value = []; pagination.total = 0 } finally { loading.value = false }
 }
 

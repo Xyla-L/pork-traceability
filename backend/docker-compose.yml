@@ -3,6 +3,8 @@ name: pork-traceability
 x-app-environment: &app-environment
   NACOS_ADDR: nacos:8848
   NACOS_NAMESPACE: ${NACOS_NAMESPACE:-}
+  # Nacos 配置中心地址（spring.config.import 需要，不设则默认 127.0.0.1 导致健康检查 DOWN）
+  SPRING_CLOUD_NACOS_CONFIG_SERVER_ADDR: ${NACOS_ADDR:-nacos:8848}
   REDIS_HOST: redis
   REDIS_PORT: 6379
   REDIS_PASSWORD: ${REDIS_PASSWORD:-change-this-redis-password}

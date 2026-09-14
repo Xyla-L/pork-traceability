@@ -13,7 +13,7 @@ import java.util.Map;
 
 public interface DistributionService {
     CarcassBatch createBatch(DistributionRequests.BatchCreate request);
-    Page<CarcassBatch> pageBatches(String batchNo, long pageNum, long pageSize);
+    Page<CarcassBatch> pageBatches(String batchNo, String operator, long pageNum, long pageSize);
     SplitBatch createSplit(DistributionRequests.SplitCreate request);
     SplitBatch getSplit(Long id);
     Map<String, Object> getSplitTree(String batchNo);

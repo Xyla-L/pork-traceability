@@ -12,9 +12,9 @@
           <el-date-picker v-model="receiptDate" type="date" placeholder="选择日期" value-format="YYYY-MM-DD" style="width: 160px" />
         </el-form-item>
         <el-form-item label="签收状态">
-          <el-select v-model="searchForm.qtyCheck" placeholder="全部" clearable style="width: 120px">
+          <el-select v-model="searchForm.statusFilter" placeholder="全部" clearable style="width: 120px">
             <el-option label="全部正常" :value="1" />
-            <el-option label="数量异常" :value="0" />
+            <el-option label="状态异常" :value="0" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -152,7 +152,7 @@ import { ElMessage } from 'element-plus'
 import BlockchainVerifyBadge from '@/components/common/BlockchainVerifyBadge.vue'
 import request from '@/utils/request'
 
-const searchForm = reactive({ transportNo: '', storeName: '', qtyCheck: null as number | null })
+const searchForm = reactive({ transportNo: '', storeName: '', statusFilter: null as number | null })
 const receiptDate = ref<string | null>(null)
 const tableData = ref<any[]>([])
 const loading = ref(false)
@@ -213,25 +213,50 @@ function handleVerify(row: any) { ElMessage.success(`区块链验真通过: ${ro
 function handlePrint(row: any) { ElMessage.success(`回单 ${row.receiptNo} 已发送打印`) }
 
 function handleSearch() { pagination.pageNum = 1; fetchList() }
-function handleReset() { Object.assign(searchForm, { transportNo: '', storeName: '', qtyCheck: null }); receiptDate.value = null; handleSearch() }
+function handleReset() { Object.assign(searchForm, { transportNo: '', storeName: '', statusFilter: null }); receiptDate.value = null; handleSearch() }
 function handleSizeChange() { pagination.pageNum = 1; fetchList() }
 function handlePageChange() { fetchList() }
+
+// 判断单条记录是否有任意异常（数量、温度、包装、链上）
+function hasAbnormal(item: any): boolean {
+  return item.qtyCheck !== 1 || item.tempCheck !== 1 || item.packageIntact !== 1 || !item.contentHash
+}
+// 判断单条记录是否全部正常
+function isAllNormal(item: any): boolean {
+  return item.qtyCheck === 1 && item.tempCheck === 1 && item.packageIntact === 1 && !!item.contentHash
+}
 
 async function fetchList() {
   loading.value = true
   try {
     const res = await request.get('/distribution/receipts', {
-      params: { pageNum: pagination.pageNum, pageSize: pagination.pageSize, storeName: searchForm.storeName || undefined }
+      params: {
+        pageNum: pagination.pageNum,
+        pageSize: pagination.pageSize,
+        storeName: searchForm.storeName || undefined,
+        transportNo: searchForm.transportNo || undefined,
+      }
     })
-    const list = res?.records || res?.list || []
+    let list = res?.records || res?.list || []
     // 后端字段适配：transportId → transportNo；contentHash 存在视为已上链
-    tableData.value = (Array.isArray(list) ? list : []).map((item: any) => ({
+    list = (Array.isArray(list) ? list : []).map((item: any) => ({
       ...item,
       receiptNo: item.receiptNo || `S${item.id || ''}`,
       transportNo: item.transportNo || item.transportId || '',
       chainStatus: item.contentHash ? 'confirmed' : 'pending',
     }))
-    pagination.total = res?.total || 0
+    // 前端按签收状态过滤
+    if (searchForm.statusFilter === 1) {
+      list = list.filter(isAllNormal)
+    } else if (searchForm.statusFilter === 0) {
+      list = list.filter(hasAbnormal)
+    }
+    // 运单号模糊过滤（后端暂不支持，前端兜底）
+    if (searchForm.transportNo) {
+      list = list.filter((item: any) => item.transportNo?.includes(searchForm.transportNo))
+    }
+    tableData.value = list
+    pagination.total = list.length
   } catch (error) {
     console.error('获取门店签收列表失败:', error)
     tableData.value = []

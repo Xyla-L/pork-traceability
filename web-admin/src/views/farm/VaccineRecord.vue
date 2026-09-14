@@ -108,7 +108,7 @@ const fetchList = async () => {
     const pigRes = await request.get('/breeding/pigs', { params: pigParams, timeout: 5000 })
     const pigs = pigRes?.records || pigRes?.list || []
 
-    if (pigs.length === 0) { tableLoading.value = false; return }
+    if (pigs.length === 0) { tableData.value = []; pagination.total = 0; tableLoading.value = false; return }
 
     const allVaccines = []
     const promises = pigs.map(async (pig) => {

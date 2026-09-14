@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -44,10 +45,11 @@ public class DistributionServiceImpl implements DistributionService {
     }
 
     @Override
-    public Page<CarcassBatch> pageBatches(String batchNo, long pageNum, long pageSize) {
+    public Page<CarcassBatch> pageBatches(String batchNo, String operator, long pageNum, long pageSize) {
         return carcassBatchMapper.selectPage(new Page<>(pageNum, pageSize),
                 Wrappers.<CarcassBatch>lambdaQuery()
                         .like(StringUtils.hasText(batchNo), CarcassBatch::getBatchNo, batchNo)
+                        .like(StringUtils.hasText(operator), CarcassBatch::getOperator, operator)
                         .orderByDesc(CarcassBatch::getCreateTime));
     }
 
