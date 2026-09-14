@@ -51,6 +51,10 @@ public class SlaughterApplyServiceImpl extends ServiceImpl<SlaughterApplyMapper,
         voPage.setRecords(page.getRecords().stream().map(apply -> {
             SlaughterApplyVO vo = new SlaughterApplyVO();
             BeanUtils.copyProperties(apply, vo);
+            // 实体 weightKg 为 Double，VO 为 BigDecimal，copyProperties 类型不匹配会跳过，需手动转换
+            if (apply.getWeightKg() != null) {
+                vo.setWeightKg(BigDecimal.valueOf(apply.getWeightKg()));
+            }
             // 关联查询耳标号
             PigIndividual pig = pigIndividualMapper.selectById(apply.getPigId());
             if (pig != null) {

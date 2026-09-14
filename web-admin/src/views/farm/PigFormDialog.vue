@@ -200,7 +200,7 @@ const rules = {
 // 获取养殖场列表
 const fetchFarmList = async () => {
   try {
-    const res = await request.get('/breeding/farms')
+    const res = await request.get('/breeding/farms', { params: { current: 1, size: 500 } })
     farmList.value = res?.records || res?.list || []
   } catch (error) {
     console.error('获取养殖场列表失败:', error)

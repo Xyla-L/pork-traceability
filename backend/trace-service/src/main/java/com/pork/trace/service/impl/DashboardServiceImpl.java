@@ -97,16 +97,17 @@ public class DashboardServiceImpl implements DashboardService {
 
     private List<Map<String, Object>> recentWarnings(List<Map<String, Object>> rows) {
         return rows.stream().limit(5).map(row -> {
-            long saleId = number(row.get("saleId"));
             Map<String, Object> item = new LinkedHashMap<>();
-            item.put("productName", "产品 #" + saleId);
-            item.put("batchNo", "SALE-" + saleId);
+            item.put("productName", text(row.get("productName")));
+            item.put("batchNo", text(row.get("productQrCode")));
             item.put("warningLevel", levelLabel((int) number(row.get("warningLevel"))));
-            item.put("expireDate", date(row.get("warningTime")));
-            item.put("storeName", "-");
+            item.put("expireDate", text(row.get("expireDate")));
+            item.put("storeName", text(row.get("storeName")));
             return item;
         }).toList();
     }
+
+    private String text(Object value) { return value == null ? "-" : value.toString(); }
 
     private List<Map<String, Object>> complaintTodos() {
         return complaintMapper.selectList(Wrappers.<ComplaintReport>lambdaQuery().in(ComplaintReport::getStatus, 0, 1)

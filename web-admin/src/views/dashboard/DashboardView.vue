@@ -78,7 +78,7 @@
         </template>
         <el-table :data="recentWarnings" stripe border style="width: 100%">
           <el-table-column prop="productName" label="产品名称" min-width="150" />
-          <el-table-column prop="batchNo" label="批次号" min-width="120" />
+          <el-table-column prop="batchNo" label="产品二维码" min-width="120" />
           <el-table-column prop="warningLevel" label="预警级别" width="100" align="center">
             <template #default="{ row }">
               <el-tag :type="warningTagType(row.warningLevel)" size="small">{{ row.warningLevel }}</el-tag>

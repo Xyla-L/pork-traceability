@@ -163,7 +163,7 @@ const farmNameMap = ref({})
 // 获取养殖场列表
 const fetchFarmOptions = async () => {
   try {
-    const res = await request.get('/breeding/farms')
+    const res = await request.get('/breeding/farms', { params: { current: 1, size: 500 } })
     const list = res?.records || res?.list || []
     farmOptions.value = list
     const map = {}
