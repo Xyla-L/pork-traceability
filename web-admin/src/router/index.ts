@@ -38,16 +38,6 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '生猪档案', icon: 'Stamp', roles: ['*'] },
       },
       {
-        path: 'farm/pigs/:id',
-        name: 'PigDetail',
-        component: () => import('@/views/farm/PigDetail.vue'),
-        meta: {
-          title: '生猪详情',
-          hidden: true,
-          roles: ['FARMER', 'SUPERVISOR', 'ADMIN'],
-        },
-      },
-      {
         path: 'farm/vaccines',
         name: 'VaccineRecord',
         component: () => import('@/views/farm/VaccineRecord.vue'),

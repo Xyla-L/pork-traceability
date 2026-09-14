@@ -126,9 +126,9 @@ const WarningLevelBadge = {
   props: { level: Number },
   setup(props: { level: number }) {
     const map: Record<number, { label: string; color: string; bg: string }> = {
-      1: { label: '🟡 临期3天', color: '#e6a23c', bg: '#fdf6ec' },
-      2: { label: '🟠 临期1天', color: '#f56c6c', bg: '#fef0f0' },
-      3: { label: '🔴 已过期', color: '#fff', bg: '#f56c6c' },
+      1: { label: '临期3天', color: '#e6a23c', bg: '#fdf6ec' },
+      2: { label: '临期1天', color: '#f56c6c', bg: '#fef0f0' },
+      3: { label: '已过期', color: '#fff', bg: '#f56c6c' },
     }
     const info = map[props.level] || { label: '未知', color: '#909399', bg: '#f5f7fa' }
     return () => h('span', {

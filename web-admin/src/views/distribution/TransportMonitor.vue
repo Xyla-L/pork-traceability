@@ -2,7 +2,7 @@
   <div class="page-container">
     <!-- 运输基本信息条 -->
     <div class="transport-info-bar">
-      <div class="info-item"><span class="info-label">🚛 运单号</span><span class="info-value">{{ transportInfo.transportNo }}</span></div>
+      <div class="info-item"><span class="info-label">运单号</span><span class="info-value">{{ transportInfo.transportNo }}</span></div>
       <div class="info-item"><span class="info-label">车牌号</span><span class="info-value">{{ transportInfo.vehicleNo }}</span></div>
       <div class="info-item"><span class="info-label">司机</span><span class="info-value">{{ transportInfo.driverName }}</span></div>
       <div class="info-item"><span class="info-label">电话</span><span class="info-value">{{ transportInfo.driverPhone }}</span></div>
@@ -20,7 +20,7 @@
       <el-card class="monitor-card temp-chart-card">
         <template #header>
           <div class="card-header">
-            <span>🌡️ 温度变化曲线</span>
+            <span>温度变化曲线</span>
             <el-space>
               <el-tag size="small" type="danger">上限 0°C</el-tag>
               <el-tag size="small" type="info">下限 -18°C</el-tag>
@@ -47,7 +47,7 @@
 
         <!-- 温度打卡 -->
         <el-card class="temp-checkin-card">
-          <template #header><span class="card-header-text">📝 温度打卡</span></template>
+          <template #header><span class="card-header-text">温度打卡</span></template>
           <el-form :model="checkInForm" label-width="0" size="default">
             <el-form-item>
               <span class="input-label">温度值 (℃)</span>
@@ -71,7 +71,7 @@
     <el-card class="checkin-list-card">
       <template #header>
         <div class="card-header">
-          <span>📋 温度打卡记录</span>
+          <span>温度打卡记录</span>
           <span class="record-count">共 {{ checkInList.length }} 条</span>
         </div>
       </template>
@@ -85,7 +85,7 @@
         </el-table-column>
         <el-table-column prop="isAbnormal" label="是否异常" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.isAbnormal ? 'danger' : 'success'" size="small">{{ row.isAbnormal ? '⚠️ 异常' : '✅ 正常' }}</el-tag>
+            <el-tag :type="row.isAbnormal ? 'danger' : 'success'" size="small">{{ row.isAbnormal ? '异常' : '正常' }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="recorder" label="记录人" width="120" align="center" />
@@ -95,7 +95,7 @@
 
     <!-- 运输状态时间轴 -->
     <el-card class="transport-timeline-card">
-      <template #header><span>🕐 运输状态时间轴</span></template>
+      <template #header><span>运输状态时间轴</span></template>
       <div class="transport-timeline">
         <div v-for="(node, idx) in transportTimeline" :key="idx" class="tt-node" :class="{ 'tt-done': node.done, 'tt-active': node.active }">
           <div class="tt-line">
@@ -158,7 +158,7 @@ async function handleCheckIn() {
     })
     const isAbnormal = checkInForm.temperature > 0 || checkInForm.temperature < -18
     currentTemp.value = checkInForm.temperature
-    if (isAbnormal) ElMessage.warning('⚠️ 温度异常，请立即检查冷链设备！')
+    if (isAbnormal) ElMessage.warning('温度异常，请立即检查冷链设备！')
     else ElMessage.success('温度打卡成功')
     loadTemperatureLogs()
     initTempChart()
@@ -225,15 +225,15 @@ function buildTimeline(t: any) {
   const arriveTime = t.arriveTime || t.plannedArrive || ''
   const nodes: any[] = [
     {
-      title: '🚛 发车', time: departTime, desc: `车牌 ${t.vehicleNo || '--'} 从 ${t.origin || '--'} 出发`,
+      title: '发车', time: departTime, desc: `车牌 ${t.vehicleNo || '--'} 从 ${t.origin || '--'} 出发`,
       done: status >= 2, active: status === 1,
     },
     {
-      title: '📝 运输途中', time: departTime ? departTime : '--', desc: '冷链运输中，全程温控记录',
+      title: '运输途中', time: departTime ? departTime : '--', desc: '冷链运输中，全程温控记录',
       done: status >= 3, active: status === 2,
     },
     {
-      title: '🏁 到达签收', time: arriveTime, desc: `到达 ${t.destination || '--'}，门店签收确认`,
+      title: '到达签收', time: arriveTime, desc: `到达 ${t.destination || '--'}，门店签收确认`,
       done: status >= 3, active: status === 3,
     },
   ]

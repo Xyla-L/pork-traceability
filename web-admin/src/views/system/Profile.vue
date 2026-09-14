@@ -3,7 +3,7 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <span>👤 个人信息</span>
+          <span>个人信息</span>
         </div>
       </template>
 

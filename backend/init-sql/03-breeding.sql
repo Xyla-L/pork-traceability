@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS farm (
 
 CREATE TABLE IF NOT EXISTS pig_individual (
     id BIGINT PRIMARY KEY AUTO_INCREMENT, ear_tag_no VARCHAR(32) NOT NULL, farm_id BIGINT NOT NULL,
-    breed VARCHAR(32), birth_date DATE, pen_no VARCHAR(16), source VARCHAR(64), status TINYINT DEFAULT 1,
+    breed VARCHAR(32), birth_date DATE, gender TINYINT DEFAULT 1, pen_no VARCHAR(16), source VARCHAR(64), status TINYINT DEFAULT 1,
     deleted TINYINT DEFAULT 0, create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uk_ear_tag (ear_tag_no), INDEX idx_farm_status (farm_id, status), INDEX idx_deleted (deleted)

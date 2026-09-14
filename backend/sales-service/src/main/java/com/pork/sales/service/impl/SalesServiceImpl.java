@@ -18,6 +18,7 @@ import com.pork.sales.mapper.ExpireWarningMapper;
 import com.pork.sales.mapper.RecallOrderMapper;
 import com.pork.sales.mapper.RetailSaleMapper;
 import com.pork.sales.service.SalesService;
+import com.pork.sales.vo.ExpireWarningVO;
 import com.pork.sales.vo.QrCodeVO;
 import com.pork.sales.vo.SaleRecordVO;
 import lombok.RequiredArgsConstructor;
@@ -174,11 +175,29 @@ public class SalesServiceImpl implements SalesService {
     }
 
     @Override
-    public PageResult<ExpireWarning> pageWarnings(Integer warningLevel, Integer handled, long pageNum, long pageSize) {
+    public PageResult<ExpireWarningVO> pageWarnings(Integer warningLevel, Integer handled, long pageNum, long pageSize) {
         Page<ExpireWarning> page = warningMapper.selectPage(new Page<>(pageNum, pageSize), Wrappers.<ExpireWarning>lambdaQuery()
                 .eq(warningLevel != null, ExpireWarning::getWarningLevel, warningLevel)
                 .eq(handled != null, ExpireWarning::getHandled, handled).orderByDesc(ExpireWarning::getWarningTime));
-        return PageResult.of(page);
+        List<Long> saleIds = page.getRecords().stream().map(ExpireWarning::getSaleId).filter(Objects::nonNull).distinct().toList();
+        Map<Long, RetailSale> saleMap = saleIds.isEmpty() ? Map.of() :
+                saleMapper.selectBatchIds(saleIds).stream().collect(java.util.stream.Collectors.toMap(RetailSale::getId, s -> s));
+        Map<Long, Map<String, Object>> splitCache = new HashMap<>();
+        List<ExpireWarningVO> records = page.getRecords().stream().map(w -> {
+            RetailSale sale = saleMap.get(w.getSaleId());
+            String productQrCode = sale == null ? null : sale.getProductQrCode();
+            String storeName = sale == null ? null : sale.getStoreName();
+            LocalDate expireDate = sale == null ? null : sale.getExpireDate();
+            String productName = null;
+            if (sale != null && sale.getSplitBatchId() != null) {
+                Map<String, Object> split = splitInfo(sale.getSplitBatchId(), splitCache);
+                if (split != null) productName = Objects.toString(split.get("productName"), null);
+            }
+            return new ExpireWarningVO(w.getId(), w.getSaleId(), w.getWarningLevel(), w.getWarningTime(),
+                    w.getNotifyChannel(), w.getNotified(), w.getHandled(), w.getHandleTime(), w.getHandler(),
+                    w.getCreateTime(), productQrCode, productName, storeName, expireDate);
+        }).toList();
+        return PageResult.of(page.getCurrent(), page.getSize(), page.getTotal(), records);
     }
 
     @Override

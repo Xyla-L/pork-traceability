@@ -32,17 +32,17 @@
       <el-table-column prop="receiptTime" label="签收时间" width="170" align="center" />
       <el-table-column prop="qtyCheck" label="数量核验" width="100" align="center">
         <template #default="{ row }">
-          <el-tag :type="row.qtyCheck === 1 ? 'success' : 'danger'" size="small">{{ row.qtyCheck === 1 ? '✅ 正常' : '⚠️ 异常' }}</el-tag>
+          <el-tag :type="row.qtyCheck === 1 ? 'success' : 'danger'" size="small">{{ row.qtyCheck === 1 ? '正常' : '异常' }}</el-tag>
         </template>
       </el-table-column>
       <el-table-column prop="tempCheck" label="温度核验" width="100" align="center">
         <template #default="{ row }">
-          <el-tag :type="row.tempCheck === 1 ? 'success' : 'danger'" size="small">{{ row.tempCheck === 1 ? '✅ 正常' : '⚠️ 异常' }}</el-tag>
+          <el-tag :type="row.tempCheck === 1 ? 'success' : 'danger'" size="small">{{ row.tempCheck === 1 ? '正常' : '异常' }}</el-tag>
         </template>
       </el-table-column>
       <el-table-column prop="packageIntact" label="包装状态" width="100" align="center">
         <template #default="{ row }">
-          <span :style="{ color: row.packageIntact === 1 ? '#67c23a' : '#f56c6c' }">{{ row.packageIntact === 1 ? '✅ 完好' : '⚠️ 破损' }}</span>
+          <span :style="{ color: row.packageIntact === 1 ? '#67c23a' : '#f56c6c' }">{{ row.packageIntact === 1 ? '完好' : '破损' }}</span>
         </template>
       </el-table-column>
       <el-table-column prop="chainStatus" label="链上状态" width="100" align="center">
@@ -78,7 +78,7 @@
       <div class="receipt-checks">
         <!-- 数量核验 -->
         <el-card shadow="hover" class="check-card">
-          <template #header><span class="check-title">📦 数量核验</span></template>
+          <template #header><span class="check-title">数量核验</span></template>
           <el-form label-width="80px" size="default">
             <el-form-item label="实收数量">
               <el-input-number v-model="receiptData.qtyReceived" :min="0" style="width: 160px" />
@@ -86,14 +86,14 @@
             <el-form-item label="应到数量">{{ receiptData.qtyExpected }}</el-form-item>
             <el-form-item label="核验结果">
               <el-tag :type="receiptData.qtyReceived === receiptData.qtyExpected ? 'success' : 'danger'">
-                {{ receiptData.qtyReceived === receiptData.qtyExpected ? '✅ 数量一致' : '⚠️ 数量不符' }}
+                {{ receiptData.qtyReceived === receiptData.qtyExpected ? '数量一致' : '数量不符' }}
               </el-tag>
             </el-form-item>
           </el-form>
         </el-card>
         <!-- 温度核验 -->
         <el-card shadow="hover" class="check-card">
-          <template #header><span class="check-title">🌡️ 温度核验</span></template>
+          <template #header><span class="check-title">温度核验</span></template>
           <el-form label-width="80px" size="default">
             <el-form-item label="到货温度">
               <el-input-number v-model="receiptData.arrivalTemp" :min="-50" :max="50" :precision="1" style="width: 160px" />
@@ -101,7 +101,7 @@
             </el-form-item>
             <el-form-item label="温度状态">
               <el-tag :type="receiptData.arrivalTemp >= -18 && receiptData.arrivalTemp <= 0 ? 'success' : 'danger'">
-                {{ receiptData.arrivalTemp >= -18 && receiptData.arrivalTemp <= 0 ? '✅ 在正常范围' : '⚠️ 温度异常' }}
+                {{ receiptData.arrivalTemp >= -18 && receiptData.arrivalTemp <= 0 ? '在正常范围' : '温度异常' }}
               </el-tag>
             </el-form-item>
           </el-form>
@@ -109,7 +109,7 @@
       </div>
       <!-- 签名 -->
       <el-card shadow="hover" class="check-card signature-card">
-        <template #header><span class="check-title">✍️ 签收人签名</span></template>
+        <template #header><span class="check-title">签收人签名</span></template>
         <div class="signature-area">
           <canvas ref="signCanvasRef" width="400" height="120" class="sign-canvas"
             @mousedown="startSign" @mousemove="drawSign" @mouseup="endSign" @mouseleave="endSign"></canvas>
@@ -133,9 +133,9 @@
         <el-descriptions-item label="联系电话">{{ detailData.receiverPhone || '--' }}</el-descriptions-item>
         <el-descriptions-item label="签收时间">{{ detailData.receiptTime }}</el-descriptions-item>
         <el-descriptions-item label="到货温度(℃)">{{ detailData.tempValue ?? '--' }}</el-descriptions-item>
-        <el-descriptions-item label="温度核验">{{ detailData.tempCheck === 1 ? '✅ 正常' : detailData.tempCheck === 0 ? '⚠️ 异常' : '--' }}</el-descriptions-item>
-        <el-descriptions-item label="数量核验">{{ detailData.qtyCheck === 1 ? '✅ 一致' : detailData.qtyCheck === 0 ? '⚠️ 不符' : '--' }}</el-descriptions-item>
-        <el-descriptions-item label="包装完好">{{ detailData.packageIntact === 1 ? '✅ 完好' : detailData.packageIntact === 0 ? '⚠️ 破损' : '--' }}</el-descriptions-item>
+        <el-descriptions-item label="温度核验">{{ detailData.tempCheck === 1 ? '正常' : detailData.tempCheck === 0 ? '异常' : '--' }}</el-descriptions-item>
+        <el-descriptions-item label="数量核验">{{ detailData.qtyCheck === 1 ? '一致' : detailData.qtyCheck === 0 ? '不符' : '--' }}</el-descriptions-item>
+        <el-descriptions-item label="包装完好">{{ detailData.packageIntact === 1 ? '完好' : detailData.packageIntact === 0 ? '破损' : '--' }}</el-descriptions-item>
         <el-descriptions-item label="内容哈希" :span="2">
           <span v-if="detailData.contentHash" class="hash-text">{{ detailData.contentHash }}</span>
           <span v-else>--</span>

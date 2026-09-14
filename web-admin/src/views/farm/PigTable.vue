@@ -19,16 +19,18 @@
         </template>
       </el-table-column>
       <el-table-column prop="birthDate" label="出生日期" min-width="120" align="center" />
+      <el-table-column prop="gender" label="性别" min-width="80" align="center">
+        <template #default="{ row }">
+          {{ row.gender === 2 ? '母' : '公' }}
+        </template>
+      </el-table-column>
       <el-table-column prop="status" label="状态" min-width="100" align="center">
         <template #default="{ row }">
           <StatusTag :type="pigStatusType(row.status)" />
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="200" fixed="right" align="center">
+      <el-table-column label="操作" width="140" fixed="right" align="center">
         <template #default="{ row }">
-          <el-button type="primary" link size="small" @click="$emit('view', row)">
-            查看详情
-          </el-button>
           <el-button type="warning" link size="small" @click="$emit('edit', row)">
             编辑
           </el-button>
@@ -67,7 +69,7 @@ defineProps({
   }
 })
 
-defineEmits(['view', 'edit', 'delete'])
+defineEmits(['edit', 'delete'])
 
 const breedMap = {
   'changbai': '长白猪',

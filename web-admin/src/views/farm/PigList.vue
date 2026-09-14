@@ -94,7 +94,6 @@
       :data="tableData"
       :loading="tableLoading"
       :farm-name-map="farmNameMap"
-      @view="handleView"
       @edit="handleEdit"
       @delete="handleDelete"
     />
@@ -118,13 +117,13 @@
       v-model:visible="formDialogVisible"
       :edit-data="currentEditData"
       @saved="handleFormSaved"
+      @farm-created="fetchFarmOptions"
     />
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { Search, Refresh, Plus } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/utils/request'
@@ -132,8 +131,6 @@ import PigTable from './PigTable.vue'
 import PigFormDialog from './PigFormDialog.vue'
 
 // ==================== 搜索相关 ====================
-
-const router = useRouter()
 
 const birthDateRange = ref(null)
 
@@ -262,10 +259,6 @@ const handleCreate = () => {
 const handleEdit = (row) => {
   currentEditData.value = { ...row }
   formDialogVisible.value = true
-}
-
-const handleView = (row) => {
-  router.push(`/admin/farm/pigs/${row.id}`)
 }
 
 const handleFormSaved = () => {

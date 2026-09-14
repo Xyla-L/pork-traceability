@@ -3,7 +3,7 @@
     <!-- 顶部工具栏 -->
     <div class="toolbar">
       <div class="toolbar-left">
-        <h2 class="page-title">📦 分割操作</h2>
+        <h2 class="page-title">分割操作</h2>
         <el-select
           v-model="currentBatchNo"
           placeholder="选择批次"
@@ -39,8 +39,8 @@
     <el-card v-if="splitTree" class="tree-card">
       <template #header>
         <div class="tree-card-header">
-          <span>🌲 批次拆分树 — {{ splitTree.batchNo }}</span>
-          <el-tag type="success" size="small">📦 {{ nodeCount }} 个节点</el-tag>
+          <span>批次拆分树 — {{ splitTree.batchNo }}</span>
+          <el-tag type="success" size="small">{{ nodeCount }} 个节点</el-tag>
         </div>
       </template>
       <div class="tree-wrapper">
@@ -76,7 +76,7 @@
 
         <!-- 区块链状态 -->
         <div class="drawer-chain-section">
-          <div class="section-label">🔗 区块链状态</div>
+          <div class="section-label">区块链状态</div>
           <BlockchainVerifyBadge :status="detailNode.txHash ? 'confirmed' : 'pending'" :tx-hash="detailNode.txHash" />
           <div style="margin-top: 12px">
             <el-button type="primary" size="small" @click="showChainInfo(detailNode)">查看交易详情</el-button>
@@ -172,7 +172,7 @@ const TreeNode = defineComponent({
     }, [
       h('div', { class: 'tree-node-header', onClick: () => isExpanded.value = !isExpanded.value }, [
         h('span', { class: 'node-expand-icon' }, hasChildren.value ? (isExpanded.value ? '▾' : '▸') : '·'),
-        h('span', { class: 'node-icon' }, ['', '🥩', '🍖', '🥓'][node.value.splitLevel || 0] || '🐖'),
+        h('span', { class: 'node-icon' }, ['', '', '', ''][node.value.splitLevel || 0] || ''),
         h('span', { class: 'node-name' }, node.value.productName || node.value.batchNo || '未知'),
         h('span', { class: 'node-batch' }, node.value.batchNo),
         h('span', { class: 'node-weight' }, `${node.value.weightKg || node.value.totalWeightKg || '--'} kg`),
@@ -208,7 +208,7 @@ const BatchHashPanel = defineComponent({
     return () => {
       const n = props.node as any
       return h('div', { class: 'hash-panel' }, [
-        h('div', { class: 'section-label' }, '📊 数据哈希'),
+        h('div', { class: 'section-label' }, '数据哈希'),
         h('el-descriptions', { column: 1, border: true, size: 'small' }, () => [
           h('el-descriptions-item', { label: '内容哈希 (SHA-256)' }, () =>
             h('code', { class: 'hash-code' }, n.contentHash?.substring(0, 24) + '...' || '未生成')),

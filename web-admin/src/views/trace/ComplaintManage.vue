@@ -87,11 +87,11 @@
           </el-descriptions-item>
         </el-descriptions>
         <div class="complaint-text-section">
-          <h4>📝 举报内容</h4>
+          <h4>举报内容</h4>
           <p class="complaint-text">{{ currentRow.complaintText }}</p>
         </div>
         <div v-if="currentRow.photos?.length" class="photo-section">
-          <h4>📷 举报照片 ({{ currentRow.photos.length }})</h4>
+          <h4>举报照片 ({{ currentRow.photos.length }})</h4>
           <div class="photo-grid">
             <div v-for="(photo, idx) in currentRow.photos" :key="idx" class="photo-item"
               :style="{ background: '#f5f7fa', height: '120px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', cursor: 'pointer' }"
@@ -101,7 +101,7 @@
           </div>
         </div>
         <div v-if="currentRow.handleNote" class="handle-note-section">
-          <h4>📋 处理记录</h4>
+          <h4>处理记录</h4>
           <el-alert :title="`处理人: ${currentRow.handler}`" :description="`${currentRow.handleNote} (${currentRow.handleTime})`"
             :type="currentRow.status === 2 ? 'success' : 'warning'" :closable="false" show-icon />
         </div>

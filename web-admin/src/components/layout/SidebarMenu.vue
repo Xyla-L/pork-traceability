@@ -2,8 +2,8 @@
   <div class="sidebar-menu">
     <!-- Logo 区域 -->
     <div class="sidebar-logo">
-      <span v-if="!collapsed" class="logo-text">🐷 猪肉溯源</span>
-      <span v-else class="logo-icon">🐷</span>
+      <span v-if="!collapsed" class="logo-text">猪肉溯源</span>
+      <span v-else class="logo-icon">猪</span>
     </div>
 
     <!-- 菜单列表 -->

@@ -31,6 +31,9 @@ public class PigIndividualVO {
     @Schema(description = "出生日期")
     private LocalDate birthDate;
 
+    @Schema(description = "性别: 1公 2母")
+    private Integer gender;
+
     @Schema(description = "圈舍编号")
     private String penNo;
 

@@ -3,7 +3,7 @@
     <!-- 搜索区域 -->
     <div class="search-section">
       <div class="search-hero">
-        <h2 class="search-title">🔍 应急追溯查询</h2>
+        <h2 class="search-title">应急追溯查询</h2>
         <p class="search-subtitle">输入批次号 / 耳标号 / 二维码 / 产品名，秒级反查上下游关联节点</p>
         <div class="search-input-row">
           <el-input v-model="keyword" placeholder="请输入批次号、耳标号、二维码或产品名称..." size="large"
@@ -32,7 +32,7 @@
     <template v-if="!searching && traceData">
       <!-- 产品信息 -->
       <el-card class="result-card">
-        <template #header><span class="card-title">📦 产品信息</span></template>
+        <template #header><span class="card-title">产品信息</span></template>
         <el-descriptions :column="3" border size="default">
           <el-descriptions-item label="产品名称">{{ traceData.product.name }}</el-descriptions-item>
           <el-descriptions-item label="批次号"><el-tag size="small">{{ traceData.product.batchNo }}</el-tag></el-descriptions-item>
@@ -49,10 +49,10 @@
         <el-card class="trace-graph-card">
           <template #header>
             <div class="card-header">
-              <span class="card-title">🕸️ 溯源关系图</span>
+              <span class="card-title">溯源关系图</span>
               <el-space>
-                <el-tag size="small" type="success" v-if="verifyResult?.allVerified">✅ 全链路已验证</el-tag>
-                <el-tag size="small" type="danger" v-else>⚠️ 存在验证失败</el-tag>
+                <el-tag size="small" type="success" v-if="verifyResult?.allVerified">全链路已验证</el-tag>
+                <el-tag size="small" type="danger" v-else>存在验证失败</el-tag>
               </el-space>
             </div>
           </template>
@@ -63,7 +63,7 @@
         <el-card class="verify-panel">
           <template #header>
             <div class="card-header">
-              <span class="card-title">🔐 区块链验真</span>
+              <span class="card-title">区块链验真</span>
               <el-button size="small" type="primary" @click="handleVerify" :loading="verifying">
                 <el-icon><Refresh /></el-icon>重新验真
               </el-button>
@@ -88,7 +88,7 @@
                 <div class="vd-header">
                   <span class="vd-biz">{{ item.bizType }} - {{ item.bizName }}</span>
                   <el-tag :type="item.matched ? 'success' : 'danger'" size="small">
-                    {{ item.matched ? '✅ 匹配' : '❌ 不匹配' }}
+                    {{ item.matched ? '匹配' : '不匹配' }}
                   </el-tag>
                 </div>
                 <div class="vd-hashes">
@@ -109,7 +109,7 @@
 
           <!-- 链上存证记录 -->
           <div class="chain-records" v-if="traceData?.traceChain?.blockchain?.records?.length">
-            <div class="vd-biz" style="margin-bottom: 8px;">📋 链上存证记录</div>
+            <div class="vd-biz" style="margin-bottom: 8px;">链上存证记录</div>
             <div v-for="rec in traceData.traceChain.blockchain.records" :key="rec.txHash" class="chain-record-item">
               <span class="cr-type">{{ rec.type }}</span>
               <code class="cr-hash" :title="rec.txHash">{{ rec.txHash?.substring(0, 16) }}...</code>
@@ -121,7 +121,7 @@
 
       <!-- 上下游节点详情表 -->
       <el-card class="detail-table-card">
-        <template #header><span class="card-title">📊 全链路节点详情</span></template>
+        <template #header><span class="card-title">全链路节点详情</span></template>
         <el-table :data="nodeDetails" border stripe size="small">
           <el-table-column prop="stage" label="环节" width="80" align="center" />
           <el-table-column prop="title" label="节点名称" min-width="150" />

@@ -47,6 +47,11 @@ public class PigIndividual {
     private LocalDate birthDate;
 
     /**
+     * 性别：1公 2母
+     */
+    private Integer gender;
+
+    /**
      * 圈舍编号
      */
     private String penNo;

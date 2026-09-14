@@ -12,6 +12,7 @@ import com.pork.sales.entity.RecallOrder;
 import com.pork.sales.entity.RetailSale;
 import com.pork.sales.mapper.RetailSaleMapper;
 import com.pork.sales.service.SalesService;
+import com.pork.sales.vo.ExpireWarningVO;
 import com.pork.sales.vo.QrCodeVO;
 import com.pork.sales.vo.SaleRecordVO;
 import jakarta.validation.Valid;
@@ -60,7 +61,7 @@ public class SalesController {
     }
 
     @GetMapping("/warnings")
-    public Result<PageResult<ExpireWarning>> warnings(Integer warningLevel, Integer handled, @Valid PageQuery page) {
+    public Result<PageResult<ExpireWarningVO>> warnings(Integer warningLevel, Integer handled, @Valid PageQuery page) {
         return Result.success(service.pageWarnings(warningLevel, handled, page.getPageNum(), page.getPageSize()));
     }
 
