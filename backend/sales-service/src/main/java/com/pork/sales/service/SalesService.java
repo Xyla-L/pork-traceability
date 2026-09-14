@@ -12,7 +12,7 @@ import java.util.List;
 
 public interface SalesService {
     List<String> generateQrs(SalesRequests.QrBatch request);
-    PageResult<QrCodeVO> pageQrs(Integer status, String qrCode, long pageNum, long pageSize);
+    PageResult<QrCodeVO> pageQrs(Integer status, String qrCode, String batchNo, long pageNum, long pageSize);
     RetailSale activate(Long id);
     RetailSale sell(SalesRequests.SaleCreate request);
     PageResult<SaleRecordVO> pageSales(Long storeId, String status, String productName, String batchNo,

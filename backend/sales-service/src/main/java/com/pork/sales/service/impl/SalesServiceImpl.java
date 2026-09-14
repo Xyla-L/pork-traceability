@@ -64,14 +64,31 @@ public class SalesServiceImpl implements SalesService {
     }
 
     @Override
-    public PageResult<QrCodeVO> pageQrs(Integer status, String qrCode, long pageNum, long pageSize) {
-        Page<RetailSale> page = saleMapper.selectPage(new Page<>(pageNum, pageSize), Wrappers.<RetailSale>lambdaQuery()
+    public PageResult<QrCodeVO> pageQrs(Integer status, String qrCode, String batchNo, long pageNum, long pageSize) {
+        var wrapper = Wrappers.<RetailSale>lambdaQuery()
                 .eq(status != null, RetailSale::getStatus, status)
                 .like(StringUtils.hasText(qrCode), RetailSale::getProductQrCode, qrCode)
-                .orderByDesc(RetailSale::getCreateTime));
-        List<QrCodeVO> records = page.getRecords().stream().map(row -> new QrCodeVO(row.getId(), row.getProductQrCode(),
-                row.getSplitBatchId(), row.getIsActivated() == 0 ? 0 : row.getStatus(), row.getExpireDate(), row.getCreateTime())).toList();
+                .orderByDesc(RetailSale::getCreateTime);
+        Map<Long, Map<String, Object>> splitCache = new HashMap<>();
+        if (StringUtils.hasText(batchNo)) {
+            List<RetailSale> matched = saleMapper.selectList(wrapper).stream()
+                    .filter(row -> matchesSplit(row, null, batchNo, splitCache)).toList();
+            long total = matched.size();
+            int from = (int) Math.min((pageNum - 1) * pageSize, total);
+            int to = (int) Math.min(from + pageSize, total);
+            List<QrCodeVO> records = matched.subList(from, to).stream().map(row -> toQrCodeVO(row, splitCache)).toList();
+            return PageResult.of(pageNum, pageSize, total, records);
+        }
+        Page<RetailSale> page = saleMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
+        List<QrCodeVO> records = page.getRecords().stream().map(row -> toQrCodeVO(row, splitCache)).toList();
         return PageResult.of(page.getCurrent(), page.getSize(), page.getTotal(), records);
+    }
+
+    private QrCodeVO toQrCodeVO(RetailSale row, Map<Long, Map<String, Object>> cache) {
+        Map<String, Object> split = splitInfo(row.getSplitBatchId(), cache);
+        String batchNo = split == null ? null : Objects.toString(split.get("batchNo"), null);
+        return new QrCodeVO(row.getId(), row.getProductQrCode(), row.getSplitBatchId(), batchNo,
+                row.getIsActivated() == 0 ? 0 : row.getStatus(), row.getExpireDate(), row.getCreateTime());
     }
 
     @Override

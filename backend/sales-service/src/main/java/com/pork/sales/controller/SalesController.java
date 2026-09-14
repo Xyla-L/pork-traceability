@@ -36,13 +36,13 @@ public class SalesController {
     }
 
     @GetMapping("/qrcodes")
-    public Result<PageResult<QrCodeVO>> qrs(Integer status, String qrCode,
+    public Result<PageResult<QrCodeVO>> qrs(Integer status, String qrCode, String batchNo,
                                             @RequestParam(required = false) Integer current,
                                             @RequestParam(required = false) Integer size,
                                             @Valid PageQuery page) {
         long pageNum = current != null ? current : page.getPageNum();
         long pageSize = size != null ? size : page.getPageSize();
-        return Result.success(service.pageQrs(status, qrCode, pageNum, pageSize));
+        return Result.success(service.pageQrs(status, qrCode, batchNo, pageNum, pageSize));
     }
 
     @PutMapping("/products/{id}/activate")
