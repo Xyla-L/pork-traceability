@@ -5,13 +5,15 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.pork.slaughter.entity.CarcassStamp;
 import com.pork.slaughter.dto.CarcassStampDTO;
+import com.pork.slaughter.vo.CarcassStampVO;
 
 public interface CarcassStampService extends IService<CarcassStamp> {
 
     /**
      * 分页查询盖章记录
      */
-    IPage<CarcassStamp> pageQuery(Page<CarcassStamp> page, CarcassStamp query);
+    IPage<CarcassStampVO> pageQuery(Page<CarcassStamp> page, CarcassStampDTO query,
+                                    String status, String startDate, String endDate);
 
     /**
      * 新增盖章记录

@@ -20,6 +20,8 @@ public class CarcassStamp {
 
     private String batchNo;
 
+    private String earTagNo;
+
     private String carcassNo;
 
     /**

@@ -22,14 +22,23 @@ public class CarcassStampController {
     private final CarcassStampService service;
 
     @GetMapping
-    public Result<PageResult<CarcassStamp>> page(@RequestParam(defaultValue = "1") Integer pageNum,
-                                                  @RequestParam(defaultValue = "20") Integer pageSize,
-                                                  @RequestParam(required = false) Long pigId,
-                                                  @RequestParam(required = false) String stampNo) {
-        CarcassStamp query = new CarcassStamp();
+    public Result<PageResult<CarcassStampVO>> page(@RequestParam(defaultValue = "1") Integer pageNum,
+                                                   @RequestParam(defaultValue = "20") Integer pageSize,
+                                                   @RequestParam(required = false) Long pigId,
+                                                   @RequestParam(required = false) String stampNo,
+                                                   @RequestParam(required = false) String batchNo,
+                                                   @RequestParam(required = false) String carcassNo,
+                                                   @RequestParam(required = false) String stampType,
+                                                   @RequestParam(required = false) String status,
+                                                   @RequestParam(required = false) String startDate,
+                                                   @RequestParam(required = false) String endDate) {
+        CarcassStampDTO query = new CarcassStampDTO();
         query.setPigId(pigId);
         query.setStampNo(stampNo);
-        IPage<CarcassStamp> page = service.pageQuery(new Page<>(pageNum, pageSize), query);
+        query.setBatchNo(batchNo);
+        query.setCarcassNo(carcassNo);
+        query.setStampType(stampType);
+        IPage<CarcassStampVO> page = service.pageQuery(new Page<>(pageNum, pageSize), query, status, startDate, endDate);
         return Result.success(PageResult.of(page.getCurrent(), page.getSize(), page.getTotal(), page.getRecords()));
     }
 

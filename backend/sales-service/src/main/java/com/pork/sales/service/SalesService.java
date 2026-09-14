@@ -6,6 +6,7 @@ import com.pork.sales.entity.ExpireWarning;
 import com.pork.sales.entity.RecallOrder;
 import com.pork.sales.entity.RetailSale;
 import com.pork.sales.vo.QrCodeVO;
+import com.pork.sales.vo.SaleRecordVO;
 
 import java.util.List;
 
@@ -14,7 +15,8 @@ public interface SalesService {
     PageResult<QrCodeVO> pageQrs(Integer status, String qrCode, long pageNum, long pageSize);
     RetailSale activate(Long id);
     RetailSale sell(SalesRequests.SaleCreate request);
-    PageResult<RetailSale> pageSales(Long storeId, Integer status, long pageNum, long pageSize);
+    PageResult<SaleRecordVO> pageSales(Long storeId, String status, String productName, String batchNo,
+                                       String storeName, String startDate, String endDate, long pageNum, long pageSize);
     PageResult<ExpireWarning> pageWarnings(Integer warningLevel, Integer handled, long pageNum, long pageSize);
     void handleWarning(Long id, SalesRequests.WarningHandle request);
     RecallOrder createRecall(SalesRequests.RecallCreate request);

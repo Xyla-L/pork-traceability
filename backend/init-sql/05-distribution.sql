@@ -3,14 +3,14 @@ USE db_distribution;
 CREATE TABLE IF NOT EXISTS carcass_batch (
     id BIGINT PRIMARY KEY AUTO_INCREMENT, batch_no VARCHAR(32) NOT NULL, pig_ids JSON NOT NULL,
     total_weight_kg DECIMAL(8,1), slaughterhouse VARCHAR(128), create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
-    operator VARCHAR(32), UNIQUE KEY uk_batch_no (batch_no)
+    operator VARCHAR(32), note VARCHAR(500), UNIQUE KEY uk_batch_no (batch_no)
 ) ENGINE=InnoDB COMMENT='胴体批次';
 
 CREATE TABLE IF NOT EXISTS split_batch (
     id BIGINT PRIMARY KEY AUTO_INCREMENT, batch_no VARCHAR(32) NOT NULL, parent_batch_id BIGINT NOT NULL,
     split_level TINYINT DEFAULT 1, product_name VARCHAR(64) NOT NULL, weight_kg DECIMAL(6,1),
     package_count INT DEFAULT 1, package_type VARCHAR(32), split_time DATETIME NOT NULL,
-    workshop VARCHAR(64), workshop_temp DECIMAL(4,1), operator VARCHAR(32), file_ids TEXT,
+    workshop VARCHAR(64), workshop_temp DECIMAL(4,1), operator VARCHAR(32), file_ids TEXT, note VARCHAR(500),
     content_hash CHAR(64), create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uk_batch_no (batch_no), INDEX idx_parent (parent_batch_id), INDEX idx_level (split_level)
 ) ENGINE=InnoDB COMMENT='分割批次';

@@ -19,6 +19,8 @@ public class CarcassStampDTO {
     @NotBlank(message = "批次号不能为空")
     private String batchNo;
 
+    private String earTagNo;
+
     @NotBlank(message = "胴体编号不能为空")
     private String carcassNo;
 

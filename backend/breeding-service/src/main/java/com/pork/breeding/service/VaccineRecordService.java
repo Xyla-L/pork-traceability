@@ -12,7 +12,7 @@ public interface VaccineRecordService extends IService<VaccineRecord> {
     Page<VaccineRecordVO> pageQuery(Long current, Long size, Long pigId);
     void addRecord(VaccineRecordDTO dto);
     void updateRecord(VaccineRecordDTO dto);
-    VaccineRecordVO getDetail(Long id);
-    void removeRecord(Long id);
+    VaccineRecordVO getDetail(Long pigId, Long id);
+    void removeRecord(Long pigId, Long id);
     List<VaccineRecordVO> listByPigId(Long pigId);
 }

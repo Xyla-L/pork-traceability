@@ -23,4 +23,5 @@ public class CarcassBatch {
     private String slaughterhouse;
     private LocalDateTime createTime;
     private String operator;
+    private String note;
 }

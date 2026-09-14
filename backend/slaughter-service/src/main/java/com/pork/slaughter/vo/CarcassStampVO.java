@@ -12,6 +12,8 @@ public class CarcassStampVO {
 
     private String batchNo;
 
+    private String earTagNo;
+
     private String carcassNo;
 
     private String stampNo;
@@ -29,6 +31,8 @@ public class CarcassStampVO {
     private String contentHash;
 
     private String eSignature;
+
+    private String remark;
 
     private LocalDateTime createTime;
 }

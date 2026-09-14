@@ -7,6 +7,7 @@ import com.pork.slaughter.dto.EntryInspectionDTO;
 import com.pork.slaughter.entity.EntryInspection;
 import com.pork.slaughter.mapper.EntryInspectionMapper;
 import com.pork.slaughter.service.EntryInspectionService;
+import com.pork.slaughter.support.SlaughterStatus;
 import com.pork.slaughter.vo.EntryInspectionVO;
 import com.pork.core.enums.ErrorCode;
 import com.pork.core.exception.BusinessException;
@@ -16,8 +17,9 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -30,6 +32,7 @@ public class EntryInspectionServiceImpl extends ServiceImpl<EntryInspectionMappe
     public boolean addEntry(EntryInspectionDTO dto) {
         EntryInspection entity = new EntryInspection();
         BeanUtils.copyProperties(dto, entity);
+        entity.setStatus(SlaughterStatus.entry(dto.getStatus()));
         entity.setCreateTime(LocalDateTime.now());
         if (!this.save(entity)) throw new BusinessException(ErrorCode.DATABASE_ERROR, "入场查验保存失败");
         return true;
@@ -42,6 +45,7 @@ public class EntryInspectionServiceImpl extends ServiceImpl<EntryInspectionMappe
         EntryInspection entity = new EntryInspection();
         entity.setId(id);
         BeanUtils.copyProperties(dto, entity);
+        entity.setStatus(SlaughterStatus.entry(dto.getStatus()));
         if (!this.updateById(entity)) throw new BusinessException(ErrorCode.DATABASE_ERROR, "入场查验更新失败");
         return true;
     }
@@ -64,8 +68,34 @@ public class EntryInspectionServiceImpl extends ServiceImpl<EntryInspectionMappe
             if (dto.getPigId() != null) {
                 wrapper.eq(EntryInspection::getPigId, dto.getPigId());
             }
+            if (dto.getBatchNo() != null && !dto.getBatchNo().isEmpty()) {
+                wrapper.like(EntryInspection::getBatchNo, dto.getBatchNo());
+            }
+            if (dto.getEarTagNo() != null && !dto.getEarTagNo().isEmpty()) {
+                wrapper.like(EntryInspection::getEarTagNo, dto.getEarTagNo());
+            }
+            if (dto.getSourceFarm() != null && !dto.getSourceFarm().isEmpty()) {
+                wrapper.like(EntryInspection::getSourceFarm, dto.getSourceFarm());
+            }
             if (dto.getVehicleNo() != null && !dto.getVehicleNo().isEmpty()) {
                 wrapper.like(EntryInspection::getVehicleNo, dto.getVehicleNo());
+            }
+            if (dto.getHealthCheck() != null) {
+                wrapper.eq(EntryInspection::getHealthCheck, dto.getHealthCheck());
+            }
+            if (dto.getCertVerified() != null) {
+                wrapper.eq(EntryInspection::getCertVerified, dto.getCertVerified());
+            }
+            // 状态支持中文("待查验/合格/不合格")或数字编码
+            Integer status = SlaughterStatus.entry(dto.getStatus());
+            if (status != null) {
+                wrapper.eq(EntryInspection::getStatus, status);
+            }
+            if (dto.getStartDate() != null && !dto.getStartDate().isEmpty()) {
+                wrapper.ge(EntryInspection::getArriveTime, LocalDate.parse(dto.getStartDate()).atStartOfDay());
+            }
+            if (dto.getEndDate() != null && !dto.getEndDate().isEmpty()) {
+                wrapper.le(EntryInspection::getArriveTime, LocalDate.parse(dto.getEndDate()).atTime(23, 59, 59));
             }
         }
         wrapper.orderByDesc(EntryInspection::getCreateTime);
@@ -77,6 +107,8 @@ public class EntryInspectionServiceImpl extends ServiceImpl<EntryInspectionMappe
         List<EntryInspectionVO> voList = resultPage.getRecords().stream().map(entity -> {
             EntryInspectionVO vo = new EntryInspectionVO();
             BeanUtils.copyProperties(entity, vo);
+            vo.setHealthCheckLabel(entity.getHealthCheck() == null ? null : entity.getHealthCheck() == 1 ? "通过" : "异常");
+            vo.setCertVerifiedLabel(entity.getCertVerified() == null ? null : entity.getCertVerified() == 1 ? "通过" : "异常");
             return vo;
         }).collect(Collectors.toList());
 

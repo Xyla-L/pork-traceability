@@ -58,15 +58,15 @@ public class VaccineRecordController {
 
     @GetMapping("/{id}")
     @Operation(summary = "查询疫苗记录详情")
-    public Result<VaccineRecordVO> getDetail(@PathVariable Long id) {
-        VaccineRecordVO vo = vaccineRecordService.getDetail(id);
+    public Result<VaccineRecordVO> getDetail(@PathVariable Long pigId, @PathVariable Long id) {
+        VaccineRecordVO vo = vaccineRecordService.getDetail(pigId, id);
         return Result.success(vo);
     }
 
     @DeleteMapping("/{id}")
     @Operation(summary = "删除疫苗记录")
-    public Result<Void> remove(@PathVariable Long id) {
-        vaccineRecordService.removeRecord(id);
+    public Result<Void> remove(@PathVariable Long pigId, @PathVariable Long id) {
+        vaccineRecordService.removeRecord(pigId, id);
         return Result.success();
     }
 }

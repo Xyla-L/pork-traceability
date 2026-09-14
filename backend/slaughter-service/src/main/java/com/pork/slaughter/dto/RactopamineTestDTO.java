@@ -17,6 +17,8 @@ public class RactopamineTestDTO {
     @NotBlank(message = "批次号不能为空")
     private String batchNo;
 
+    private String earTagNo;
+
     @NotBlank(message = "样本编号不能为空")
     private String sampleNo;
 
@@ -33,7 +35,8 @@ public class RactopamineTestDTO {
 
     private String samplePart;
 
-    private Integer result;
+    // 查询时支持中文("阴性/阳性/待检测")或数字编码
+    private String result;
 
     private Integer status;
 
@@ -46,6 +49,10 @@ public class RactopamineTestDTO {
 
     private String reportUrl;
     private String remark;
+
+    // --- 查询条件：检测日期区间 YYYY-MM-DD ---
+    private String startDate;
+    private String endDate;
 
     // --- 分页参数 ---
     private Integer pageNum = 1;

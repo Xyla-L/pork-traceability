@@ -14,6 +14,7 @@ public class RactopamineTest {
     private Long pigId;
     private String testNo;
     private String batchNo;
+    private String earTagNo;
     private String sampleNo;
     private String testType;
     private LocalDateTime testTime;

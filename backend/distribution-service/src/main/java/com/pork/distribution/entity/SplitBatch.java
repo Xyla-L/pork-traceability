@@ -25,6 +25,7 @@ public class SplitBatch {
     private BigDecimal workshopTemp;
     private String operator;
     private String fileIds;
+    private String note;
     private String contentHash;
     private LocalDateTime createTime;
 }

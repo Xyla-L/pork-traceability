@@ -13,6 +13,7 @@ import com.pork.sales.entity.RetailSale;
 import com.pork.sales.mapper.RetailSaleMapper;
 import com.pork.sales.service.SalesService;
 import com.pork.sales.vo.QrCodeVO;
+import com.pork.sales.vo.SaleRecordVO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
@@ -35,8 +36,13 @@ public class SalesController {
     }
 
     @GetMapping("/qrcodes")
-    public Result<PageResult<QrCodeVO>> qrs(Integer status, String qrCode, @Valid PageQuery page) {
-        return Result.success(service.pageQrs(status, qrCode, page.getPageNum(), page.getPageSize()));
+    public Result<PageResult<QrCodeVO>> qrs(Integer status, String qrCode,
+                                            @RequestParam(required = false) Integer current,
+                                            @RequestParam(required = false) Integer size,
+                                            @Valid PageQuery page) {
+        long pageNum = current != null ? current : page.getPageNum();
+        long pageSize = size != null ? size : page.getPageSize();
+        return Result.success(service.pageQrs(status, qrCode, pageNum, pageSize));
     }
 
     @PutMapping("/products/{id}/activate")
@@ -46,8 +52,11 @@ public class SalesController {
     public Result<RetailSale> sell(@Valid @RequestBody SalesRequests.SaleCreate request) { return Result.success(service.sell(request)); }
 
     @GetMapping("/records")
-    public Result<PageResult<RetailSale>> records(Long storeId, Integer status, @Valid PageQuery page) {
-        return Result.success(service.pageSales(storeId, status, page.getPageNum(), page.getPageSize()));
+    public Result<PageResult<SaleRecordVO>> records(Long storeId, String status, String productName, String batchNo,
+                                                    String storeName, String startDate, String endDate,
+                                                    @Valid PageQuery page) {
+        return Result.success(service.pageSales(storeId, status, productName, batchNo, storeName,
+                startDate, endDate, page.getPageNum(), page.getPageSize()));
     }
 
     @GetMapping("/warnings")

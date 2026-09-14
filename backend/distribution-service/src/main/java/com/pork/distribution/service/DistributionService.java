@@ -27,6 +27,6 @@ public interface DistributionService {
     List<TemperatureLog> temperatureLogs(Long transportId);
     void arrive(Long id);
     StoreReceipt createReceipt(DistributionRequests.ReceiptCreate request);
-    Page<StoreReceipt> pageReceipts(Long storeId, long pageNum, long pageSize);
+    Page<StoreReceipt> pageReceipts(Long storeId, String storeName, long pageNum, long pageSize);
     List<Map<String, Object>> stores();
 }

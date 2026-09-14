@@ -21,6 +21,7 @@ public class EntryInspectionVO {
     private String abnormalNote;
     private Integer status;
     private String inspector;
+    private String remark;
     private String fileIds; // 实际开发中这里通常是 List<String> 或 List<FileVO>
     private LocalDateTime createTime;
 }

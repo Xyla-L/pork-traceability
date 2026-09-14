@@ -27,9 +27,13 @@ public class PigIndividualController {
             @RequestParam(defaultValue = "1") Long current,
             @RequestParam(defaultValue = "10") Long size,
             @Parameter(description = "耳标号") @RequestParam(required = false) String earTagNo,
-            @Parameter(description = "状态：1-在养,2-已出栏,3-已屠宰,4-异常死亡") @RequestParam(required = false) Integer status) {
+            @Parameter(description = "养殖场ID") @RequestParam(required = false) Long farmId,
+            @Parameter(description = "品种") @RequestParam(required = false) String breed,
+            @Parameter(description = "状态：中文（在养/已出栏/已屠宰/异常）或数字 1-4") @RequestParam(required = false) String status,
+            @Parameter(description = "出生日期起（YYYY-MM-DD）") @RequestParam(required = false) String birthDateStart,
+            @Parameter(description = "出生日期止（YYYY-MM-DD）") @RequestParam(required = false) String birthDateEnd) {
 
-        Page<PigIndividualVO> page = pigIndividualService.pageQuery(current, size, earTagNo, status);
+        Page<PigIndividualVO> page = pigIndividualService.pageQuery(current, size, earTagNo, farmId, breed, status, birthDateStart, birthDateEnd);
         return Result.success(PageResult.of(page));
     }
 

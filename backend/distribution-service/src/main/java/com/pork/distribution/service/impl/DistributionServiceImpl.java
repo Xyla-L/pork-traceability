@@ -54,9 +54,11 @@ public class DistributionServiceImpl implements DistributionService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public SplitBatch createSplit(DistributionRequests.SplitCreate request) {
-        validateParent(request.parentBatchId(), request.splitLevel());
+        Integer splitLevel = request.splitLevel() == null ? resolveSplitLevel(request.parentBatchId()) : request.splitLevel();
+        validateParent(request.parentBatchId(), splitLevel);
         SplitBatch entity = new SplitBatch();
         BeanUtils.copyProperties(request, entity);
+        entity.setSplitLevel(splitLevel);
         entity.setBatchNo(StringUtils.hasText(request.batchNo()) ? request.batchNo() : BusinessNoGenerator.next("SP"));
         entity.setPackageCount(request.packageCount() == null ? 1 : request.packageCount());
         entity.setSplitTime(request.splitTime() == null ? LocalDateTime.now() : request.splitTime());
@@ -247,9 +249,11 @@ public class DistributionServiceImpl implements DistributionService {
     }
 
     @Override
-    public Page<StoreReceipt> pageReceipts(Long storeId, long pageNum, long pageSize) {
+    public Page<StoreReceipt> pageReceipts(Long storeId, String storeName, long pageNum, long pageSize) {
         return receiptMapper.selectPage(new Page<>(pageNum, pageSize), Wrappers.<StoreReceipt>lambdaQuery()
-                .eq(storeId != null, StoreReceipt::getStoreId, storeId).orderByDesc(StoreReceipt::getReceiptTime));
+                .eq(storeId != null, StoreReceipt::getStoreId, storeId)
+                .like(StringUtils.hasText(storeName), StoreReceipt::getStoreName, storeName)
+                .orderByDesc(StoreReceipt::getReceiptTime));
     }
 
     @Override
@@ -261,6 +265,16 @@ public class DistributionServiceImpl implements DistributionService {
     private <T> T require(T value, String message) {
         if (value == null) throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, message);
         return value;
+    }
+
+    private Integer resolveSplitLevel(Long parentId) {
+        if (carcassBatchMapper.selectById(parentId) != null) return 1;
+        SplitBatch parent = splitBatchMapper.selectById(parentId);
+        if (parent == null || parent.getSplitLevel() == null)
+            throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, "父批次不存在");
+        int level = parent.getSplitLevel() + 1;
+        if (level > 4) throw new BusinessException(ErrorCode.PARAM_ERROR, "分割层级不能超过4级");
+        return level;
     }
 
     private void validateParent(Long parentId, Integer splitLevel) {

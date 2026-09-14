@@ -15,6 +15,8 @@ public class RactopamineTestVO {
 
     private String batchNo;
 
+    private String earTagNo;
+
     private String sampleNo;
 
     private String testType;
@@ -37,6 +39,8 @@ public class RactopamineTestVO {
     private String operator;
 
     private String reportUrl;
+
+    private String remark;
 
     private String fileIds;
 

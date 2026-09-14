@@ -8,7 +8,8 @@ import com.pork.breeding.vo.PigIndividualVO;
 
 public interface PigIndividualService extends IService<PigIndividual> {
 
-    Page<PigIndividualVO> pageQuery(Long current, Long size, String earTagNo, Integer status);
+    Page<PigIndividualVO> pageQuery(Long current, Long size, String earTagNo, Long farmId, String breed,
+                                    String status, String birthDateStart, String birthDateEnd);
 
     void addIndividual(PigIndividualDTO dto);
 

@@ -17,15 +17,15 @@ public final class DistributionRequests {
 
     public record BatchCreate(String batchNo, @NotEmpty List<Long> pigIds,
                               @NotNull @DecimalMin("0.1") BigDecimal totalWeightKg,
-                              String slaughterhouse, String operator) { }
+                              String slaughterhouse, String operator, String note) { }
 
     public record SplitCreate(String batchNo, @NotNull Long parentBatchId,
-                              @NotNull @Min(1) @Max(4) Integer splitLevel,
+                              @Min(1) @Max(4) Integer splitLevel,
                               @NotBlank String productName,
                               @NotNull @DecimalMin("0.1") BigDecimal weightKg,
                               @Min(1) Integer packageCount, String packageType,
                               @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime splitTime,
-                              String workshop, BigDecimal workshopTemp, String operator, String fileIds) { }
+                              String workshop, BigDecimal workshopTemp, String operator, String fileIds, String note) { }
 
     public record TransportCreate(String transportNo, @NotNull Long splitBatchId,
                                   @NotBlank String vehicleNo, String vehicleType, String refrigeration,

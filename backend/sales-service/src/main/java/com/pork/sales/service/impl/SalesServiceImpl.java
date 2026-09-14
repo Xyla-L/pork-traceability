@@ -19,6 +19,7 @@ import com.pork.sales.mapper.RecallOrderMapper;
 import com.pork.sales.mapper.RetailSaleMapper;
 import com.pork.sales.service.SalesService;
 import com.pork.sales.vo.QrCodeVO;
+import com.pork.sales.vo.SaleRecordVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -104,11 +105,72 @@ public class SalesServiceImpl implements SalesService {
     }
 
     @Override
-    public PageResult<RetailSale> pageSales(Long storeId, Integer status, long pageNum, long pageSize) {
-        Page<RetailSale> page = saleMapper.selectPage(new Page<>(pageNum, pageSize), Wrappers.<RetailSale>lambdaQuery()
-                .eq(storeId != null, RetailSale::getStoreId, storeId).eq(status != null, RetailSale::getStatus, status)
-                .orderByDesc(RetailSale::getCreateTime));
-        return PageResult.of(page);
+    public PageResult<SaleRecordVO> pageSales(Long storeId, String status, String productName, String batchNo,
+                                              String storeName, String startDate, String endDate, long pageNum, long pageSize) {
+        Integer statusCode = parseStatus(status);
+        LocalDateTime start = StringUtils.hasText(startDate) ? LocalDate.parse(startDate).atStartOfDay() : null;
+        LocalDateTime end = StringUtils.hasText(endDate) ? LocalDate.parse(endDate).atTime(23, 59, 59) : null;
+        var wrapper = Wrappers.<RetailSale>lambdaQuery()
+                .eq(storeId != null, RetailSale::getStoreId, storeId)
+                .eq(statusCode != null, RetailSale::getStatus, statusCode)
+                .like(StringUtils.hasText(storeName), RetailSale::getStoreName, storeName)
+                .ge(start != null, RetailSale::getSellTime, start)
+                .le(end != null, RetailSale::getSellTime, end)
+                .orderByDesc(RetailSale::getCreateTime);
+        Map<Long, Map<String, Object>> splitCache = new HashMap<>();
+        if (StringUtils.hasText(productName) || StringUtils.hasText(batchNo)) {
+            List<RetailSale> matched = saleMapper.selectList(wrapper).stream()
+                    .filter(row -> matchesSplit(row, productName, batchNo, splitCache)).toList();
+            long total = matched.size();
+            int from = (int) Math.min((pageNum - 1) * pageSize, total);
+            int to = (int) Math.min(from + pageSize, total);
+            List<SaleRecordVO> records = matched.subList(from, to).stream().map(row -> toSaleRecordVO(row, splitCache)).toList();
+            return PageResult.of(pageNum, pageSize, total, records);
+        }
+        Page<RetailSale> page = saleMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
+        List<SaleRecordVO> records = page.getRecords().stream().map(row -> toSaleRecordVO(row, splitCache)).toList();
+        return PageResult.of(page.getCurrent(), page.getSize(), page.getTotal(), records);
+    }
+
+    private Integer parseStatus(String status) {
+        if (!StringUtils.hasText(status)) return null;
+        return switch (status.trim()) {
+            case "在售" -> 1;
+            case "已售" -> 2;
+            case "已过期" -> 3;
+            case "已召回" -> 4;
+            default -> status.trim().matches("\\d+") ? Integer.valueOf(status.trim()) : null;
+        };
+    }
+
+    private boolean matchesSplit(RetailSale row, String productName, String batchNo, Map<Long, Map<String, Object>> cache) {
+        Map<String, Object> split = splitInfo(row.getSplitBatchId(), cache);
+        if (split == null) return true;
+        if (StringUtils.hasText(batchNo) && !String.valueOf(split.get("batchNo")).contains(batchNo)) return false;
+        return !StringUtils.hasText(productName) || String.valueOf(split.get("productName")).contains(productName);
+    }
+
+    private SaleRecordVO toSaleRecordVO(RetailSale row, Map<Long, Map<String, Object>> cache) {
+        Map<String, Object> split = splitInfo(row.getSplitBatchId(), cache);
+        String productName = split == null ? null : Objects.toString(split.get("productName"), null);
+        String batchNo = split == null ? null : Objects.toString(split.get("batchNo"), null);
+        return new SaleRecordVO(row.getId(), row.getSplitBatchId(), row.getProductQrCode(), row.getStoreId(), row.getStoreName(),
+                row.getShelfTime(), row.getSellTime(), row.getSellPrice(), row.getSellWeightKg(),
+                row.getIsActivated(), row.getActivateTime(), row.getStatus(), row.getExpireDate(), row.getCreateTime(),
+                productName, batchNo);
+    }
+
+    private Map<String, Object> splitInfo(Long splitBatchId, Map<Long, Map<String, Object>> cache) {
+        if (splitBatchId == null) return null;
+        if (cache.containsKey(splitBatchId)) return cache.get(splitBatchId);
+        Map<String, Object> split;
+        try {
+            split = distributionClient.requireSplit(splitBatchId);
+        } catch (BusinessException e) {
+            split = null;
+        }
+        cache.put(splitBatchId, split);
+        return split;
     }
 
     @Override

@@ -34,6 +34,9 @@ public class VaccineRecordDTO {
     @Schema(description = "操作人")
     private String operator;
 
+    @Schema(description = "剂量")
+    private String dosage;
+
     @Schema(description = "附件文件ID列表")
     private List<String> fileIds;
 }

@@ -27,8 +27,13 @@ public class DistributionController {
     }
 
     @GetMapping("/batches")
-    public Result<PageResult<CarcassBatch>> batches(String batchNo, @Valid PageQuery page) {
-        return Result.success(PageResult.of(service.pageBatches(batchNo, page.getPageNum(), page.getPageSize())));
+    public Result<PageResult<CarcassBatch>> batches(String batchNo,
+                                                    @RequestParam(required = false) Integer current,
+                                                    @RequestParam(required = false) Integer size,
+                                                    @Valid PageQuery page) {
+        long pageNum = current != null ? current : page.getPageNum();
+        long pageSize = size != null ? size : page.getPageSize();
+        return Result.success(PageResult.of(service.pageBatches(batchNo, pageNum, pageSize)));
     }
 
     @PostMapping("/splits")
@@ -83,8 +88,8 @@ public class DistributionController {
     }
 
     @GetMapping("/receipts")
-    public Result<PageResult<StoreReceipt>> receipts(Long storeId, @Valid PageQuery page) {
-        return Result.success(PageResult.of(service.pageReceipts(storeId, page.getPageNum(), page.getPageSize())));
+    public Result<PageResult<StoreReceipt>> receipts(Long storeId, String storeName, @Valid PageQuery page) {
+        return Result.success(PageResult.of(service.pageReceipts(storeId, storeName, page.getPageNum(), page.getPageSize())));
     }
 
     @GetMapping("/stores")

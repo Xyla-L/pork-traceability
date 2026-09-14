@@ -20,8 +20,9 @@ public class SlaughterInspectionDTO {
 
     private String earTagNo;
 
+    // 查询时支持中文("宰前检验/宰后检验/同步检验")或数字编码
     @NotNull(message = "检验类型不能为空")
-    private Integer inspectType;
+    private String inspectType;
 
     @NotNull(message = "检验时间不能为空")
     private LocalDateTime inspectTime;
@@ -32,7 +33,8 @@ public class SlaughterInspectionDTO {
 
     private Integer result;
 
-    private Integer status;
+    // 查询时支持中文("待检验/合格/不合格")或数字编码
+    private String status;
 
     private String conclusion;
 
@@ -48,6 +50,10 @@ public class SlaughterInspectionDTO {
     private String eSignature;
 
     private String fileIds;
+
+    // --- 查询条件：检验日期区间 YYYY-MM-DD ---
+    private String startDate;
+    private String endDate;
 
     // --- 分页参数 ---
     private Integer pageNum = 1;

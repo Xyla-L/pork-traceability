@@ -16,28 +16,33 @@ public class EntryInspectionDTO {
 
     private String earTagNo;
     private String sourceFarm;
-    
+
     @NotNull(message = "到厂时间不能为空")
     private LocalDateTime arriveTime;
-    
+
     private String vehicleNo;
     private BigDecimal weight;
     private String quarantineCert;
-    
+
     @NotNull(message = "临床健康检查结果不能为空")
     private Integer healthCheck; // 1通过 0异常
-    
+
     @NotNull(message = "检疫证核验结果不能为空")
     private Integer certVerified; // 1通过 0异常
-    
+
     private String abnormalNote;
-    
+
     @NotBlank(message = "查验人不能为空")
     private String inspector;
 
-    private Integer status;
+    // 查询时支持中文("待查验/合格/不合格")或数字编码
+    private String status;
     private String remark;
-    
+
     // 前端传来的文件ID列表，后端转为JSON字符串存储
-    private String fileIds; 
+    private String fileIds;
+
+    // --- 查询条件：到厂日期区间 YYYY-MM-DD ---
+    private String startDate;
+    private String endDate;
 }
