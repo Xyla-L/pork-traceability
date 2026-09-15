@@ -32,13 +32,9 @@
           </div>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="180" fixed="right" align="center">
+      <el-table-column label="操作" width="80" fixed="right" align="center">
         <template #default="{ row }">
           <el-button type="primary" link size="small" @click="handleView(row)">详情</el-button>
-          <el-button v-if="row.status === 1 || row.status === 2" type="success" link size="small" @click="handleUpdateProgress(row)">
-            更新进度
-          </el-button>
-          <el-button v-if="row.status === 1" type="warning" link size="small" @click="handleRevoke(row)">撤销</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -82,15 +78,54 @@
       </template>
     </el-dialog>
 
+    <!-- 详情弹窗 -->
+    <el-dialog v-model="detailVisible" title="召回详情" width="600px">
+      <el-descriptions :column="2" border>
+        <el-descriptions-item label="召回编号" :span="2">{{ detailData.recallNo }}</el-descriptions-item>
+        <el-descriptions-item label="召回原因">{{ detailData.reason }}</el-descriptions-item>
+        <el-descriptions-item label="风险等级">
+          <el-tag :type="riskTagType(detailData.riskLevel)" size="small">{{ riskLabel(detailData.riskLevel) }}</el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="发起人">{{ detailData.initiator }}</el-descriptions-item>
+        <el-descriptions-item label="发起时间">{{ detailData.initiateTime }}</el-descriptions-item>
+        <el-descriptions-item label="执行状态">
+          <el-tag :type="statusTagType(detailData.status)" size="small">{{ statusLabel(detailData.status) }}</el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="受影响数量" :span="2">{{ detailData.affectedCount }} 件</el-descriptions-item>
+        <el-descriptions-item label="召回进度" :span="2">
+          <el-progress :percentage="progressPct(detailData)" :status="detailData.status === 3 ? 'success' : detailData.status === 4 ? 'exception' : undefined" :stroke-width="14" />
+          <div class="progress-text">{{ detailData.recalledCount || 0 }} / {{ detailData.affectedCount || 0 }} 件</div>
+        </el-descriptions-item>
+        <el-descriptions-item label="召回范围" :span="2">
+          <div v-if="detailData.batchNames && detailData.batchNames.length" class="scope-tags">
+            <el-tag v-for="b in detailData.batchNames" :key="b" size="small" style="margin-right: 4px; margin-bottom: 4px;">{{ b }}</el-tag>
+          </div>
+          <span v-else>{{ detailData.batchIds?.length ? `共 ${detailData.batchIds.length} 个批次` : '--' }}</span>
+        </el-descriptions-item>
+        <el-descriptions-item label="目标门店" :span="2">
+          <div v-if="detailData.storeNames && detailData.storeNames.length" class="scope-tags">
+            <el-tag v-for="s in detailData.storeNames" :key="s" size="small" style="margin-right: 4px; margin-bottom: 4px;">{{ s }}</el-tag>
+          </div>
+          <span v-else>{{ detailData.storeIds?.length ? `共 ${detailData.storeIds.length} 个门店` : '--' }}</span>
+        </el-descriptions-item>
+        <el-descriptions-item label="备注说明" :span="2">{{ detailData.note || '--' }}</el-descriptions-item>
+      </el-descriptions>
+      <template #footer>
+        <el-button v-if="canUpdate" type="primary" @click="openProgressDialog">更新进度</el-button>
+        <el-button v-if="canRevoke" type="warning" @click="handleRevoke">撤销召回</el-button>
+        <el-button @click="detailVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
+
     <!-- 更新进度弹窗 -->
-    <el-dialog v-model="progressVisible" title="更新召回进度" width="420px" destroy-on-close>
-      <el-form :model="progressForm" label-width="90px">
+    <el-dialog v-model="progressVisible" title="更新召回进度" width="460px" destroy-on-close>
+      <el-form :model="progressForm" label-width="100px">
         <el-form-item label="当前进度">
           <el-progress :percentage="progressForm.pct" :stroke-width="16" />
         </el-form-item>
         <el-form-item label="已召回数量" required>
-          <el-input-number v-model="progressForm.recalled" :min="0" :max="progressForm.max" style="width: 200px" />
-          <span class="progress-hint"> / {{ progressForm.max }}</span>
+          <el-input-number v-model="progressForm.recalled" :min="0" :max="progressForm.max" style="width: 180px" />
+          <span class="progress-hint"> / {{ progressForm.max }} 件</span>
         </el-form-item>
         <el-form-item label="备注">
           <el-input v-model="progressForm.note" placeholder="进度说明" />
@@ -105,7 +140,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { WarningFilled } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { EpTagType } from '@/types/common'
@@ -137,6 +172,12 @@ const storeOptions = [
   { label: 'ZZ便利店', value: 3 }, { label: 'WW农贸市场', value: 4 },
 ]
 
+// 详情弹窗
+const detailVisible = ref(false)
+const detailData = ref<any>({})
+const canUpdate = computed(() => [1, 2].includes(detailData.value.status))
+const canRevoke = computed(() => detailData.value.status === 1)
+
 // 进度更新
 const progressVisible = ref(false)
 const progressForm = reactive({ pct: 0, recalled: 0, max: 100, note: '', row: null as any })
@@ -158,11 +199,11 @@ async function handleSubmitRecall() {
   } catch { /* 错误已由拦截器提示 */ } finally { submitting.value = false }
 }
 
-function handleUpdateProgress(row: any) {
-  progressForm.row = row
-  progressForm.max = row.affectedCount
-  progressForm.recalled = row.recalledCount
-  progressForm.pct = progressPct(row)
+function openProgressDialog() {
+  progressForm.row = detailData.value
+  progressForm.max = detailData.value.affectedCount
+  progressForm.recalled = detailData.value.recalledCount
+  progressForm.pct = progressPct(detailData.value)
   progressForm.note = ''
   progressVisible.value = true
 }
@@ -173,22 +214,27 @@ async function handleSubmitProgress() {
       await salesApi.updateRecallStatus(progressForm.row.id, { status: 3 })
       ElMessage.success('召回进度已更新')
       progressVisible.value = false
+      detailVisible.value = false
       fetchList()
     } catch { /* 错误已由拦截器提示 */ }
   }
 }
 
-async function handleRevoke(row: any) {
-  ElMessageBox.confirm(`确认撤销召回 "${row.recallNo}" 吗？此操作不可逆`, '警告', { type: 'warning' }).then(async () => {
+async function handleRevoke() {
+  ElMessageBox.confirm(`确认撤销召回 "${detailData.value.recallNo}" 吗？此操作不可逆`, '警告', { type: 'warning' }).then(async () => {
     try {
-      await salesApi.updateRecallStatus(row.id, { status: 4 })
+      await salesApi.updateRecallStatus(detailData.value.id, { status: 4 })
       ElMessage.success('召回已撤销')
+      detailVisible.value = false
       fetchList()
     } catch { /* 错误已由拦截器提示 */ }
   }).catch(() => {})
 }
 
-function handleView(row: any) { ElMessage.info(`查看召回详情: ${row.recallNo}`) }
+function handleView(row: any) {
+  detailData.value = row
+  detailVisible.value = true
+}
 
 function handleSizeChange() { pagination.pageNum = 1; fetchList() }
 function handlePageChange() { fetchList() }
@@ -212,4 +258,5 @@ onMounted(() => fetchList())
 .progress-cell { display: flex; align-items: center; gap: 10px; }
 .progress-text { font-size: 12px; color: #909399; white-space: nowrap; flex-shrink: 0; }
 .progress-hint { font-size: 14px; color: #909399; margin-left: 4px; }
+.scope-tags { display: flex; flex-wrap: wrap; }
 </style>

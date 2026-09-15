@@ -52,8 +52,8 @@
             {{ statusLabel(viewData.approvalStatus) }}
           </el-tag>
         </el-descriptions-item>
-        <el-descriptions-item v-if="viewData.approveRemark" label="审批备注" :span="2">
-          {{ viewData.approveRemark }}
+        <el-descriptions-item v-if="viewData.rejectReason" label="驳回原因" :span="2">
+          {{ viewData.rejectReason }}
         </el-descriptions-item>
       </el-descriptions>
     </el-dialog>
@@ -111,6 +111,21 @@ const fetchList = async () => {
   }
 }
 
+// 获取各审批状态数量（tab 角标）
+const fetchCounts = async () => {
+  try {
+    const data = await request.get('/breeding/applies/counts')
+    // 后端 Map 经 JSON 序列化后 key 为字符串 "0"/"1"/"2"
+    statusCounts.value = {
+      0: Number(data?.[0] ?? data?.['0'] ?? 0),
+      1: Number(data?.[1] ?? data?.['1'] ?? 0),
+      2: Number(data?.[2] ?? data?.['2'] ?? 0)
+    }
+  } catch (error) {
+    console.error('获取审批状态数量失败:', error)
+  }
+}
+
 // ==================== 状态切换 ====================
 
 watch(currentStatus, () => {
@@ -146,17 +161,19 @@ const handleApprove = (row) => {
 
 const handleApproveSubmit = async (approveData) => {
   try {
+    // 后端 DTO 契约：approved(Boolean) + comment(String)，不是 approvalStatus/remark
     await request.put(`/breeding/applies/${approveData.id}/approve`, {
-      approvalStatus: approveData.approvalStatus,
-      remark: approveData.remark
+      approved: approveData.approvalStatus === 1,
+      comment: approveData.remark
     })
-    ElMessage.success(
-      approveData.approvalStatus === 1 ? '审批通过' : '已驳回'
-    )
+    ElMessage.success(approveData.approvalStatus === 1 ? '审批通过' : '已驳回')
+    // 接口成功后再关闭弹窗；失败时弹窗保持打开（错误提示由 request 拦截器统一弹出）
+    approveDialogVisible.value = false
+    // 审批改变了状态分布，列表与角标计数都要刷新
     fetchList()
+    fetchCounts()
   } catch (error) {
     console.error('审批失败:', error)
-    ElMessage.error('审批操作失败')
   }
 }
 
@@ -195,6 +212,7 @@ const statusTagType = (status) => {
 
 onMounted(() => {
   fetchList()
+  fetchCounts()
 })
 </script>
 

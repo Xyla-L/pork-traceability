@@ -35,6 +35,12 @@ instance.interceptors.request.use(
 // ========== 响应拦截器 ==========
 instance.interceptors.response.use(
   (response: AxiosResponse<ApiResponse>) => {
+    // 文件预览/下载等二进制响应（responseType: 'blob'）直接返回 Blob，
+    // 不按 { code, data } 业务结构解包，否则 code 为 undefined 会被误判为请求失败
+    if (response.config.responseType === 'blob' || response.data instanceof Blob) {
+      return response.data as any
+    }
+
     const { code, message, data } = response.data
 
     if (code === 200) {

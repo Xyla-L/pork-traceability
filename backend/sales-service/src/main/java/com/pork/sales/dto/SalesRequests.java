@@ -15,8 +15,8 @@ import java.util.Map;
 public final class SalesRequests {
     private SalesRequests() { }
 
-    public record QrBatch(@NotNull Long splitBatchId, @NotNull @Min(1) @Max(1000) Integer count,
-                          Long storeId, String storeName, LocalDate expireDate) { }
+    public record QrBatch(@NotNull Long receiptId, @NotNull @Min(1) @Max(1000) Integer count,
+                          LocalDate expireDate) { }
 
     public record SaleCreate(@NotBlank String qrCode, @NotNull @DecimalMin("0.0") BigDecimal sellPrice,
                              @NotNull @DecimalMin("0.001") BigDecimal sellWeightKg) { }

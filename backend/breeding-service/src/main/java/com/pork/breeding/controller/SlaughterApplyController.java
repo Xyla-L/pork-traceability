@@ -12,6 +12,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/applies")
 @Tag(name = "出栏申报管理", description = "提供出栏申报的查询和审批功能")
@@ -30,6 +32,12 @@ public class SlaughterApplyController {
         return Result.success(PageResult.of(page));
     }
 
+    @GetMapping("/counts")
+    @Operation(summary = "按审批状态统计数量")
+    public Result<Map<Integer, Long>> countByStatus() {
+        return Result.success(slaughterApplyService.countByStatus());
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "查询出栏申报详情")
     public Result<SlaughterApplyVO> getDetail(@PathVariable Long id) {
@@ -41,7 +49,7 @@ public class SlaughterApplyController {
     @Operation(summary = "审批出栏申报")
     public Result<Void> approve(@PathVariable Long id,
                                 @Valid @RequestBody SlaughterApplyApproveDTO dto,
-                                @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+                                @RequestHeader(value = "X-User-Id", required = false) String userId) {
         slaughterApplyService.approve(id, dto, userId);
         return Result.success();
     }

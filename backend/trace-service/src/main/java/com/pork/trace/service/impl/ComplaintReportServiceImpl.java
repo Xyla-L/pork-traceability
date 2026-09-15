@@ -102,7 +102,7 @@ public class ComplaintReportServiceImpl extends ServiceImpl<ComplaintReportMappe
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void handleComplaint(Long id, Integer status, String handleNote, Long handlerUserId) {
-        if (status == null || status < 1 || status > 3) {
+        if (status == null || (status != 2 && status != 3)) {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "举报处理状态无效");
         }
         ComplaintReport report = getById(id);
@@ -110,12 +110,12 @@ public class ComplaintReportServiceImpl extends ServiceImpl<ComplaintReportMappe
         if (handleNote == null || handleNote.isBlank()) {
             throw new BusinessException(ErrorCode.PARAM_MISSING, "处理回复不能为空");
         }
-        // 状态流转校验：待受理(0) -> 处理中(1)/已驳回(3)；处理中(1)/待受理(0) -> 已办结(2)；已办结/已驳回不可再处理
+        // 状态流转校验：待受理(0) -> 已处理(2)/已驳回(3)；已处理/已驳回不可再处理
         Integer current = report.getStatus();
         if (current == null || current == 2 || current == 3) {
-            throw new BusinessException(ErrorCode.PARAM_ERROR, "该举报已办结或已驳回，不能重复处理");
+            throw new BusinessException(ErrorCode.PARAM_ERROR, "该举报已处理或已驳回，不能重复处理");
         }
-        if ((status == 1 || status == 3) && current != 0) {
+        if (current != 0) {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "当前状态不允许该处理操作");
         }
         report.setStatus(status);
@@ -156,8 +156,7 @@ public class ComplaintReportServiceImpl extends ServiceImpl<ComplaintReportMappe
         if (status == null) return "";
         return switch (status) {
             case 0 -> "待受理";
-            case 1 -> "处理中";
-            case 2 -> "已办结";
+            case 2 -> "已处理";
             case 3 -> "已驳回";
             default -> "未知";
         };

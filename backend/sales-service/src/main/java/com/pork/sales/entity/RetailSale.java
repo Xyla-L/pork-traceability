@@ -15,6 +15,8 @@ public class RetailSale {
     @TableId(type = IdType.AUTO)
     private Long id;
     private Long splitBatchId;
+    private Long transportId;
+    private Long receiptId;
     private String productQrCode;
     private Long storeId;
     private String storeName;

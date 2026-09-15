@@ -36,7 +36,7 @@ public class DashboardServiceImpl implements DashboardService {
         long transportCount = total(transports);
         long expireCount = total(warnings);
         long complaintCount = complaintMapper.selectCount(Wrappers.<ComplaintReport>lambdaQuery()
-                .in(ComplaintReport::getStatus, 0, 1));
+                .eq(ComplaintReport::getStatus, 0));
         List<Map<String, Object>> chainRows = records(chain);
         long chainCount = chainRows.stream().filter(row -> inCurrentMonth(row.get("chainTime"), row.get("createTime"))).count();
 
@@ -110,13 +110,13 @@ public class DashboardServiceImpl implements DashboardService {
     private String text(Object value) { return value == null ? "-" : value.toString(); }
 
     private List<Map<String, Object>> complaintTodos() {
-        return complaintMapper.selectList(Wrappers.<ComplaintReport>lambdaQuery().in(ComplaintReport::getStatus, 0, 1)
+        return complaintMapper.selectList(Wrappers.<ComplaintReport>lambdaQuery().eq(ComplaintReport::getStatus, 0)
                         .orderByAsc(ComplaintReport::getCreateTime).last("LIMIT 10")).stream().map(row -> {
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("title", "处理举报 #" + row.getReportNo());
             item.put("type", "举报处理");
             item.put("time", row.getCreateTime());
-            item.put("status", Integer.valueOf(0).equals(row.getStatus()) ? "待处理" : "进行中");
+            item.put("status", "待受理");
             return item;
         }).toList();
     }

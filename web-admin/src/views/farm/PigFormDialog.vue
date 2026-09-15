@@ -4,6 +4,7 @@
     :title="isEdit ? '编辑生猪档案' : '新建生猪档案'"
     width="560px"
     :close-on-click-modal="false"
+    destroy-on-close
     @close="handleClose"
   >
     <el-form
@@ -45,7 +46,10 @@
       <el-form-item label="品种" prop="breed">
         <el-select
           v-model="formData.breed"
-          placeholder="请选择品种"
+          placeholder="请选择或输入品种"
+          filterable
+          allow-create
+          default-first-option
           style="width: 100%"
         >
           <el-option
@@ -141,6 +145,7 @@
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
+import dayjs from 'dayjs'
 import request from '@/utils/request'
 
 const props = defineProps({
@@ -164,9 +169,9 @@ const isEdit = computed(() => !!props.editData)
 
 const formData = reactive({
   earTagNo: '',
-  farmId: '',
+  farmId: null,
   breed: '',
-  birthDate: '',
+  birthDate: dayjs().format('YYYY-MM-DD'),
   gender: 1,
   penNo: '',
   source: '自繁'
@@ -191,6 +196,9 @@ const rules = {
   ],
   birthDate: [
     { required: true, message: '请选择出生日期', trigger: 'change' }
+  ],
+  gender: [
+    { required: true, message: '请选择性别', trigger: 'change' }
   ],
   source: [
     { required: true, message: '请选择来源', trigger: 'change' }
@@ -259,14 +267,15 @@ const handleFarmSubmit = async () => {
 const resetForm = () => {
   Object.assign(formData, {
     earTagNo: '',
-    farmId: '',
+    farmId: null,
     breed: '',
-    birthDate: '',
+    birthDate: dayjs().format('YYYY-MM-DD'),
     gender: 1,
     penNo: '',
     source: '自繁'
   })
-  formRef.value?.resetFields()
+  // 仅清除校验提示，不使用 resetFields（它会把表单恢复为首次挂载时的旧值）
+  formRef.value?.clearValidate()
 }
 
 // 监听 editData 变化，回填表单
@@ -276,13 +285,14 @@ watch(
     if (val) {
       Object.assign(formData, {
           earTagNo: val.earTagNo || '',
-          farmId: val.farmId || '',
+          farmId: val.farmId ?? null,
           breed: val.breed || '',
           birthDate: val.birthDate || '',
-          gender: val.gender || 1,
+          gender: val.gender ?? 1,
           penNo: val.penNo || '',
           source: val.source || '自繁'
         })
+      formRef.value?.clearValidate()
     } else {
       resetForm()
     }

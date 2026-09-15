@@ -3,6 +3,7 @@
     :model-value="visible"
     :title="editData ? '编辑屠宰检验' : '新增屠宰检验'"
     width="600px"
+    destroy-on-close
     @update:model-value="handleVisibleChange"
     @close="handleClose"
   >
@@ -57,7 +58,14 @@
         <el-input v-model="formData.veterinary" placeholder="请输入官方兽医姓名" />
       </el-form-item>
       <el-form-item label="体温(°C)" prop="temperature">
-        <el-input-number v-model="formData.temperature" :min="0" :max="50" :precision="1" style="width: 100%" />
+        <el-input-number
+          v-model="formData.temperature"
+          :min="0"
+          :max="50"
+          :precision="1"
+          placeholder="宰后检验可不填"
+          style="width: 100%"
+        />
       </el-form-item>
       <el-form-item label="状态" prop="status">
         <el-select v-model="formData.status" placeholder="请选择状态" style="width: 100%">
@@ -78,7 +86,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, watch, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
 
@@ -108,7 +116,8 @@ const formData = reactive({
   inspectType: 1,
   inspectTime: '',
   veterinary: '',
-  temperature: 0,
+  // 宰后检验不量体温，允许为空；不要用 0 兜底（会存成无效的 0.0）
+  temperature: null,
   status: 0,
   conclusion: ''
 })
@@ -154,11 +163,10 @@ const resetForm = () => {
   formData.inspectType = 1
   formData.inspectTime = ''
   formData.veterinary = ''
-  formData.temperature = 0
+  formData.temperature = null
   formData.status = 0
   formData.conclusion = ''
   pigOptions.value = []
-  formRef.value?.clearValidate()
 }
 
 watch(() => props.visible, (val) => {
@@ -171,7 +179,7 @@ watch(() => props.visible, (val) => {
       formData.inspectType = props.editData.inspectType ?? 1
       formData.inspectTime = props.editData.inspectTime || ''
       formData.veterinary = props.editData.veterinary || ''
-      formData.temperature = props.editData.temperature ?? 0
+      formData.temperature = props.editData.temperature ?? null
       formData.status = props.editData.status ?? 0
       formData.conclusion = props.editData.conclusion || ''
       if (formData.earTagNo) {
@@ -180,6 +188,10 @@ watch(() => props.visible, (val) => {
     } else {
       resetForm()
     }
+    // 等待表单挂载及字段赋值引发的异步校验落定后，清除残留红字
+    nextTick(() => {
+      formRef.value?.clearValidate()
+    })
   }
 })
 

@@ -44,16 +44,26 @@ public class SalesServiceImpl implements SalesService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public List<String> generateQrs(SalesRequests.QrBatch request) {
-        distributionClient.requireSplit(request.splitBatchId());
+        Map<String, Object> receipt = distributionClient.requireReceipt(request.receiptId());
+        Long transportId = Long.valueOf(Objects.toString(receipt.get("transportId")));
+        Map<String, Object> transport = distributionClient.requireTransport(transportId);
+        if (!Integer.valueOf(4).equals(transport.get("status"))) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "该批次门店尚未签收，无法生成二维码");
+        }
+        Long splitBatchId = Long.valueOf(Objects.toString(transport.get("splitBatchId")));
+        Long storeId = receipt.get("storeId") == null ? 0L : Long.valueOf(Objects.toString(receipt.get("storeId")));
+        String storeName = Objects.toString(receipt.get("storeName"), null);
         List<String> codes = new ArrayList<>(request.count());
         LocalDateTime now = LocalDateTime.now();
         for (int i = 0; i < request.count(); i++) {
             String code = "QR-PORK-" + UUID.randomUUID().toString().replace("-", "").toUpperCase(Locale.ROOT);
             RetailSale row = new RetailSale();
-            row.setSplitBatchId(request.splitBatchId());
+            row.setSplitBatchId(splitBatchId);
+            row.setTransportId(transportId);
+            row.setReceiptId(request.receiptId());
             row.setProductQrCode(code);
-            row.setStoreId(request.storeId() == null ? 0L : request.storeId());
-            row.setStoreName(request.storeName());
+            row.setStoreId(storeId);
+            row.setStoreName(storeName);
             row.setIsActivated(0);
             row.setStatus(1);
             row.setExpireDate(request.expireDate() == null ? LocalDate.now().plusDays(7) : request.expireDate());
@@ -71,24 +81,34 @@ public class SalesServiceImpl implements SalesService {
                 .like(StringUtils.hasText(qrCode), RetailSale::getProductQrCode, qrCode)
                 .orderByDesc(RetailSale::getCreateTime);
         Map<Long, Map<String, Object>> splitCache = new HashMap<>();
+        Map<Long, Map<String, Object>> transportCache = new HashMap<>();
         if (StringUtils.hasText(batchNo)) {
             List<RetailSale> matched = saleMapper.selectList(wrapper).stream()
                     .filter(row -> matchesSplit(row, null, batchNo, splitCache)).toList();
             long total = matched.size();
             int from = (int) Math.min((pageNum - 1) * pageSize, total);
             int to = (int) Math.min(from + pageSize, total);
-            List<QrCodeVO> records = matched.subList(from, to).stream().map(row -> toQrCodeVO(row, splitCache)).toList();
+            List<QrCodeVO> records = matched.subList(from, to).stream()
+                    .map(row -> toQrCodeVO(row, splitCache, transportCache)).toList();
             return PageResult.of(pageNum, pageSize, total, records);
         }
         Page<RetailSale> page = saleMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
-        List<QrCodeVO> records = page.getRecords().stream().map(row -> toQrCodeVO(row, splitCache)).toList();
+        List<QrCodeVO> records = page.getRecords().stream()
+                .map(row -> toQrCodeVO(row, splitCache, transportCache)).toList();
         return PageResult.of(page.getCurrent(), page.getSize(), page.getTotal(), records);
     }
 
-    private QrCodeVO toQrCodeVO(RetailSale row, Map<Long, Map<String, Object>> cache) {
-        Map<String, Object> split = splitInfo(row.getSplitBatchId(), cache);
+    private QrCodeVO toQrCodeVO(RetailSale row, Map<Long, Map<String, Object>> splitCache,
+                                 Map<Long, Map<String, Object>> transportCache) {
+        Map<String, Object> split = splitInfo(row.getSplitBatchId(), splitCache);
         String batchNo = split == null ? null : Objects.toString(split.get("batchNo"), null);
+        String transportNo = null;
+        if (row.getTransportId() != null && transportCache != null) {
+            Map<String, Object> transport = transportInfo(row.getTransportId(), transportCache);
+            if (transport != null) transportNo = Objects.toString(transport.get("transportNo"), null);
+        }
         return new QrCodeVO(row.getId(), row.getProductQrCode(), row.getSplitBatchId(), batchNo,
+                row.getTransportId(), transportNo, row.getReceiptId(), row.getStoreId(), row.getStoreName(),
                 row.getIsActivated() == 0 ? 0 : row.getStatus(), row.getExpireDate(), row.getCreateTime());
     }
 
@@ -189,6 +209,19 @@ public class SalesServiceImpl implements SalesService {
         }
         cache.put(splitBatchId, split);
         return split;
+    }
+
+    private Map<String, Object> transportInfo(Long transportId, Map<Long, Map<String, Object>> cache) {
+        if (transportId == null) return null;
+        if (cache.containsKey(transportId)) return cache.get(transportId);
+        Map<String, Object> transport;
+        try {
+            transport = distributionClient.requireTransport(transportId);
+        } catch (BusinessException e) {
+            transport = null;
+        }
+        cache.put(transportId, transport);
+        return transport;
     }
 
     @Override

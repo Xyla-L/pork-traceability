@@ -45,6 +45,7 @@
       :data="tableData"
       :loading="tableLoading"
       @delete="handleDelete"
+      @edit="handleEdit"
     />
 
     <!-- 分页 -->
@@ -61,9 +62,10 @@
       />
     </div>
 
-    <!-- 录入疫苗弹窗 -->
+    <!-- 录入/编辑疫苗弹窗 -->
     <VaccineFormDialog
       v-model:visible="formDialogVisible"
+      :edit-data="currentEditData"
       @saved="handleFormSaved"
     />
   </div>
@@ -170,13 +172,21 @@ const handlePageChange = (page) => {
 // ==================== 表单弹窗 ====================
 
 const formDialogVisible = ref(false)
+const currentEditData = ref(null)
 
 const handleCreate = () => {
+  currentEditData.value = null
+  formDialogVisible.value = true
+}
+
+const handleEdit = (row) => {
+  currentEditData.value = { ...row }
   formDialogVisible.value = true
 }
 
 const handleFormSaved = () => {
   // 提交已在 VaccineFormDialog 内部完成并成功，这里只需刷新列表
+  currentEditData.value = null
   fetchList()
 }
 

@@ -72,21 +72,21 @@ SET @pig15 := (SELECT id FROM pig_individual WHERE ear_tag_no='ET-TEST-0015');
 
 -- 疫苗记录：已有1条，新增15条
 INSERT INTO vaccine_record (pig_id, vaccine_name, batch_no, manufacturer, inject_time, dosage, inject_site, operator, file_ids) VALUES
-(@pig1, '猪瘟活疫苗', 'VAC-TEST-0001', '示范动物药业', DATE_SUB(NOW(), INTERVAL 100 DAY), '2ml/头', '颈部肌肉', '李牧', '[]'),
-(@pig2, '口蹄疫疫苗', 'VAC-TEST-0002', '华孚生物', DATE_SUB(NOW(), INTERVAL 90 DAY), '3ml/头', '颈部肌肉', '王场长', '[]'),
-(@pig3, '猪蓝耳疫苗', 'VAC-TEST-0003', '中牧实业', DATE_SUB(NOW(), INTERVAL 85 DAY), '2ml/头', '臀部肌肉', '王场长', '[]'),
-(@pig4, '猪瘟活疫苗', 'VAC-TEST-0004', '示范动物药业', DATE_SUB(NOW(), INTERVAL 80 DAY), '2ml/头', '颈部肌肉', '刘经理', '[]'),
-(@pig5, '口蹄疫疫苗', 'VAC-TEST-0005', '华孚生物', DATE_SUB(NOW(), INTERVAL 75 DAY), '3ml/头', '颈部肌肉', '刘经理', '[]'),
-(@pig6, '猪蓝耳疫苗', 'VAC-TEST-0006', '中牧实业', DATE_SUB(NOW(), INTERVAL 70 DAY), '2ml/头', '臀部肌肉', '陈场长', '[]'),
-(@pig7, '伪狂犬疫苗', 'VAC-TEST-0007', '哈兽维科', DATE_SUB(NOW(), INTERVAL 65 DAY), '2ml/头', '颈部肌肉', '陈场长', '[]'),
-(@pig8, '猪瘟活疫苗', 'VAC-TEST-0008', '示范动物药业', DATE_SUB(NOW(), INTERVAL 60 DAY), '2ml/头', '颈部肌肉', '赵社长', '[]'),
-(@pig9, '口蹄疫疫苗', 'VAC-TEST-0009', '华孚生物', DATE_SUB(NOW(), INTERVAL 55 DAY), '3ml/头', '颈部肌肉', '赵社长', '[]'),
-(@pig10, '猪蓝耳疫苗', 'VAC-TEST-0010', '中牧实业', DATE_SUB(NOW(), INTERVAL 50 DAY), '2ml/头', '臀部肌肉', '孙总', '[]'),
-(@pig11, '伪狂犬疫苗', 'VAC-TEST-0011', '哈兽维科', DATE_SUB(NOW(), INTERVAL 45 DAY), '2ml/头', '颈部肌肉', '孙总', '[]'),
-(@pig12, '猪瘟活疫苗', 'VAC-TEST-0012', '示范动物药业', DATE_SUB(NOW(), INTERVAL 40 DAY), '2ml/头', '颈部肌肉', '周场长', '[]'),
-(@pig13, '口蹄疫疫苗', 'VAC-TEST-0013', '华孚生物', DATE_SUB(NOW(), INTERVAL 35 DAY), '3ml/头', '颈部肌肉', '吴经理', '[]'),
-(@pig14, '猪蓝耳疫苗', 'VAC-TEST-0014', '中牧实业', DATE_SUB(NOW(), INTERVAL 30 DAY), '2ml/头', '臀部肌肉', '郑场长', '[]'),
-(@pig15, '伪狂犬疫苗', 'VAC-TEST-0015', '哈兽维科', DATE_SUB(NOW(), INTERVAL 25 DAY), '2ml/头', '颈部肌肉', '王主任', '[]')
+(@pig1, '猪瘟活疫苗', 'VAC-TEST-0001', '示范动物药业', DATE_SUB(NOW(), INTERVAL 100 DAY), '2ml', '颈部肌肉', '李牧', '[]'),
+(@pig2, '口蹄疫疫苗', 'VAC-TEST-0002', '华孚生物', DATE_SUB(NOW(), INTERVAL 90 DAY), '3ml', '颈部肌肉', '王场长', '[]'),
+(@pig3, '猪蓝耳疫苗', 'VAC-TEST-0003', '中牧实业', DATE_SUB(NOW(), INTERVAL 85 DAY), '2ml', '臀部肌肉', '王场长', '[]'),
+(@pig4, '猪瘟活疫苗', 'VAC-TEST-0004', '示范动物药业', DATE_SUB(NOW(), INTERVAL 80 DAY), '2ml', '颈部肌肉', '刘经理', '[]'),
+(@pig5, '口蹄疫疫苗', 'VAC-TEST-0005', '华孚生物', DATE_SUB(NOW(), INTERVAL 75 DAY), '3ml', '颈部肌肉', '刘经理', '[]'),
+(@pig6, '猪蓝耳疫苗', 'VAC-TEST-0006', '中牧实业', DATE_SUB(NOW(), INTERVAL 70 DAY), '2ml', '臀部肌肉', '陈场长', '[]'),
+(@pig7, '伪狂犬疫苗', 'VAC-TEST-0007', '哈兽维科', DATE_SUB(NOW(), INTERVAL 65 DAY), '2ml', '颈部肌肉', '陈场长', '[]'),
+(@pig8, '猪瘟活疫苗', 'VAC-TEST-0008', '示范动物药业', DATE_SUB(NOW(), INTERVAL 60 DAY), '2ml', '颈部肌肉', '赵社长', '[]'),
+(@pig9, '口蹄疫疫苗', 'VAC-TEST-0009', '华孚生物', DATE_SUB(NOW(), INTERVAL 55 DAY), '3ml', '颈部肌肉', '赵社长', '[]'),
+(@pig10, '猪蓝耳疫苗', 'VAC-TEST-0010', '中牧实业', DATE_SUB(NOW(), INTERVAL 50 DAY), '2ml', '臀部肌肉', '孙总', '[]'),
+(@pig11, '伪狂犬疫苗', 'VAC-TEST-0011', '哈兽维科', DATE_SUB(NOW(), INTERVAL 45 DAY), '2ml', '颈部肌肉', '孙总', '[]'),
+(@pig12, '猪瘟活疫苗', 'VAC-TEST-0012', '示范动物药业', DATE_SUB(NOW(), INTERVAL 40 DAY), '2ml', '颈部肌肉', '周场长', '[]'),
+(@pig13, '口蹄疫疫苗', 'VAC-TEST-0013', '华孚生物', DATE_SUB(NOW(), INTERVAL 35 DAY), '3ml', '颈部肌肉', '吴经理', '[]'),
+(@pig14, '猪蓝耳疫苗', 'VAC-TEST-0014', '中牧实业', DATE_SUB(NOW(), INTERVAL 30 DAY), '2ml', '臀部肌肉', '郑场长', '[]'),
+(@pig15, '伪狂犬疫苗', 'VAC-TEST-0015', '哈兽维科', DATE_SUB(NOW(), INTERVAL 25 DAY), '2ml', '颈部肌肉', '王主任', '[]')
 ON DUPLICATE KEY UPDATE inject_time=VALUES(inject_time);
 
 -- 出栏申报：已有1条，新增15条

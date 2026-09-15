@@ -3,6 +3,7 @@
     :model-value="visible"
     :title="editData ? '编辑瘦肉精检测' : '新增瘦肉精检测'"
     width="600px"
+    destroy-on-close
     @update:model-value="handleVisibleChange"
     @close="handleClose"
   >
@@ -77,9 +78,6 @@
           <el-option label="已完成" :value="2" />
         </el-select>
       </el-form-item>
-      <el-form-item label="检测报告" prop="reportUrl">
-        <el-input v-model="formData.reportUrl" placeholder="请输入报告链接" />
-      </el-form-item>
       <el-form-item label="备注" prop="remark">
         <el-input v-model="formData.remark" type="textarea" :rows="3" placeholder="请输入备注" />
       </el-form-item>
@@ -92,7 +90,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, watch, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
 
@@ -194,7 +192,6 @@ const resetForm = () => {
   formData.reportUrl = ''
   formData.remark = ''
   pigOptions.value = []
-  formRef.value?.clearValidate()
 }
 
 watch(() => props.visible, (val) => {
@@ -222,6 +219,10 @@ watch(() => props.visible, (val) => {
     } else {
       resetForm()
     }
+    // 等待表单挂载及字段赋值引发的异步校验落定后，清除残留红字
+    nextTick(() => {
+      formRef.value?.clearValidate()
+    })
   }
 })
 

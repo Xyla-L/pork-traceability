@@ -17,7 +17,11 @@
       </el-table-column>
       <el-table-column prop="inspectTime" label="检验时间" min-width="160" align="center" />
       <el-table-column prop="veterinary" label="检验员" min-width="100" align="center" />
-      <el-table-column prop="temperature" label="体温(°C)" min-width="100" align="center" />
+      <el-table-column prop="temperature" label="体温(°C)" min-width="100" align="center">
+        <template #default="{ row }">
+          {{ row.temperature === null || row.temperature === undefined || row.temperature === '' ? '--' : row.temperature }}
+        </template>
+      </el-table-column>
       <el-table-column prop="status" label="状态" min-width="100" align="center">
         <template #default="{ row }">
           <el-tag :type="inspectStatusTag(row.status)" size="small">{{ inspectStatusLabel(row.status) }}</el-tag>

@@ -31,9 +31,8 @@ export const getComplaintList = async (params) => {
 }
 
 export const complaintStatusLabel = (status) => ({
-  0: '待处理',
-  1: '处理中',
-  2: '已办结',
+  0: '待受理',
+  2: '已处理',
   3: '已驳回',
 }[status] || '未知状态')
 

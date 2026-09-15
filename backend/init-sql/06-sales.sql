@@ -1,12 +1,14 @@
 USE db_sales;
 
 CREATE TABLE IF NOT EXISTS retail_sale (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT, split_batch_id BIGINT NOT NULL, product_qr_code VARCHAR(64) NOT NULL,
+    id BIGINT PRIMARY KEY AUTO_INCREMENT, split_batch_id BIGINT NOT NULL, transport_id BIGINT,
+    receipt_id BIGINT, product_qr_code VARCHAR(64) NOT NULL,
     store_id BIGINT NOT NULL, store_name VARCHAR(128), shelf_time DATETIME, sell_time DATETIME,
     sell_price DECIMAL(8,2), sell_weight_kg DECIMAL(6,2), is_activated TINYINT DEFAULT 0,
     activate_time DATETIME, status TINYINT DEFAULT 1, expire_date DATE NOT NULL, block_hash VARCHAR(128),
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP, UNIQUE KEY uk_qr (product_qr_code),
-    INDEX idx_status_expire (status, expire_date), INDEX idx_store (store_id), INDEX idx_batch (split_batch_id)
+    INDEX idx_status_expire (status, expire_date), INDEX idx_store (store_id),
+    INDEX idx_batch (split_batch_id), INDEX idx_transport (transport_id), INDEX idx_receipt (receipt_id)
 ) ENGINE=InnoDB COMMENT='零售终端产品';
 
 CREATE TABLE IF NOT EXISTS expire_warning (

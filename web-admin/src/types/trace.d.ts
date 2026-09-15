@@ -118,8 +118,8 @@ export interface ComplaintReport {
   createTime: string
 }
 
-export type ComplaintStatus = 0 | 1 | 2 | 3
-// 0=待受理, 1=处理中, 2=已办结, 3=已驳回
+export type ComplaintStatus = 0 | 2 | 3
+// 0=待受理, 2=已处理, 3=已驳回
 
 // ========== 验真相关 ==========
 

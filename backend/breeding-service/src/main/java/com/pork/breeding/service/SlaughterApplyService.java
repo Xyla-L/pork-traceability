@@ -7,8 +7,18 @@ import com.pork.breeding.dto.SlaughterApplyDTO;
 import com.pork.breeding.entity.SlaughterApply;
 import com.pork.breeding.vo.SlaughterApplyVO;
 
+import java.util.Map;
+
 public interface SlaughterApplyService extends IService<SlaughterApply> {
     Page<SlaughterApplyVO> pageQuery(Long current, Long size, Integer approvalStatus);
+
+    /**
+     * 按审批状态统计数量
+     *
+     * @return key 为审批状态（0-待审, 1-通过, 2-驳回），value 为对应数量
+     */
+    Map<Integer, Long> countByStatus();
+
     SlaughterApplyVO getDetail(Long id);
 
     /**
@@ -23,7 +33,7 @@ public interface SlaughterApplyService extends IService<SlaughterApply> {
      *
      * @param id         申报ID
      * @param dto        审批结果
-     * @param approverId 审批人ID（来自网关下发的 X-User-Id）
+     * @param approverId 审批人标识（网关下发的 X-User-Id，值为登录用户名）
      */
-    void approve(Long id, SlaughterApplyApproveDTO dto, Long approverId);
+    void approve(Long id, SlaughterApplyApproveDTO dto, String approverId);
 }

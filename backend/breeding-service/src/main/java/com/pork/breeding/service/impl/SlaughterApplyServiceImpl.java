@@ -1,5 +1,6 @@
 package com.pork.breeding.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -21,6 +22,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -66,6 +70,28 @@ public class SlaughterApplyServiceImpl extends ServiceImpl<SlaughterApplyMapper,
     }
 
     @Override
+    public Map<Integer, Long> countByStatus() {
+        // 一次 GROUP BY 查出各状态数量，缺失的状态补 0
+        List<Map<String, Object>> rows = this.listMaps(
+                new QueryWrapper<SlaughterApply>()
+                        .select("approval_status AS status", "COUNT(*) AS cnt")
+                        .groupBy("approval_status")
+        );
+        Map<Integer, Long> result = new HashMap<>();
+        result.put(STATUS_PENDING, 0L);
+        result.put(STATUS_APPROVED, 0L);
+        result.put(STATUS_REJECTED, 0L);
+        for (Map<String, Object> row : rows) {
+            Object status = row.get("status");
+            Object cnt = row.get("cnt");
+            if (status != null && cnt != null) {
+                result.put(((Number) status).intValue(), ((Number) cnt).longValue());
+            }
+        }
+        return result;
+    }
+
+    @Override
     public SlaughterApplyVO getDetail(Long id) {
         SlaughterApply apply = this.getById(id);
         if (apply == null) {
@@ -105,7 +131,7 @@ public class SlaughterApplyServiceImpl extends ServiceImpl<SlaughterApplyMapper,
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void approve(Long id, SlaughterApplyApproveDTO dto, Long approverId) {
+    public void approve(Long id, SlaughterApplyApproveDTO dto, String approverId) {
         SlaughterApply apply = this.getById(id);
         if (apply == null) {
             throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, "出栏申报记录不存在");
@@ -117,7 +143,8 @@ public class SlaughterApplyServiceImpl extends ServiceImpl<SlaughterApplyMapper,
         boolean approved = Boolean.TRUE.equals(dto.getApproved());
         apply.setApprovalStatus(approved ? STATUS_APPROVED : STATUS_REJECTED);
         apply.setApprovalTime(LocalDateTime.now());
-        apply.setApprover(approverId == null ? "系统" : String.valueOf(approverId));
+        // X-User-Id 由网关注入，值为登录用户名（可能为 null，如绕过网关直连）
+        apply.setApprover(approverId == null || approverId.isBlank() ? "系统" : approverId);
         apply.setRejectReason(approved ? null : dto.getComment());
         if (!this.updateById(apply)) {
             throw new BusinessException(ErrorCode.DATABASE_ERROR, "出栏申报审批失败");

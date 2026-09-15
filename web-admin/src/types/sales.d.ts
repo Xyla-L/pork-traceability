@@ -25,13 +25,18 @@ export interface QrcodeItem {
   qrCode: string
   splitBatchId: number
   batchNo: string
+  transportId?: number
+  transportNo?: string
+  receiptId?: number
+  storeId?: number
+  storeName?: string
   status: QrcodeStatus
   expireDate: string
   createTime: string
 }
 
-export type QrcodeStatus = 0 | 1 | 2 | 3
-// 0=未激活, 1=在售, 2=已售, 3=已过期
+export type QrcodeStatus = 0 | 1 | 2 | 3 | 4
+// 0=未激活, 1=在售, 2=已售, 3=已过期, 4=已召回
 
 export interface ExpireWarning {
   id: number

@@ -8,6 +8,16 @@ export const distributionApi = {
   getBatches(params?: any) {
     return request.get('/distribution/batches', { params })
   },
+  updateBatch(id: number, data: any) {
+    return request.put(`/distribution/batches/${id}`, data)
+  },
+  deleteBatch(id: number) {
+    return request.delete(`/distribution/batches/${id}`)
+  },
+  /** 生猪归批占用映射：[{pigId, batchId, batchNo}] */
+  getPigOccupancy() {
+    return request.get('/distribution/batches/pig-occupancy')
+  },
 
   // ========== 分割操作 ==========
   createSplit(data: any) {
@@ -16,8 +26,17 @@ export const distributionApi = {
   getSplitDetail(id: number) {
     return request.get(`/distribution/splits/${id}`)
   },
+  updateSplit(id: number, data: any) {
+    return request.put(`/distribution/splits/${id}`, data)
+  },
+  deleteSplit(id: number) {
+    return request.delete(`/distribution/splits/${id}`)
+  },
   getSplitTree(batchNo: string) {
     return request.get(`/distribution/splits/tree/${batchNo}`)
+  },
+  getSplits(params?: any) {
+    return request.get('/distribution/splits', { params })
   },
 
   // ========== 冷链运输 ==========
@@ -29,6 +48,12 @@ export const distributionApi = {
   },
   getTransportDetail(id: number) {
     return request.get(`/distribution/transports/${id}`)
+  },
+  updateTransport(id: number, data: any) {
+    return request.put(`/distribution/transports/${id}`, data)
+  },
+  deleteTransport(id: number) {
+    return request.delete(`/distribution/transports/${id}`)
   },
   departTransport(id: number) {
     return request.put(`/distribution/transports/${id}/depart`)
@@ -49,6 +74,9 @@ export const distributionApi = {
   },
   getReceipts(params?: any) {
     return request.get('/distribution/receipts', { params })
+  },
+  deleteReceipt(id: number) {
+    return request.delete(`/distribution/receipts/${id}`)
   },
 
   // ========== 门店 ==========

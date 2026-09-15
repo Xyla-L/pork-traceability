@@ -4,6 +4,7 @@
     title="出栏申报审批"
     width="560px"
     :close-on-click-modal="false"
+    destroy-on-close
     @close="handleClose"
   >
     <!-- 申报详情 -->
@@ -70,7 +71,6 @@
 
 <script setup>
 import { ref, reactive, watch } from 'vue'
-import { ElMessage } from 'element-plus'
 
 const props = defineProps({
   visible: {
@@ -138,6 +138,8 @@ const handleClose = () => {
   emit('update:visible', false)
 }
 
+// 仅做表单校验并抛出事件；成功提示与关窗由父组件在接口成功后处理，
+// 失败时弹窗保持打开，错误信息由 request 拦截器统一提示
 const handleApprove = async () => {
   try {
     await formRef.value.validate()
@@ -149,8 +151,6 @@ const handleApprove = async () => {
     approvalStatus: 1,
     remark: approveForm.remark
   })
-  ElMessage.success('审批通过')
-  handleClose()
 }
 
 const handleReject = async () => {
@@ -164,8 +164,6 @@ const handleReject = async () => {
     approvalStatus: 2,
     remark: approveForm.remark
   })
-  ElMessage.success('已驳回')
-  handleClose()
 }
 
 // 监听弹窗打开时重置

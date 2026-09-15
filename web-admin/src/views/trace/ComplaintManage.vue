@@ -15,8 +15,7 @@
         <el-form-item label="状态">
           <el-select v-model="searchForm.status" placeholder="全部" clearable style="width: 120px">
             <el-option label="待受理" :value="0" />
-            <el-option label="处理中" :value="1" />
-            <el-option label="已办结" :value="2" />
+            <el-option label="已处理" :value="2" />
             <el-option label="已驳回" :value="3" />
           </el-select>
         </el-form-item>
@@ -32,8 +31,7 @@
       <el-radio-group v-model="statusTab" size="default" @change="handleStatusTabChange">
         <el-radio-button :value="-1">全部 ({{ totalCount }})</el-radio-button>
         <el-radio-button :value="0">待受理 ({{ counts[0] }})</el-radio-button>
-        <el-radio-button :value="1">处理中 ({{ counts[1] }})</el-radio-button>
-        <el-radio-button :value="2">已办结 ({{ counts[2] }})</el-radio-button>
+        <el-radio-button :value="2">已处理 ({{ counts[2] }})</el-radio-button>
         <el-radio-button :value="3">已驳回 ({{ counts[3] }})</el-radio-button>
       </el-radio-group>
     </div>
@@ -54,13 +52,9 @@
       </el-table-column>
       <el-table-column prop="createTime" label="举报时间" width="170" align="center" />
       <el-table-column prop="handler" label="处理人" width="100" align="center" />
-      <el-table-column label="操作" width="200" fixed="right" align="center">
+      <el-table-column label="操作" width="160" fixed="right" align="center">
         <template #default="{ row }">
           <el-button type="primary" link size="small" @click="handleView(row)">详情</el-button>
-          <el-button v-if="row.status === 0 || row.status === 1" type="success" link size="small" @click="handleDeal(row)">
-            {{ row.status === 0 ? '受理' : '办结' }}
-          </el-button>
-          <el-button v-if="row.status === 0" type="danger" link size="small" @click="handleReject(row)">驳回</el-button>
           <el-button type="info" link size="small" @click="goToTrace(row)">追溯</el-button>
         </template>
       </el-table-column>
@@ -107,22 +101,15 @@
         </div>
         <div class="drawer-actions">
           <el-button type="primary" @click="goToTrace(currentRow)">跳转追溯查询</el-button>
-          <el-button v-if="currentRow.status === 0" type="success" @click="drawerVisible = false; handleDeal(currentRow)">受理</el-button>
-          <el-button v-if="currentRow.status === 1" type="success" @click="drawerVisible = false; handleDeal(currentRow)">办结</el-button>
+          <el-button v-if="currentRow.status === 0" type="success" @click="drawerVisible = false; handleDeal(currentRow)">处理</el-button>
           <el-button v-if="currentRow.status === 0" type="danger" @click="drawerVisible = false; handleReject(currentRow)">驳回</el-button>
         </div>
       </template>
     </el-drawer>
 
-    <!-- 处理弹窗 (受理/办结) -->
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="480px" destroy-on-close>
+    <!-- 处理弹窗 -->
+    <el-dialog v-model="dialogVisible" title="处理举报" width="480px" destroy-on-close>
       <el-form :model="handleForm" label-width="80px">
-        <el-form-item label="处理方式" required>
-          <el-radio-group v-model="handleForm.action">
-            <el-radio value="accept" v-if="currentRow?.status === 0">受理</el-radio>
-            <el-radio value="complete" v-if="currentRow?.status === 1">办结</el-radio>
-          </el-radio-group>
-        </el-form-item>
         <el-form-item label="处理回复" required>
           <el-input v-model="handleForm.note" type="textarea" :rows="4" placeholder="请输入处理回复内容" />
         </el-form-item>
@@ -157,8 +144,8 @@ const counts = computed(() => {
 })
 const totalCount = computed(() => tableData.value.length)
 
-const complaintStatusType = (s: number): EpTagType => (({ 0: 'danger', 1: 'warning', 2: 'success', 3: 'info' } as Record<number, EpTagType>)[s] || 'info')
-const complaintStatusLabel = (s: number) => ({ 0: '待受理', 1: '处理中', 2: '已办结', 3: '已驳回' } as Record<number, string>)[s] || ''
+const complaintStatusType = (s: number): EpTagType => (({ 0: 'danger', 2: 'success', 3: 'info' } as Record<number, EpTagType>)[s] || 'info')
+const complaintStatusLabel = (s: number) => ({ 0: '待受理', 2: '已处理', 3: '已驳回' } as Record<number, string>)[s] || ''
 
 // 详情抽屉
 const drawerVisible = ref(false)
@@ -167,15 +154,11 @@ const currentRow = ref<any>(null)
 // 处理弹窗
 const dialogVisible = ref(false)
 const submitting = ref(false)
-const handleForm = reactive({ action: '', note: '' })
-const dialogTitle = computed(() => {
-  if (!currentRow.value) return '处理举报'
-  return currentRow.value.status === 0 ? '受理举报' : '办结举报'
-})
+const handleForm = reactive({ note: '' })
 
 function handleView(row: any) { currentRow.value = row; drawerVisible.value = true }
-function handleDeal(row: any) { currentRow.value = row; handleForm.action = row.status === 0 ? 'accept' : 'complete'; handleForm.note = ''; dialogVisible.value = true }
-function handleReject(row: any) { currentRow.value = row; handleForm.action = 'reject'; handleForm.note = ''; dialogVisible.value = true }
+function handleDeal(row: any) { currentRow.value = row; handleForm.note = ''; dialogVisible.value = true }
+function handleReject(row: any) { currentRow.value = row; handleForm.note = ''; dialogVisible.value = true }
 function previewPhoto(_photo: any) { ElMessage.info('查看照片大图') }
 function goToTrace(row: any) { router.push(`/admin/trace/search`) }
 
@@ -186,9 +169,9 @@ async function submitDeal() {
   }
   submitting.value = true
   try {
-    const status = handleForm.action === 'reject' ? 3 : handleForm.action === 'accept' ? 1 : 2
+    const status = currentRow.value.status === 0 ? 2 : 3
     await traceApi.handleComplaint(currentRow.value.id, { status, handleNote: handleForm.note.trim() })
-    ElMessage.success(status === 3 ? '举报已驳回' : status === 1 ? '举报已受理' : '举报已办结')
+    ElMessage.success(status === 2 ? '举报已处理' : '举报已驳回')
     dialogVisible.value = false
     await fetchList()
   } finally {

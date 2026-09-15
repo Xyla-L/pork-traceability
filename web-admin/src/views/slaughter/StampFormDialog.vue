@@ -3,6 +3,7 @@
     :model-value="visible"
     :title="editData ? '编辑检疫盖章' : '新增检疫盖章'"
     width="600px"
+    destroy-on-close
     @update:model-value="handleVisibleChange"
     @close="handleClose"
   >
@@ -80,7 +81,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, watch, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
 
@@ -174,7 +175,6 @@ const resetForm = () => {
   formData.status = 0
   formData.remark = ''
   pigOptions.value = []
-  formRef.value?.clearValidate()
 }
 
 watch(() => props.visible, (val) => {
@@ -199,6 +199,10 @@ watch(() => props.visible, (val) => {
     } else {
       resetForm()
     }
+    // 等待表单挂载及字段赋值引发的异步校验落定后，清除残留红字
+    nextTick(() => {
+      formRef.value?.clearValidate()
+    })
   }
 })
 

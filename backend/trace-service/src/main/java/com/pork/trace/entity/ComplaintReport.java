@@ -60,7 +60,7 @@ public class ComplaintReport {
     private List<String> fileIds;
 
     /**
-     * 处理状态：0待受理、1处理中、2已办结、3已驳回
+     * 处理状态：0待受理、2已处理、3已驳回
      */
     private Integer status;
 

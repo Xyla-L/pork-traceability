@@ -3,6 +3,7 @@
     :model-value="visible"
     :title="dialogTitle"
     width="600px"
+    destroy-on-close
     @update:model-value="handleVisibleChange"
     @close="handleClose"
   >
@@ -32,7 +33,7 @@
           />
         </el-select>
       </el-form-item>
-      <el-form-item label="来源养殖场" prop="sourceFarm">
+      <el-form-item label="来源养殖场">
         <el-input v-model="formData.sourceFarm" placeholder="选择生猪后自动带出" readonly />
       </el-form-item>
       <el-form-item label="批次号" prop="batchNo">
@@ -90,7 +91,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch } from 'vue'
+import { ref, reactive, computed, watch, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
 
@@ -140,7 +141,7 @@ const formData = reactive({
 
 const formRules = {
   earTagNo: [{ required: true, message: '请选择生猪', trigger: 'change' }],
-  sourceFarm: [{ required: true, message: '请选择生猪以带出来源养殖场', trigger: 'change' }],
+  // 来源养殖场随生猪自动带出，不单独给出校验提示（生猪未选时仅提示“请选择生猪”）
   batchNo: [{ required: true, message: '请输入批次号', trigger: 'blur' }],
   arriveTime: [{ required: true, message: '请选择入场时间', trigger: 'change' }],
   weight: [{ required: true, message: '请输入重量', trigger: 'blur' }],
@@ -204,7 +205,6 @@ const resetForm = () => {
   formData.status = 0
   formData.remark = ''
   pigOptions.value = []
-  formRef.value?.clearValidate()
 }
 
 watch(() => props.visible, (val) => {
@@ -231,6 +231,11 @@ watch(() => props.visible, (val) => {
     } else {
       resetForm()
     }
+    // 等待字段变更触发的异步 change 校验全部执行完，再清除校验态，
+    // 否则重新打开新增弹窗时残留的红字会在 clearValidate 之后再次出现
+    nextTick(() => {
+      formRef.value?.clearValidate()
+    })
   }
 })
 

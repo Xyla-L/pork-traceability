@@ -36,6 +36,7 @@ public class DistributionServiceImpl implements DistributionService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public CarcassBatch createBatch(DistributionRequests.BatchCreate request) {
+        validatePigNotOccupied(request.pigIds(), null);
         CarcassBatch entity = new CarcassBatch();
         BeanUtils.copyProperties(request, entity);
         entity.setBatchNo(StringUtils.hasText(request.batchNo()) ? request.batchNo() : BusinessNoGenerator.next("CB"));
@@ -45,12 +46,87 @@ public class DistributionServiceImpl implements DistributionService {
     }
 
     @Override
-    public Page<CarcassBatch> pageBatches(String batchNo, String operator, long pageNum, long pageSize) {
+    public Page<CarcassBatch> pageBatches(String batchNo, String operator, LocalDate startDate, LocalDate endDate,
+                                          long pageNum, long pageSize) {
         return carcassBatchMapper.selectPage(new Page<>(pageNum, pageSize),
                 Wrappers.<CarcassBatch>lambdaQuery()
                         .like(StringUtils.hasText(batchNo), CarcassBatch::getBatchNo, batchNo)
                         .like(StringUtils.hasText(operator), CarcassBatch::getOperator, operator)
+                        // 创建日期范围：[开始日期 00:00:00, 结束日期次日 00:00:00)，结束日当天包含在内
+                        .ge(startDate != null, CarcassBatch::getCreateTime,
+                                startDate == null ? null : startDate.atStartOfDay())
+                        .lt(endDate != null, CarcassBatch::getCreateTime,
+                                endDate == null ? null : endDate.plusDays(1).atStartOfDay())
                         .orderByDesc(CarcassBatch::getCreateTime));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateBatch(Long id, DistributionRequests.BatchCreate request) {
+        CarcassBatch entity = require(carcassBatchMapper.selectById(id), "胴体批次不存在");
+        // 批次号为溯源标识不可修改；仅当关联生猪集合发生变化时做业务校验
+        List<Long> oldPigs = entity.getPigIds() == null ? List.of() : entity.getPigIds();
+        List<Long> newPigs = request.pigIds() == null ? List.of() : request.pigIds();
+        if (!new HashSet<>(oldPigs).equals(new HashSet<>(newPigs))) {
+            Long splitCount = splitBatchMapper.selectCount(Wrappers.<SplitBatch>lambdaQuery()
+                    .eq(SplitBatch::getParentBatchId, id));
+            if (splitCount != null && splitCount > 0) {
+                throw new BusinessException(ErrorCode.BUSINESS_ERROR, "该批次已发生分割，不能变更关联生猪");
+            }
+            validatePigNotOccupied(newPigs, id);
+        }
+        entity.setPigIds(request.pigIds());
+        entity.setTotalWeightKg(request.totalWeightKg());
+        entity.setSlaughterhouse(request.slaughterhouse());
+        entity.setOperator(request.operator());
+        entity.setNote(request.note());
+        carcassBatchMapper.updateById(entity);
+    }
+
+    @Override
+    public List<Map<String, Object>> getPigOccupancy() {
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (CarcassBatch b : carcassBatchMapper.selectList(null)) {
+            if (b.getPigIds() == null) continue;
+            for (Long pigId : b.getPigIds()) {
+                Map<String, Object> m = new HashMap<>();
+                m.put("pigId", pigId);
+                m.put("batchId", b.getId());
+                m.put("batchNo", b.getBatchNo());
+                result.add(m);
+            }
+        }
+        return result;
+    }
+
+    /** 校验待关联生猪未被其他胴体批次占用（一头猪只能归属一个批次） */
+    private void validatePigNotOccupied(List<Long> pigIds, Long excludeBatchId) {
+        if (pigIds == null || pigIds.isEmpty()) return;
+        Map<Long, String> occupied = new HashMap<>();
+        for (CarcassBatch b : carcassBatchMapper.selectList(null)) {
+            if (excludeBatchId != null && excludeBatchId.equals(b.getId())) continue;
+            if (b.getPigIds() == null) continue;
+            for (Long pid : b.getPigIds()) occupied.putIfAbsent(pid, b.getBatchNo());
+        }
+        List<String> conflicts = pigIds.stream().distinct()
+                .filter(occupied::containsKey)
+                .map(pid -> "生猪ID" + pid + "（已属批次" + occupied.get(pid) + "）")
+                .toList();
+        if (!conflicts.isEmpty()) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR,
+                    "以下生猪已属于其他批次，一头猪只能归属一个批次：" + String.join("、", conflicts));
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteBatch(Long id) {
+        require(carcassBatchMapper.selectById(id), "胴体批次不存在");
+        // 存在一级分割时禁止删除，保证批次溯源链不断裂
+        Long splitCount = splitBatchMapper.selectCount(Wrappers.<SplitBatch>lambdaQuery()
+                .eq(SplitBatch::getParentBatchId, id).eq(SplitBatch::getSplitLevel, 1));
+        if (splitCount > 0) throw new BusinessException(ErrorCode.BUSINESS_ERROR, "该胴体批次下存在分割批次，无法删除");
+        carcassBatchMapper.deleteById(id);
     }
 
     @Override
@@ -72,8 +148,40 @@ public class DistributionServiceImpl implements DistributionService {
     }
 
     @Override
+    public Page<SplitBatch> pageSplits(String keyword, long pageNum, long pageSize) {
+        return splitBatchMapper.selectPage(new Page<>(pageNum, pageSize), Wrappers.<SplitBatch>lambdaQuery()
+                .and(StringUtils.hasText(keyword), w -> w.like(SplitBatch::getBatchNo, keyword)
+                        .or().like(SplitBatch::getProductName, keyword))
+                .orderByDesc(SplitBatch::getCreateTime));
+    }
+
+    @Override
     public SplitBatch getSplit(Long id) {
         return require(splitBatchMapper.selectById(id), "分割批次不存在");
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateSplit(Long id, DistributionRequests.SplitUpdate request) {
+        SplitBatch entity = require(splitBatchMapper.selectById(id), "分割批次不存在");
+        // DTO 仅含可编辑业务字段，BeanUtils 只覆盖同名字段，父批次/层级/批次号/哈希/时间不受影响
+        BeanUtils.copyProperties(request, entity);
+        splitBatchMapper.updateById(entity);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteSplit(Long id) {
+        SplitBatch split = require(splitBatchMapper.selectById(id), "分割批次不存在");
+        // 存在下级分割或已生成冷链运输任务时禁止删除
+        Long childCount = splitBatchMapper.selectCount(Wrappers.<SplitBatch>lambdaQuery()
+                .eq(SplitBatch::getParentBatchId, id)
+                .eq(split.getSplitLevel() != null, SplitBatch::getSplitLevel, split.getSplitLevel() == null ? null : split.getSplitLevel() + 1));
+        if (childCount > 0) throw new BusinessException(ErrorCode.BUSINESS_ERROR, "该分割批次下存在子分割，无法删除");
+        Long transportCount = transportMapper.selectCount(Wrappers.<ColdChainTransport>lambdaQuery()
+                .eq(ColdChainTransport::getSplitBatchId, id));
+        if (transportCount > 0) throw new BusinessException(ErrorCode.BUSINESS_ERROR, "该分割批次已关联冷链运输任务，无法删除");
+        splitBatchMapper.deleteById(id);
     }
 
     @Override
@@ -173,9 +281,49 @@ public class DistributionServiceImpl implements DistributionService {
     }
 
     @Override
-    public Page<ColdChainTransport> pageTransports(Integer status, long pageNum, long pageSize) {
+    @Transactional(rollbackFor = Exception.class)
+    public void updateTransport(Long id, DistributionRequests.TransportUpdate request) {
+        ColdChainTransport entity = require(transportMapper.selectById(id), "运输任务不存在");
+        require(splitBatchMapper.selectById(request.splitBatchId()), "分割批次不存在");
+        // 已发车后货物已在途，不允许再更换分割批次
+        if (!Objects.equals(entity.getSplitBatchId(), request.splitBatchId())
+                && !Objects.equals(entity.getStatus(), 1)) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "运单已发车，不能变更关联分割批次");
+        }
+        // 仅覆盖业务字段，运单号/状态/实际发车与到达时间/创建时间保持不变
+        entity.setSplitBatchId(request.splitBatchId());
+        entity.setVehicleNo(request.vehicleNo());
+        entity.setVehicleType(request.vehicleType());
+        entity.setRefrigeration(request.refrigeration());
+        entity.setDriverName(request.driverName());
+        entity.setDriverPhone(request.driverPhone());
+        entity.setOrigin(request.origin());
+        entity.setDestination(request.destination());
+        entity.setPlannedDepart(request.plannedDepart());
+        entity.setPlannedArrive(request.plannedArrive());
+        transportMapper.updateById(entity);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteTransport(Long id) {
+        ColdChainTransport entity = require(transportMapper.selectById(id), "运输任务不存在");
+        // 已产生门店签收的运单属于溯源链下游凭证，禁止删除
+        Long receiptCount = receiptMapper.selectCount(Wrappers.<StoreReceipt>lambdaQuery()
+                .eq(StoreReceipt::getTransportId, id));
+        if (receiptCount > 0) throw new BusinessException(ErrorCode.BUSINESS_ERROR, "该运单已生成门店签收记录，无法删除");
+        temperatureLogMapper.delete(Wrappers.<TemperatureLog>lambdaQuery().eq(TemperatureLog::getTransportId, id));
+        transportMapper.deleteById(id);
+    }
+
+    @Override
+    public Page<ColdChainTransport> pageTransports(Integer status, String keyword, long pageNum, long pageSize) {
         return transportMapper.selectPage(new Page<>(pageNum, pageSize), Wrappers.<ColdChainTransport>lambdaQuery()
-                .eq(status != null, ColdChainTransport::getStatus, status).orderByDesc(ColdChainTransport::getCreateTime));
+                .eq(status != null, ColdChainTransport::getStatus, status)
+                .and(StringUtils.hasText(keyword), w -> w.like(ColdChainTransport::getTransportNo, keyword)
+                        .or().like(ColdChainTransport::getVehicleNo, keyword)
+                        .or().like(ColdChainTransport::getDriverName, keyword))
+                .orderByDesc(ColdChainTransport::getCreateTime));
     }
 
     @Override
@@ -231,10 +379,15 @@ public class DistributionServiceImpl implements DistributionService {
     }
 
     @Override
+    public StoreReceipt getReceipt(Long id) {
+        return require(receiptMapper.selectById(id), "签收记录不存在");
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public StoreReceipt createReceipt(DistributionRequests.ReceiptCreate request) {
         ColdChainTransport transport = getTransport(request.transportId());
-        if (!Objects.equals(transport.getStatus(), 3)) throw new BusinessException(ErrorCode.BUSINESS_ERROR, "运输任务尚未到达");
+        if (!Objects.equals(transport.getStatus(), 3)) throw new BusinessException(ErrorCode.BUSINESS_ERROR, "运输任务尚未到达门店，无法签收");
         Long existing = receiptMapper.selectCount(Wrappers.<StoreReceipt>lambdaQuery().eq(StoreReceipt::getTransportId, request.transportId()));
         if (existing > 0) throw new BusinessException(ErrorCode.RECORD_ALREADY_EXISTS, "该运单已签收");
         StoreReceipt entity = new StoreReceipt();
@@ -246,15 +399,32 @@ public class DistributionServiceImpl implements DistributionService {
         entity.setCreateTime(LocalDateTime.now());
         entity.setContentHash(HashUtil.sha256Json(request));
         receiptMapper.insert(entity);
+        transportMapper.update(null, Wrappers.<ColdChainTransport>lambdaUpdate()
+                .eq(ColdChainTransport::getId, request.transportId())
+                .eq(ColdChainTransport::getStatus, 3)
+                .set(ColdChainTransport::getStatus, 4));
         publish("STORE_RECEIPT", entity.getId(), transport.getTransportNo(), entity.getContentHash(), Map.of("transportNo", transport.getTransportNo()));
         return entity;
     }
 
     @Override
-    public Page<StoreReceipt> pageReceipts(Long storeId, String storeName, long pageNum, long pageSize) {
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteReceipt(Long id) {
+        require(receiptMapper.selectById(id), "签收记录不存在");
+        receiptMapper.deleteById(id);
+    }
+
+    @Override
+    public Page<StoreReceipt> pageReceipts(Long storeId, String storeName, LocalDate startDate, LocalDate endDate,
+                                           long pageNum, long pageSize) {
         return receiptMapper.selectPage(new Page<>(pageNum, pageSize), Wrappers.<StoreReceipt>lambdaQuery()
                 .eq(storeId != null, StoreReceipt::getStoreId, storeId)
                 .like(StringUtils.hasText(storeName), StoreReceipt::getStoreName, storeName)
+                // 签收日期范围：[开始日期 00:00:00, 结束日期次日 00:00:00)，结束日当天包含在内
+                .ge(startDate != null, StoreReceipt::getReceiptTime,
+                        startDate == null ? null : startDate.atStartOfDay())
+                .lt(endDate != null, StoreReceipt::getReceiptTime,
+                        endDate == null ? null : endDate.plusDays(1).atStartOfDay())
                 .orderByDesc(StoreReceipt::getReceiptTime));
     }
 

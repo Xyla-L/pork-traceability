@@ -17,7 +17,16 @@ public final class DistributionRequests {
 
     public record BatchCreate(String batchNo, @NotEmpty List<Long> pigIds,
                               @NotNull @DecimalMin("0.1") BigDecimal totalWeightKg,
-                              String slaughterhouse, String operator, String note) { }
+                              @NotBlank(message = "屠宰场不能为空") String slaughterhouse,
+                              @NotBlank(message = "操作人不能为空") String operator,
+                              String note) { }
+
+    // 分割批次编辑：仅允许修改业务属性，父批次/层级/批次号/哈希不可变
+    public record SplitUpdate(@NotBlank(message = "产品名称不能为空") String productName,
+                              @NotNull(message = "重量不能为空") @DecimalMin(value = "0.1", message = "重量必须大于0") BigDecimal weightKg,
+                              @Min(value = 1, message = "包装数量至少为1") Integer packageCount,
+                              String packageType, String workshop, BigDecimal workshopTemp,
+                              String operator, String note) { }
 
     public record SplitCreate(String batchNo, @NotNull Long parentBatchId,
                               @Min(1) @Max(4) Integer splitLevel,
@@ -28,6 +37,13 @@ public final class DistributionRequests {
                               String workshop, BigDecimal workshopTemp, String operator, String fileIds, String note) { }
 
     public record TransportCreate(String transportNo, @NotNull Long splitBatchId,
+                                  @NotBlank String vehicleNo, String vehicleType, String refrigeration,
+                                  String driverName, String driverPhone, String origin, String destination,
+                                  @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime plannedDepart,
+                                  @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime plannedArrive) { }
+
+    // 运单编辑：仅业务属性，运单号/状态/实际发到达时间不可改
+    public record TransportUpdate(@NotNull Long splitBatchId,
                                   @NotBlank String vehicleNo, String vehicleType, String refrigeration,
                                   String driverName, String driverPhone, String origin, String destination,
                                   @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime plannedDepart,

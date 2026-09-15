@@ -2,11 +2,14 @@ import request from '@/utils/request'
 
 export const salesApi = {
   // ========== 二维码 ==========
-  generateQrcodes(data: { splitBatchId: number; count: number }) {
+  generateQrcodes(data: { receiptId: number; count: number; expireDate?: string }) {
     return request.post('/sales/qrcodes/batch', data)
   },
   getQrcodes(params?: any) {
     return request.get('/sales/qrcodes', { params })
+  },
+  activateQrcode(id: number) {
+    return request.put(`/sales/products/${id}/activate`)
   },
 
   // ========== 销售记录 ==========

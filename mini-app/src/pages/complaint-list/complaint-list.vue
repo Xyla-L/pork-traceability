@@ -54,8 +54,8 @@ const currentStatus = ref('')
 const tabs = [
   { label: '全部', value: '' },
   { label: '待受理', value: 0 },
-  { label: '处理中', value: 1 },
-  { label: '已办结', value: 2 },
+  { label: '已处理', value: 2 },
+  { label: '已驳回', value: 3 },
 ]
 
 const list = computed(() => complaintStore.list)
@@ -79,7 +79,7 @@ function switchTab(val) {
 }
 
 function statusClass(status) {
-  return { 0: 'pending', 1: 'processing', 2: 'done' }[status] || ''
+  return { 0: 'pending', 2: 'done', 3: 'rejected' }[status] || ''
 }
 
 function openDetail() {
@@ -166,6 +166,11 @@ function openDetail() {
       &.done {
         background: #f0f9eb;
         color: #67c23a;
+      }
+
+      &.rejected {
+        background: #fef0f0;
+        color: #f56c6c;
       }
     }
   }

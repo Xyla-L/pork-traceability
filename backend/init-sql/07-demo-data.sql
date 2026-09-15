@@ -16,7 +16,7 @@ SET @pig_id := (SELECT id FROM pig_individual WHERE ear_tag_no = 'ET-DEMO-0001')
 
 INSERT INTO vaccine_record (pig_id, vaccine_name, batch_no, manufacturer, inject_time, dosage, inject_site, operator, file_ids)
 SELECT @pig_id, '猪瘟活疫苗', 'VAC-DEMO-001', '示范动物药业', DATE_SUB(NOW(), INTERVAL 120 DAY),
-       '2ml/头', '颈部肌肉', '李牧', JSON_ARRAY()
+       '2ml', '颈部肌肉', '李牧', JSON_ARRAY()
 WHERE NOT EXISTS (SELECT 1 FROM vaccine_record WHERE pig_id = @pig_id AND batch_no = 'VAC-DEMO-001');
 
 INSERT INTO slaughter_apply (pig_id, apply_no, apply_time, weight_kg, target_slaughterhouse,
@@ -136,3 +136,15 @@ VALUES
 ('demo-sale-0001', 'RETAIL_SALE', @sale_id, 'QR-PORK-DEMO-0001', @sale_hash,
  CONCAT('0x', SHA2(CONCAT('QR-PORK-DEMO-0001', @sale_hash), 256)), 2, NOW(), 1, 0)
 ON DUPLICATE KEY UPDATE status = VALUES(status), content_hash = VALUES(content_hash), tx_hash = VALUES(tx_hash);
+
+-- ========== 机构数据 ==========
+
+INSERT INTO sys_org (id, parent_id, type, name, manager, phone, address, remark, create_time, update_time)
+VALUES
+(1, 0, 'supervisor', '市市场监督管理局', '王监管', '010-12345678', '北京市朝阳区监管大道100号', '顶层监管机构', NOW(), NOW()),
+(2, 1, 'farm', '示范生态养殖场', '李牧', '13800000001', '北京市顺义区示范路1号', '合作养殖基地', NOW(), NOW()),
+(3, 1, 'slaughter', '示范定点屠宰场', '张场长', '010-87654321', '北京市通州区屠宰路8号', '定点屠宰企业', NOW(), NOW()),
+(4, 1, 'distribution', '冷链配送中心', '陈经理', '010-55667788', '北京市大兴区冷链物流园', '中央仓配中心', NOW(), NOW()),
+(5, 4, 'retail', '安心生鲜门店', '孙店长', '13800000003', '北京市海淀区中关村大街99号', '直营店', NOW(), NOW()),
+(6, 4, 'retail', '惠民社区超市', '赵店长', '13800000004', '北京市西城区长安街200号', '社区店', NOW(), NOW())
+ON DUPLICATE KEY UPDATE name = VALUES(name), manager = VALUES(manager), phone = VALUES(phone), address = VALUES(address);

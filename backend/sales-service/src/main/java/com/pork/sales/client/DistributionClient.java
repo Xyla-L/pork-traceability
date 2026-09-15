@@ -39,4 +39,42 @@ public class DistributionClient {
             throw new BusinessException(ErrorCode.REMOTE_CALL_ERROR, "配送服务不可用，无法校验分割批次");
         }
     }
+
+    public Map<String, Object> requireReceipt(Long receiptId) {
+        try {
+            Map<String, Object> envelope = client.get()
+                    .uri(distributionUrl + "/distribution/receipts/{id}", receiptId)
+                    .retrieve().body(new ParameterizedTypeReference<Map<String, Object>>() { });
+            if (envelope == null || !Integer.valueOf(200).equals(envelope.get("code"))
+                    || !(envelope.get("data") instanceof Map<?, ?> data)) {
+                throw new BusinessException(ErrorCode.REMOTE_CALL_ERROR, "配送服务返回的签收单数据无效");
+            }
+            @SuppressWarnings("unchecked")
+            Map<String, Object> result = (Map<String, Object>) data;
+            return result;
+        } catch (BusinessException e) {
+            throw e;
+        } catch (RestClientException e) {
+            throw new BusinessException(ErrorCode.REMOTE_CALL_ERROR, "配送服务不可用，无法校验签收单");
+        }
+    }
+
+    public Map<String, Object> requireTransport(Long transportId) {
+        try {
+            Map<String, Object> envelope = client.get()
+                    .uri(distributionUrl + "/distribution/transports/{id}", transportId)
+                    .retrieve().body(new ParameterizedTypeReference<Map<String, Object>>() { });
+            if (envelope == null || !Integer.valueOf(200).equals(envelope.get("code"))
+                    || !(envelope.get("data") instanceof Map<?, ?> data)) {
+                throw new BusinessException(ErrorCode.REMOTE_CALL_ERROR, "配送服务返回的运输单数据无效");
+            }
+            @SuppressWarnings("unchecked")
+            Map<String, Object> result = (Map<String, Object>) data;
+            return result;
+        } catch (BusinessException e) {
+            throw e;
+        } catch (RestClientException e) {
+            throw new BusinessException(ErrorCode.REMOTE_CALL_ERROR, "配送服务不可用，无法校验运输单");
+        }
+    }
 }
