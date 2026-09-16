@@ -21,8 +21,8 @@ public class SystemController {
     private final SystemAdminService service;
 
     @GetMapping("/users")
-    public Result<PageResult<SysUser>> users(String username, String realName, String role, Long orgId, Integer status, @Valid PageQuery page) {
-        return Result.success(service.users(username, realName, role, orgId, status, page.getPageNum(), page.getPageSize()));
+    public Result<PageResult<SysUser>> users(String username, String realName, String role, Long orgId, String orgName, Integer status, @Valid PageQuery page) {
+        return Result.success(service.users(username, realName, role, orgId, orgName, status, page.getPageNum(), page.getPageSize()));
     }
     @GetMapping("/users/{id}") public Result<SysUser> user(@PathVariable Long id) { return Result.success(service.user(id)); }
     @PostMapping("/users") public Result<SysUser> createUser(@Valid @RequestBody SystemRequests.UserCreate request) { return Result.success(service.createUser(request)); }

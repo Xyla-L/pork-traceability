@@ -38,14 +38,24 @@
 
     <!-- 数据表格 -->
     <el-table v-loading="loading" :data="tableData" border stripe>
-      <el-table-column prop="productQrCode" label="产品二维码" min-width="150" show-overflow-tooltip />
-      <el-table-column prop="productName" label="产品名称" min-width="140" />
-      <el-table-column prop="storeName" label="销售门店" min-width="140" />
-      <el-table-column prop="sellTime" label="销售时间" width="160" align="center" />
-      <el-table-column prop="sellPrice" label="售价(元)" width="100" align="center">
-        <template #default="{ row }">¥{{ row.sellPrice?.toFixed?.(2) || row.sellPrice }}</template>
+      <el-table-column prop="productQrCode" label="产品二维码" min-width="150" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.productQrCode || '-' }}</template>
       </el-table-column>
-      <el-table-column prop="sellWeightKg" label="重量(kg)" width="100" align="center" />
+      <el-table-column prop="productName" label="产品名称" min-width="140">
+        <template #default="{ row }">{{ row.productName || '-' }}</template>
+      </el-table-column>
+      <el-table-column prop="storeName" label="销售门店" min-width="140">
+        <template #default="{ row }">{{ row.storeName || '-' }}</template>
+      </el-table-column>
+      <el-table-column prop="sellTime" label="销售时间" width="160" align="center">
+        <template #default="{ row }">{{ row.sellTime || '-' }}</template>
+      </el-table-column>
+      <el-table-column prop="sellPrice" label="售价(元)" width="100" align="center">
+        <template #default="{ row }">{{ row.sellPrice != null ? '¥' + Number(row.sellPrice).toFixed(2) : '-' }}</template>
+      </el-table-column>
+      <el-table-column prop="sellWeightKg" label="重量(kg)" width="100" align="center">
+        <template #default="{ row }">{{ row.sellWeightKg != null ? row.sellWeightKg : '-' }}</template>
+      </el-table-column>
       <el-table-column prop="status" label="状态" width="100" align="center">
         <template #default="{ row }">
           <el-tag :type="saleStatusType(row.status)" size="small">{{ saleStatusLabel(row.status) }}</el-tag>

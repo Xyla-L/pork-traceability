@@ -49,19 +49,9 @@
             <el-tag :type="statusTagType(row.status)" size="small">{{ statusLabel(row.status) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="300" align="center" fixed="right">
+        <el-table-column label="操作" width="200" align="center" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click.stop="selectTransport(row)">监控详情</el-button>
-            <el-popconfirm v-if="row.status === 1" title="确认该运单立即发车？" @confirm="handleDepart(row)">
-              <template #reference>
-                <el-button link type="warning" size="small" @click.stop>发车</el-button>
-              </template>
-            </el-popconfirm>
-            <el-popconfirm v-else-if="row.status === 2" title="确认该运单已送达？" @confirm="handleArrive(row)">
-              <template #reference>
-                <el-button link type="success" size="small" @click.stop>确认到达</el-button>
-              </template>
-            </el-popconfirm>
             <el-button link type="primary" size="small" @click.stop="openEdit(row)">编辑</el-button>
             <el-popconfirm title="确认删除该运单？温度打卡记录将一并删除" @confirm="handleDelete(row)">
               <template #reference>
@@ -234,7 +224,7 @@
         <el-form-item label="分割批次" prop="splitBatchId">
           <el-select v-model="createForm.splitBatchId" filterable remote placeholder="输入产品名/批次号搜索"
             :remote-method="searchSplits" :loading="splitLoading" style="width: 100%"
-            :disabled="editingId !== null && editingStatus !== 1">
+            :disabled="editingId !== null && editingStatus !== 1" @change="handleSplitChange">
             <el-option v-for="s in splitOptions" :key="s.id" :label="`${s.productName || '--'}（${s.batchNo}）`" :value="s.id" />
           </el-select>
           <div v-if="editingId !== null && editingStatus !== 1" class="form-tip">运单已发车，关联分割批次不可变更</div>
@@ -283,7 +273,21 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="目的地" prop="destination">
-              <el-input v-model="createForm.destination" placeholder="如 望京店冷鲜柜" />
+              <el-select
+                v-model="createForm.destination"
+                placeholder="请选择或输入门店"
+                filterable
+                allow-create
+                default-first-option
+                style="width: 100%"
+              >
+                <el-option
+                  v-for="item in storeOptions"
+                  :key="item.id"
+                  :label="item.name"
+                  :value="item.name"
+                />
+              </el-select>
             </el-form-item>
           </el-col>
         </el-row>
@@ -303,6 +307,16 @@
         </el-row>
       </el-form>
       <template #footer>
+        <el-popconfirm v-if="editingId && editingStatus === 1" title="确认该运单立即发车？" @confirm="handleDepartFromEdit">
+          <template #reference>
+            <el-button type="warning">发车</el-button>
+          </template>
+        </el-popconfirm>
+        <el-popconfirm v-else-if="editingId && editingStatus === 2" title="确认该运单已送达？" @confirm="handleArriveFromEdit">
+          <template #reference>
+            <el-button type="success">确认到达</el-button>
+          </template>
+        </el-popconfirm>
         <el-button @click="createVisible = false">取消</el-button>
         <el-button type="primary" :loading="submitting" @click="submitCreate">{{ editingId ? '保存修改' : '确认创建' }}</el-button>
       </template>
@@ -318,6 +332,7 @@ import * as echarts from 'echarts'
 import type { FormInstance } from 'element-plus'
 import type { EpTagType } from '@/types/common'
 import { distributionApi } from '@/api/modules/distribution'
+import request from '@/utils/request'
 
 // ==================== 运单列表 ====================
 const query = reactive({ keyword: '', status: undefined as number | undefined, pageNum: 1, pageSize: 10 })
@@ -402,6 +417,26 @@ async function handleArrive(row: any) {
     await distributionApi.arriveTransport(row.id)
     ElMessage.success(`运单 ${row.transportNo} 已确认送达`)
     await afterStatusChange(row.id)
+  } catch { /* 拦截器已提示 */ }
+}
+
+async function handleDepartFromEdit() {
+  if (!editingId.value) return
+  try {
+    await distributionApi.departTransport(editingId.value)
+    ElMessage.success('运单已发车')
+    createVisible.value = false
+    await afterStatusChange(editingId.value)
+  } catch { /* 拦截器已提示 */ }
+}
+
+async function handleArriveFromEdit() {
+  if (!editingId.value) return
+  try {
+    await distributionApi.arriveTransport(editingId.value)
+    ElMessage.success('运单已确认送达')
+    createVisible.value = false
+    await afterStatusChange(editingId.value)
   } catch { /* 拦截器已提示 */ }
 }
 
@@ -526,6 +561,51 @@ async function searchSplits(kw: string) {
   } catch { splitOptions.value = [] } finally { splitLoading.value = false }
 }
 
+// 门店下拉：从机构树提取 type=retail 的节点
+const storeOptions = ref<Array<{ id: number; name: string }>>([])
+const fetchStoreList = async () => {
+  try {
+    const tree = await request.get('/system/orgs/tree')
+    const list: Array<{ id: number; name: string }> = []
+    const flatten = (nodes: any[]) => {
+      if (!Array.isArray(nodes)) return
+      nodes.forEach((n) => {
+        if (n.type === 'retail') list.push({ id: n.id, name: n.name })
+        if (n.children?.length) flatten(n.children)
+      })
+    }
+    flatten(tree || [])
+    storeOptions.value = list
+  } catch (error) {
+    console.error('获取门店列表失败:', error)
+    storeOptions.value = []
+  }
+}
+
+// 选好分割批次后自动带入起运地为该屠宰场
+async function handleSplitChange(splitId: number) {
+  if (!splitId) return
+  const record = splitOptions.value.find((s: any) => s.id === splitId)
+  if (!record) return
+  // 优先用 record 自带的 slaughterhouse
+  if (record.slaughterhouse) {
+    createForm.origin = record.slaughterhouse
+    return
+  }
+  // 通过胴体批次查屠宰场：getBatches 返回的胴体批次含 slaughterhouse
+  try {
+    const res: any = await distributionApi.getBatches({ current: 1, size: 500 })
+    const batches = res?.records || []
+    const batch = batches.find((b: any) =>
+      b.batchNo === record.batchNo ||
+      (record.parentBatchId && b.id === record.parentBatchId)
+    )
+    if (batch?.slaughterhouse) {
+      createForm.origin = batch.slaughterhouse
+    }
+  } catch { /* 忽略，用户手动输入 */ }
+}
+
 function resetForm() {
   Object.assign(createForm, {
     splitBatchId: null, vehicleNo: '', vehicleType: '', refrigeration: '',
@@ -615,6 +695,7 @@ async function submitCreate() {
 onMounted(async () => {
   window.addEventListener('resize', handleResize)
   await fetchTransports()
+  fetchStoreList()
   // 默认加载第一条运单的监控
   if (transportList.value.length) await selectTransport(transportList.value[0])
 })

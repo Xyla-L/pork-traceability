@@ -158,10 +158,23 @@ const searchPigs = async (query) => {
   }
   pigSearchLoading.value = true
   try {
+    // 条件1：只搜已出栏(status=2)的生猪，即出栏申报审批通过的猪
     const res = await request.get('/breeding/pigs', {
-      params: { earTagNo: query, size: 20 }
+      params: { earTagNo: query, status: 2, size: 20 }
     })
-    pigOptions.value = res?.records || res?.list || []
+    const list = res?.records || res?.list || []
+    // 条件2：排除已有入场查验记录的生猪，避免重复入场
+    let excludeIds = []
+    try {
+      const entriesRes = await request.get('/slaughter/entries', {
+        params: { pageNum: 1, pageSize: 500 }
+      })
+      const entries = entriesRes?.records || entriesRes?.list || []
+      excludeIds = entries.map((e) => e.pigId).filter(Boolean)
+    } catch (e) {
+      console.error('获取已有入场记录失败:', e)
+    }
+    pigOptions.value = list.filter((p) => !excludeIds.includes(p.id))
   } catch (error) {
     console.error('搜索生猪失败:', error)
   } finally {

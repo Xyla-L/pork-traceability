@@ -146,14 +146,17 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { useRoute } from 'vue-router'
 import { Search, Refresh, CircleCheckFilled, WarningFilled } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import BlockchainVerifyBadge from '@/components/common/BlockchainVerifyBadge.vue'
 import { traceApi } from '@/api/modules/trace'
 
-// 搜索
-const keyword = ref('QR-PORK-DEMO-0001')
+const route = useRoute()
+
+// 搜索：优先用路由 query.keyword（从举报/其他页面跳转带入），否则用默认演示值
+const keyword = ref((route.query.keyword as string) || 'QR-PORK-DEMO-0001')
 const hasSearched = ref(false)
 const searching = ref(false)
 const searchHints = ['SP-DEMO-0002', 'CB-DEMO-0001', 'QR-PORK-DEMO-0001']

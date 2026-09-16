@@ -48,7 +48,7 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
       - ./init-sql:/docker-entrypoint-initdb.d:ro
-    ports: ["3306:3306"]
+    ports: ["3307:3306"]
     networks: [pork-net]
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h localhost -p$${MYSQL_ROOT_PASSWORD} --silent"]

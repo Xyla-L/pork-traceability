@@ -95,7 +95,7 @@
       :loading="tableLoading"
       :farm-name-map="farmNameMap"
       @edit="handleEdit"
-      @delete="handleDelete"
+      @apply="handleApply"
     />
 
     <!-- 分页 -->
@@ -119,14 +119,48 @@
       @saved="handleFormSaved"
       @farm-created="fetchFarmOptions"
     />
+
+    <!-- 出栏申报弹窗 -->
+    <el-dialog v-model="applyDialogVisible" title="出栏申报" width="460px" destroy-on-close>
+      <el-form ref="applyFormRef" :model="applyForm" :rules="applyRules" label-width="100px">
+        <el-form-item label="耳标号">
+          <span>{{ applyRow?.earTagNo || '--' }}</span>
+        </el-form-item>
+        <el-form-item label="目标屠宰场" prop="targetSlaughterhouse">
+          <el-select
+            v-model="applyForm.targetSlaughterhouse"
+            placeholder="请选择或输入目标屠宰场"
+            filterable
+            allow-create
+            default-first-option
+            style="width: 100%"
+          >
+            <el-option
+              v-for="item in slaughterhouseOptions"
+              :key="item.id"
+              :label="item.name"
+              :value="item.name"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="出栏体重(kg)">
+          <el-input-number v-model="applyForm.weightKg" :min="0" :precision="1" :step="0.5" style="width: 100%" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="applyDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="applySubmitting" @click="submitApply">确认申报</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { Search, Refresh, Plus } from '@element-plus/icons-vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
+import { pigApi } from '@/api/modules/breeding'
 import PigTable from './PigTable.vue'
 import PigFormDialog from './PigFormDialog.vue'
 
@@ -173,6 +207,32 @@ const fetchFarmOptions = async () => {
     farmNameMap.value = map
   } catch (error) {
     console.error('获取养殖场列表失败:', error)
+  }
+}
+
+// ==================== 屠宰场下拉（出栏申报使用） ====================
+
+const slaughterhouseOptions = ref([])
+
+const fetchSlaughterhouses = async () => {
+  try {
+    const tree = await request.get('/system/orgs/tree')
+    // 递归扁平化机构树，提取 type=slaughter 的屠宰场，保证与机构管理数据一致
+    const list = []
+    const walk = (nodes) => {
+      if (!Array.isArray(nodes)) return
+      nodes.forEach((n) => {
+        if (n.type === 'slaughter') {
+          list.push({ id: n.id, name: n.name })
+        }
+        if (n.children) walk(n.children)
+      })
+    }
+    walk(tree)
+    slaughterhouseOptions.value = list
+  } catch (error) {
+    console.error('获取屠宰场列表失败:', error)
+    slaughterhouseOptions.value = []
   }
 }
 
@@ -266,17 +326,46 @@ const handleFormSaved = () => {
   fetchList()
 }
 
-// ==================== 删除 ====================
+// ==================== 出栏申报 ====================
 
-const handleDelete = async (row) => {
-  try {
-    await request.delete(`/breeding/pigs/${row.id}`)
-    ElMessage.success('删除成功')
-    fetchList()
-  } catch (error) {
-    console.error('删除失败:', error)
-    ElMessage.error('删除失败')
-  }
+const applyDialogVisible = ref(false)
+const applySubmitting = ref(false)
+const applyRow = ref(null)
+const applyFormRef = ref()
+const applyForm = reactive({
+  targetSlaughterhouse: '',
+  weightKg: null
+})
+const applyRules = {
+  targetSlaughterhouse: [{ required: true, message: '请输入目标屠宰场', trigger: 'blur' }]
+}
+
+const handleApply = (row) => {
+  applyRow.value = row
+  applyForm.targetSlaughterhouse = ''
+  applyForm.weightKg = null
+  applyDialogVisible.value = true
+}
+
+const submitApply = async () => {
+  if (!applyFormRef.value) return
+  await applyFormRef.value.validate(async (valid) => {
+    if (!valid) return
+    applySubmitting.value = true
+    try {
+      await pigApi.applySlaughter(applyRow.value.id, {
+        targetSlaughterhouse: applyForm.targetSlaughterhouse,
+        weightKg: applyForm.weightKg
+      })
+      ElMessage.success('出栏申报已提交，等待审批')
+      applyDialogVisible.value = false
+      fetchList()
+    } catch (error) {
+      console.error('出栏申报失败:', error)
+    } finally {
+      applySubmitting.value = false
+    }
+  })
 }
 
 // ==================== 初始化 ====================
@@ -284,6 +373,7 @@ const handleDelete = async (row) => {
 onMounted(() => {
   fetchFarmOptions()
   fetchList()
+  fetchSlaughterhouses()
 })
 </script>
 

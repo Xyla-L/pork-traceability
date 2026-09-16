@@ -160,7 +160,14 @@ function handleView(row: any) { currentRow.value = row; drawerVisible.value = tr
 function handleDeal(row: any) { currentRow.value = row; handleForm.note = ''; dialogVisible.value = true }
 function handleReject(row: any) { currentRow.value = row; handleForm.note = ''; dialogVisible.value = true }
 function previewPhoto(_photo: any) { ElMessage.info('查看照片大图') }
-function goToTrace(row: any) { router.push(`/admin/trace/search`) }
+function goToTrace(row: any) {
+  const targetBatch = row?.targetBatch
+  if (targetBatch) {
+    router.push({ path: '/admin/trace/search', query: { keyword: targetBatch } })
+  } else {
+    router.push('/admin/trace/search')
+  }
+}
 
 async function submitDeal() {
   if (!currentRow.value || !handleForm.note.trim()) {

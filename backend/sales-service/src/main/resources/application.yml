@@ -30,6 +30,8 @@ spring:
       # enables authentication from REDIS_PASSWORD.
       #password:
       database: ${REDIS_DATABASE:0}
+  jackson:
+    default-property-inclusion: ALWAYS
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true

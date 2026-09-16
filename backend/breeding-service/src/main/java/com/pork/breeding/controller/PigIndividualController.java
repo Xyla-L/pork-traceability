@@ -2,7 +2,9 @@ package com.pork.breeding.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pork.breeding.dto.PigIndividualDTO;
+import com.pork.breeding.dto.SlaughterApplyDTO;
 import com.pork.breeding.service.PigIndividualService;
+import com.pork.breeding.service.SlaughterApplyService;
 import com.pork.breeding.vo.PigIndividualVO;
 import com.pork.core.result.PageResult;
 import com.pork.core.result.Result;
@@ -20,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 public class PigIndividualController {
 
     private final PigIndividualService pigIndividualService;
+    private final SlaughterApplyService slaughterApplyService;
 
     @GetMapping({"", "/page"})
     @Operation(summary = "分页查询")
@@ -64,5 +67,13 @@ public class PigIndividualController {
     public Result<Void> remove(@PathVariable Long id) {
         pigIndividualService.removeIndividual(id);
         return Result.success();
+    }
+
+    @PostMapping("/{pigId}/apply")
+    @Operation(summary = "创建出栏申报")
+    public Result<Long> applySlaughter(@PathVariable Long pigId, @Valid @RequestBody SlaughterApplyDTO dto) {
+        // pigId 由路径变量注入，请求体无需携带
+        dto.setPigId(pigId);
+        return Result.success(slaughterApplyService.createApply(dto));
     }
 }

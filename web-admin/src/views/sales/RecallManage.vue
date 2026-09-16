@@ -7,21 +7,31 @@
 
     <!-- 召回列表 -->
     <el-table v-loading="loading" :data="tableData" border stripe>
-      <el-table-column prop="recallNo" label="召回编号" width="180" />
-      <el-table-column prop="reason" label="召回原因" min-width="200" show-overflow-tooltip />
+      <el-table-column prop="recallNo" label="召回编号" width="180">
+        <template #default="{ row }">{{ row.recallNo || '-' }}</template>
+      </el-table-column>
+      <el-table-column prop="reason" label="召回原因" min-width="200" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.reason || '-' }}</template>
+      </el-table-column>
       <el-table-column prop="riskLevel" label="风险等级" width="100" align="center">
         <template #default="{ row }">
           <el-tag :type="riskTagType(row.riskLevel)" size="small">{{ riskLabel(row.riskLevel) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="initiator" label="发起人" width="100" align="center" />
-      <el-table-column prop="initiateTime" label="发起时间" width="160" align="center" />
+      <el-table-column prop="initiator" label="发起人" width="100" align="center">
+        <template #default="{ row }">{{ row.initiator || '-' }}</template>
+      </el-table-column>
+      <el-table-column prop="initiateTime" label="发起时间" width="160" align="center">
+        <template #default="{ row }">{{ row.initiateTime || '-' }}</template>
+      </el-table-column>
       <el-table-column prop="status" label="执行状态" width="100" align="center">
         <template #default="{ row }">
           <el-tag :type="statusTagType(row.status)" size="small">{{ statusLabel(row.status) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="affectedCount" label="受影响数量" width="110" align="center" />
+      <el-table-column prop="affectedCount" label="受影响数量" width="110" align="center">
+        <template #default="{ row }">{{ row.affectedCount != null ? row.affectedCount : '-' }}</template>
+      </el-table-column>
       <el-table-column label="召回进度" min-width="200">
         <template #default="{ row }">
           <div class="progress-cell">
@@ -59,7 +69,7 @@
           </el-radio-group>
         </el-form-item>
         <el-form-item label="召回范围" prop="batchIds">
-          <el-select v-model="recallForm.batchIds" multiple placeholder="选择需召回的批次" style="width: 100%">
+          <el-select v-model="recallForm.batchIds" multiple placeholder="选择需召回的批次" style="width: 100%" @change="handleBatchChange">
             <el-option v-for="b in batchOptions" :key="b.value" :label="b.label" :value="b.value" />
           </el-select>
         </el-form-item>
@@ -81,17 +91,17 @@
     <!-- 详情弹窗 -->
     <el-dialog v-model="detailVisible" title="召回详情" width="600px">
       <el-descriptions :column="2" border>
-        <el-descriptions-item label="召回编号" :span="2">{{ detailData.recallNo }}</el-descriptions-item>
-        <el-descriptions-item label="召回原因">{{ detailData.reason }}</el-descriptions-item>
+        <el-descriptions-item label="召回编号" :span="2">{{ detailData.recallNo || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="召回原因">{{ detailData.reason || '-' }}</el-descriptions-item>
         <el-descriptions-item label="风险等级">
           <el-tag :type="riskTagType(detailData.riskLevel)" size="small">{{ riskLabel(detailData.riskLevel) }}</el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="发起人">{{ detailData.initiator }}</el-descriptions-item>
-        <el-descriptions-item label="发起时间">{{ detailData.initiateTime }}</el-descriptions-item>
+        <el-descriptions-item label="发起人">{{ detailData.initiator || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="发起时间">{{ detailData.initiateTime || '-' }}</el-descriptions-item>
         <el-descriptions-item label="执行状态">
           <el-tag :type="statusTagType(detailData.status)" size="small">{{ statusLabel(detailData.status) }}</el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="受影响数量" :span="2">{{ detailData.affectedCount }} 件</el-descriptions-item>
+        <el-descriptions-item label="受影响数量" :span="2">{{ detailData.affectedCount != null ? detailData.affectedCount + ' 件' : '-' }}</el-descriptions-item>
         <el-descriptions-item label="召回进度" :span="2">
           <el-progress :percentage="progressPct(detailData)" :status="detailData.status === 3 ? 'success' : detailData.status === 4 ? 'exception' : undefined" :stroke-width="14" />
           <div class="progress-text">{{ detailData.recalledCount || 0 }} / {{ detailData.affectedCount || 0 }} 件</div>
@@ -145,6 +155,7 @@ import { WarningFilled } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { EpTagType } from '@/types/common'
 import { salesApi } from '@/api/modules/sales'
+import { distributionApi } from '@/api/modules/distribution'
 
 const tableData = ref<any[]>([])
 const loading = ref(false)
@@ -163,14 +174,30 @@ const recallForm = reactive({ reason: '', riskLevel: 2, batchIds: [] as number[]
 const rules = { reason: [{ required: true, message: '请输入召回原因', trigger: 'blur' }],
   batchIds: [{ required: true, message: '请选择批次', trigger: 'change' }],
   storeIds: [{ required: true, message: '请选择门店', trigger: 'change' }] }
-const batchOptions = [
-  { label: 'B20240715001 - 猪前腿肉', value: 1 }, { label: 'B20240714002 - 猪五花肉', value: 2 },
-  { label: 'B20240713003 - 猪里脊', value: 3 }, { label: 'B20240712004 - 猪排骨', value: 4 },
-]
-const storeOptions = [
-  { label: 'XX社区超市', value: 1 }, { label: 'YY生鲜店', value: 2 },
-  { label: 'ZZ便利店', value: 3 }, { label: 'WW农贸市场', value: 4 },
-]
+const batchOptions = ref<{ label: string; value: number }[]>([])
+const storeOptions = ref<{ label: string; value: number }[]>([])
+
+async function fetchBatchOptions() {
+  try {
+    const res: any = await distributionApi.getSplits({ current: 1, size: 1000 })
+    const records = res?.records || res?.list || []
+    batchOptions.value = records.map((b: any) => ({
+      label: `${b.batchNo} - ${b.productName || '未命名'}`,
+      value: b.id,
+    }))
+  } catch { batchOptions.value = [] }
+}
+
+async function fetchStoreOptions() {
+  try {
+    const res: any = await distributionApi.getStores()
+    const list = Array.isArray(res) ? res : (res?.records || [])
+    storeOptions.value = list.map((s: any) => ({
+      label: s.store_name || s.storeName || `门店#${s.store_id ?? s.storeId}`,
+      value: s.store_id ?? s.storeId,
+    }))
+  } catch { storeOptions.value = [] }
+}
 
 // 详情弹窗
 const detailVisible = ref(false)
@@ -183,7 +210,34 @@ const progressVisible = ref(false)
 const progressForm = reactive({ pct: 0, recalled: 0, max: 100, note: '', row: null as any })
 const progressPct = (row: any) => row.affectedCount ? Math.round(row.recalledCount / row.affectedCount * 100) : 0
 
-function handleCreate() { dialogVisible.value = true }
+function handleCreate() {
+  fetchBatchOptions()
+  fetchStoreOptions()
+  dialogVisible.value = true
+}
+
+async function handleBatchChange() {
+  if (!recallForm.batchIds.length) { recallForm.storeIds = []; return }
+  try {
+    // 1. 拉所有运单，按所选批次的 splitBatchId 过滤出受影响的 transportId
+    const tRes: any = await distributionApi.getTransports({ current: 1, size: 1000 })
+    const transports = tRes?.records || []
+    const batchSet = new Set(recallForm.batchIds)
+    const matchedTransportIds = transports
+      .filter((t: any) => batchSet.has(t.splitBatchId))
+      .map((t: any) => t.id)
+    if (!matchedTransportIds.length) { recallForm.storeIds = []; return }
+    // 2. 拉所有签收单，找出这些运单签收过的门店
+    const rRes: any = await distributionApi.getReceipts({ current: 1, size: 1000 })
+    const receipts = rRes?.records || []
+    const transportIdSet = new Set(matchedTransportIds)
+    const storeIds = new Set<number>()
+    receipts.forEach((r: any) => {
+      if (transportIdSet.has(r.transportId) && r.storeId != null) storeIds.add(r.storeId)
+    })
+    recallForm.storeIds = [...storeIds]
+  } catch { /* 拉取失败时保留当前选择 */ }
+}
 
 async function handleSubmitRecall() {
   await formRef.value?.validate()

@@ -29,21 +29,14 @@
           <StatusTag :type="pigStatusType(row.status)" />
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="140" fixed="right" align="center">
+      <el-table-column label="操作" width="160" fixed="right" align="center">
         <template #default="{ row }">
+          <el-button v-if="row.status === 1" type="success" link size="small" @click="$emit('apply', row)">
+            申请出栏
+          </el-button>
           <el-button type="warning" link size="small" @click="$emit('edit', row)">
             编辑
           </el-button>
-          <el-popconfirm
-            title="确定删除该生猪档案吗？"
-            confirm-button-text="确定"
-            cancel-button-text="取消"
-            @confirm="$emit('delete', row)"
-          >
-            <template #reference>
-              <el-button type="danger" link size="small">删除</el-button>
-            </template>
-          </el-popconfirm>
         </template>
       </el-table-column>
     </el-table>
@@ -69,7 +62,7 @@ defineProps({
   }
 })
 
-defineEmits(['edit', 'delete'])
+defineEmits(['edit', 'apply'])
 
 const breedMap = {
   'changbai': '长白猪',

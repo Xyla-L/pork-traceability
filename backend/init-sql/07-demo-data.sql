@@ -108,14 +108,16 @@ INSERT INTO store_receipt (transport_id, store_id, store_name, receipt_time, rec
 VALUES (@transport_id, 1001, '安心生鲜门店', DATE_SUB(NOW(), INTERVAL 2 DAY), '孙店长', '13800000003',
         1, 1, -2.1, 1, JSON_ARRAY(), 'DEMO-RECEIVER-SIGN', @receipt_hash)
 ON DUPLICATE KEY UPDATE content_hash = VALUES(content_hash);
+SET @receipt_id := (SELECT id FROM store_receipt WHERE transport_id = @transport_id);
 
 USE db_sales;
 
-INSERT INTO retail_sale (split_batch_id, product_qr_code, store_id, store_name, shelf_time,
+INSERT INTO retail_sale (split_batch_id, transport_id, receipt_id, product_qr_code, store_id, store_name, shelf_time,
                          is_activated, activate_time, status, expire_date)
-VALUES (@split2_id, 'QR-PORK-DEMO-0001', 1001, '安心生鲜门店', DATE_SUB(NOW(), INTERVAL 1 DAY),
+VALUES (@split2_id, @transport_id, @receipt_id, 'QR-PORK-DEMO-0001', 1001, '安心生鲜门店', DATE_SUB(NOW(), INTERVAL 1 DAY),
         1, DATE_SUB(NOW(), INTERVAL 1 DAY), 1, DATE_ADD(CURDATE(), INTERVAL 5 DAY))
-ON DUPLICATE KEY UPDATE status = VALUES(status), expire_date = VALUES(expire_date);
+ON DUPLICATE KEY UPDATE status = VALUES(status), expire_date = VALUES(expire_date),
+                        transport_id = VALUES(transport_id), receipt_id = VALUES(receipt_id);
 SET @sale_id := (SELECT id FROM retail_sale WHERE product_qr_code = 'QR-PORK-DEMO-0001');
 SET @sale_hash := SHA2(CONCAT('QR-PORK-DEMO-0001', ':', @split2_id), 256);
 
@@ -136,6 +138,37 @@ VALUES
 ('demo-sale-0001', 'RETAIL_SALE', @sale_id, 'QR-PORK-DEMO-0001', @sale_hash,
  CONCAT('0x', SHA2(CONCAT('QR-PORK-DEMO-0001', @sale_hash), 256)), 2, NOW(), 1, 0)
 ON DUPLICATE KEY UPDATE status = VALUES(status), content_hash = VALUES(content_hash), tx_hash = VALUES(tx_hash);
+
+-- ========== 过期预警 & 召回订单 ==========
+
+USE db_sales;
+
+-- 过期预警（针对 QR-PORK-DEMO-0001，临期提醒）
+INSERT INTO expire_warning (sale_id, warning_level, warning_time, notify_channel, notified, handled, handler)
+SELECT @sale_id, 1, DATE_SUB(NOW(), INTERVAL 1 DAY), 'SMS', 1, 0, NULL
+WHERE NOT EXISTS (SELECT 1 FROM expire_warning WHERE sale_id = @sale_id AND warning_level = 1);
+
+-- 召回订单（针对 SP-DEMO-0002，预防性召回进行中）
+INSERT INTO recall_order (recall_no, reason, risk_level, scope, initiator, initiate_time,
+                          status, completed_time, affected_count, recalled_count)
+VALUES ('RC-DEMO-0001', '消费者举报产品异味，启动预防性召回', 2,
+        JSON_OBJECT('batchNo', 'SP-DEMO-0002', 'storeIds', JSON_ARRAY(1001)),
+        '监管员王', DATE_SUB(NOW(), INTERVAL 1 DAY), 1, NULL, 20, 8)
+ON DUPLICATE KEY UPDATE status = VALUES(status), recalled_count = VALUES(recalled_count);
+
+-- ========== 消费者举报 ==========
+
+USE db_common;
+
+INSERT INTO complaint_report (report_no, reporter_name, reporter_phone, target_qr_code, target_batch,
+                              complaint_text, file_ids, status, handler, handle_note, handle_time, device_id)
+VALUES
+('RP-DEMO-0001', '消费者张三', '13900000001', 'QR-PORK-DEMO-0001', 'SP-DEMO-0002',
+ '购买的猪肉有异味，要求溯源核查', JSON_ARRAY(), 0, NULL, NULL, NULL, 'dev-demo-001'),
+('RP-DEMO-0002', '消费者李四', '13900000002', 'QR-PORK-DEMO-0001', 'SP-DEMO-0002',
+ '产品包装标签信息不清晰', JSON_ARRAY(), 3, '监管员王', '经核实，标签符合规范，举报不属实',
+ DATE_SUB(NOW(), INTERVAL 2 DAY), 'dev-demo-002')
+ON DUPLICATE KEY UPDATE status = VALUES(status), handle_note = VALUES(handle_note);
 
 -- ========== 机构数据 ==========
 

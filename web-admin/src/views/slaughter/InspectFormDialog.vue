@@ -139,8 +139,23 @@ const searchPigs = async (query) => {
   }
   pigSearchLoading.value = true
   try {
-    const res = await request.get('/breeding/pigs', { params: { earTagNo: query, size: 20 } })
-    pigOptions.value = res?.records || res?.list || []
+    // 条件1：只搜已出栏(status=2)的生猪，即出栏申报审批通过的猪
+    const res = await request.get('/breeding/pigs', {
+      params: { earTagNo: query, status: 2, size: 20 }
+    })
+    const list = res?.records || res?.list || []
+    // 条件2：排除已有屠宰检验记录的生猪，避免重复检验
+    let excludeIds = []
+    try {
+      const inspRes = await request.get('/slaughter/inspections', {
+        params: { pageNum: 1, pageSize: 500 }
+      })
+      const inspList = inspRes?.records || inspRes?.list || []
+      excludeIds = inspList.map((e) => e.pigId).filter(Boolean)
+    } catch (e) {
+      console.error('获取已有屠宰检验记录失败:', e)
+    }
+    pigOptions.value = list.filter((p) => !excludeIds.includes(p.id))
   } catch (error) {
     console.error('搜索生猪失败:', error)
   } finally {
@@ -148,10 +163,25 @@ const searchPigs = async (query) => {
   }
 }
 
-const handlePigSelect = (earTagNo) => {
+const handlePigSelect = async (earTagNo) => {
   const pig = pigOptions.value.find((p) => p.earTagNo === earTagNo)
   if (pig) {
     formData.pigId = pig.id
+    // 根据耳标号带出入场查验时的批次号
+    try {
+      const res = await request.get('/slaughter/entries', {
+        params: { pigId: pig.id, pageNum: 1, pageSize: 1 }
+      })
+      const list = res?.records || res?.list || []
+      if (list.length > 0 && list[0].batchNo) {
+        formData.batchNo = list[0].batchNo
+      } else {
+        formData.batchNo = ''
+        ElMessage.info('该生猪暂无入场查验记录，请手动填写批次号')
+      }
+    } catch (error) {
+      console.error('获取入场批次号失败:', error)
+    }
   }
 }
 

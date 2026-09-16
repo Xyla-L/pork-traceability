@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS slaughterhouse (
 ) ENGINE=InnoDB COMMENT='定点屠宰场';
 
 -- 屠宰场基础数据（幂等：已存在同名/同证照则忽略）
+SET NAMES utf8mb4;
 INSERT IGNORE INTO slaughterhouse (name, license_no, address, contact_person, contact_phone, daily_capacity, status, remark) VALUES
 ('示范定点屠宰场', 'SH-DEMO-0001', '示范市食品工业园 A 区', '王主任', '13800001001', 800, 1, '全链路演示数据使用'),
 ('城东肉类联合加工厂', 'SH-DEMO-0002', '示范市城东区工业路 12 号', '李厂长', '13800001002', 500, 1, NULL),

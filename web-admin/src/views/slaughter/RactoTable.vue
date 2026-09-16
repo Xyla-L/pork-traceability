@@ -56,7 +56,6 @@
         <el-descriptions-item label="状态">
           <el-tag :type="ractoStatusTag(currentView.status)" size="small">{{ ractoStatusLabel(currentView.status) }}</el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="检测报告">{{ currentView.reportUrl || '--' }}</el-descriptions-item>
         <el-descriptions-item label="备注" :span="2">{{ currentView.remark || '--' }}</el-descriptions-item>
       </el-descriptions>
     </el-dialog>

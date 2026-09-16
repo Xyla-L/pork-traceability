@@ -39,7 +39,8 @@
     <el-dialog
       v-model="viewDialogVisible"
       title="申报详情"
-      width="560px"
+      width="720px"
+      @close="handleViewClose"
     >
       <el-descriptions :column="2" border>
         <el-descriptions-item label="申报编号">{{ viewData.applyNo || '-' }}</el-descriptions-item>
@@ -56,6 +57,44 @@
           {{ viewData.rejectReason }}
         </el-descriptions-item>
       </el-descriptions>
+
+      <!-- 疫苗凭证照片 -->
+      <el-divider content-position="left">疫苗凭证照片</el-divider>
+      <div v-loading="vaccineLoading" class="vaccine-photos">
+        <template v-if="vaccineGroups.length > 0">
+          <div v-for="group in vaccineGroups" :key="group.id" class="vaccine-group">
+            <div class="vaccine-info">
+              <span class="vaccine-name">{{ group.vaccineName || '-' }}</span>
+              <span class="vaccine-meta">
+                {{ group.batchNo ? `批次: ${group.batchNo}` : '' }}
+                {{ group.injectTime ? ` | 注射时间: ${group.injectTime}` : '' }}
+                {{ group.operator ? ` | 操作人: ${group.operator}` : '' }}
+              </span>
+            </div>
+            <div v-if="group.photos.length > 0" class="photo-list">
+              <el-image
+                v-for="(photo, idx) in group.photos"
+                :key="idx"
+                :src="photo.url"
+                :preview-src-list="group.allPhotos"
+                :initial-index="idx"
+                fit="cover"
+                class="vaccine-photo"
+                preview-teleported
+              >
+                <template #placeholder>
+                  <div class="photo-placeholder">加载中...</div>
+                </template>
+                <template #error>
+                  <div class="photo-placeholder">加载失败</div>
+                </template>
+              </el-image>
+            </div>
+            <div v-else class="no-photo">该记录无凭证照片</div>
+          </div>
+        </template>
+        <el-empty v-else description="暂无疫苗凭证照片" :image-size="80" />
+      </div>
     </el-dialog>
   </div>
 </template>
@@ -182,12 +221,81 @@ const handleApproveSubmit = async (approveData) => {
 const viewDialogVisible = ref(false)
 const viewData = ref({})
 
+// 疫苗凭证照片：按疫苗记录分组展示
+const vaccineLoading = ref(false)
+const vaccineGroups = ref([])
+// blob URL 管理：图片接口需鉴权，需以 blob 方式拉取后生成临时地址，关闭弹窗时统一释放
+const vaccineBlobUrls = ref([])
+// 加载序号：防止快速切换不同申报时慢请求晚返回导致照片串台
+let vaccineLoadSeq = 0
+
+const revokeVaccineBlobUrls = () => {
+  vaccineBlobUrls.value.forEach((url) => URL.revokeObjectURL(url))
+  vaccineBlobUrls.value = []
+}
+
+const loadVaccinePhotos = async (pigId) => {
+  if (!pigId) {
+    vaccineGroups.value = []
+    return
+  }
+  const seq = ++vaccineLoadSeq
+  vaccineLoading.value = true
+  revokeVaccineBlobUrls()
+  try {
+    const list = await request.get(`/breeding/pigs/${pigId}/vaccines/list`)
+    if (seq !== vaccineLoadSeq) return
+    const records = Array.isArray(list) ? list : []
+    // 对每条疫苗记录拉取其凭证照片
+    const groups = await Promise.all(records.map(async (r) => {
+      const fileIds = Array.isArray(r.fileIds) ? r.fileIds : []
+      const photos = await Promise.all(fileIds.map(async (fid) => {
+        try {
+          const blob = await request.get(`/file/${fid}`, { responseType: 'blob' })
+          const url = URL.createObjectURL(blob)
+          vaccineBlobUrls.value.push(url)
+          return { url }
+        } catch (e) {
+          return { url: '' }
+        }
+      }))
+      const validPhotos = photos.filter((p) => p.url)
+      return {
+        id: r.id,
+        vaccineName: r.vaccineName,
+        batchNo: r.batchNo,
+        injectTime: r.injectTime,
+        operator: r.operator,
+        photos: validPhotos,
+        allPhotos: validPhotos.map((p) => p.url)
+      }
+    }))
+    if (seq !== vaccineLoadSeq) return
+    vaccineGroups.value = groups
+  } catch (error) {
+    if (seq !== vaccineLoadSeq) return
+    console.error('加载疫苗凭证失败:', error)
+    vaccineGroups.value = []
+  } finally {
+    if (seq === vaccineLoadSeq) vaccineLoading.value = false
+  }
+}
+
 const handleView = (row) => {
   viewData.value = {
     ...row,
     earTagNo: row.earTagNo || row.pigId
   }
   viewDialogVisible.value = true
+  loadVaccinePhotos(row.pigId)
+}
+
+const handleViewClose = () => {
+  // 让在途的图片请求失效，避免关闭后晚返回的结果写入状态
+  vaccineLoadSeq++
+  revokeVaccineBlobUrls()
+  vaccineGroups.value = []
+  vaccineLoading.value = false
 }
 
 const statusLabel = (status) => {
@@ -228,6 +336,63 @@ onMounted(() => {
     padding-top: 16px;
     margin-top: 16px;
     border-top: 1px solid #ebeef5;
+  }
+
+  .vaccine-photos {
+    min-height: 80px;
+
+    .vaccine-group {
+      padding: 10px 0;
+      border-bottom: 1px dashed #ebeef5;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      .vaccine-info {
+        margin-bottom: 8px;
+        font-size: 14px;
+
+        .vaccine-name {
+          font-weight: 600;
+          color: #303133;
+          margin-right: 12px;
+        }
+
+        .vaccine-meta {
+          color: #909399;
+          font-size: 12px;
+        }
+      }
+
+      .photo-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .vaccine-photo {
+        width: 100px;
+        height: 100px;
+        border-radius: 4px;
+        border: 1px solid #ebeef5;
+      }
+
+      .photo-placeholder {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #909399;
+        font-size: 12px;
+      }
+
+      .no-photo {
+        color: #c0c4cc;
+        font-size: 12px;
+      }
+    }
   }
 }
 </style>

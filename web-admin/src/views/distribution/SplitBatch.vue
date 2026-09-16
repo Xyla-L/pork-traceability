@@ -165,6 +165,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, h, defineComponent, onMounted, nextTick, provide, inject, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { Search, Plus, Edit, Delete } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import BlockchainVerifyBadge from '@/components/common/BlockchainVerifyBadge.vue'
@@ -266,6 +267,7 @@ const highlightedBatch = ref('')
 const allExpanded = ref(true)
 const drawerTitle = ref('')
 const batchOptions = ref<Array<{ batchNo: string; slaughterhouse?: string }>>([])
+const route = useRoute()
 const currentBatchNo = ref('')
 
 // 通过 provide/inject 让所有 TreeNode 共享展开/折叠状态
@@ -309,7 +311,7 @@ const splitForm = reactive({
 })
 const splitRules = {
   parentId: [{ required: true, message: '请选择父批次', trigger: 'change' }],
-  productName: [{ required: true, message: '请选择或输入产品名', trigger: 'blur' }],
+  productName: [{ required: true, message: '请选择或输入产品名', trigger: ['change', 'blur'] }],
   weightKg: [{ required: true, message: '请输入重量', trigger: 'blur' }],
 }
 
@@ -569,9 +571,12 @@ async function loadTree() {
       return
     }
 
-    // 默认选中第一个（最新）批次；若当前已选中则保持
+    // 优先使用路由传入的 batchNo；否则默认选中第一个（最新）批次
+    const queryBatchNo = route.query.batchNo as string
     if (!currentBatchNo.value || !records.some((r: any) => r.batchNo === currentBatchNo.value)) {
-      currentBatchNo.value = records[0].batchNo
+      currentBatchNo.value = (queryBatchNo && records.some((r: any) => r.batchNo === queryBatchNo))
+        ? queryBatchNo
+        : records[0].batchNo
     }
 
     const tree: any = await distributionApi.getSplitTree(currentBatchNo.value)

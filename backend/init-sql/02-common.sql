@@ -87,8 +87,6 @@ CREATE TABLE IF NOT EXISTS complaint_report (
     INDEX idx_device (device_id)
 ) ENGINE=InnoDB COMMENT='消费者举报信息';
 
-ALTER TABLE complaint_report ADD COLUMN IF NOT EXISTS device_id VARCHAR(64);
-
 CREATE TABLE IF NOT EXISTS user_notification (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     user_id BIGINT NOT NULL, title VARCHAR(128) NOT NULL, content VARCHAR(512) NOT NULL,

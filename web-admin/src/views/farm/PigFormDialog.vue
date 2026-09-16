@@ -92,6 +92,9 @@
     </el-form>
 
     <template #footer>
+      <el-button v-if="isEdit" type="danger" :loading="deleting" @click="handleDelete">
+        删 除
+      </el-button>
       <el-button @click="handleClose">取 消</el-button>
       <el-button type="primary" :loading="submitting" @click="handleSubmit">
         确 定
@@ -143,7 +146,7 @@
 
 <script setup>
 import { ref, reactive, computed, watch, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
 import request from '@/utils/request'
@@ -163,6 +166,7 @@ const emit = defineEmits(['update:visible', 'saved', 'farmCreated'])
 
 const formRef = ref(null)
 const submitting = ref(false)
+const deleting = ref(false)
 const farmList = ref([])
 
 const isEdit = computed(() => !!props.editData)
@@ -186,7 +190,33 @@ const breedOptions = [
 
 const rules = {
   earTagNo: [
-    { required: true, message: '请输入耳标号', trigger: 'blur' }
+    { required: true, message: '请输入耳标号', trigger: 'blur' },
+    {
+      validator: async (rule, value, callback) => {
+        // 编辑模式耳标号不可改，跳过唯一性校验
+        if (isEdit.value || !value) {
+          callback()
+          return
+        }
+        try {
+          const res = await request.get('/breeding/pigs', {
+            params: { earTagNo: value, current: 1, size: 50 }
+          })
+          const list = res?.records || res?.list || []
+          // 列表接口为模糊匹配，需精确比对耳标号判断重复
+          const duplicate = Array.isArray(list) && list.some(item => item.earTagNo === value)
+          if (duplicate) {
+            callback(new Error('耳标号已存在'))
+            return
+          }
+          callback()
+        } catch (e) {
+          // 查询失败不阻断，依赖后端最终校验
+          callback()
+        }
+      },
+      trigger: 'blur'
+    }
   ],
   farmId: [
     { required: true, message: '请选择养殖场', trigger: 'change' }
@@ -303,6 +333,27 @@ watch(
 const handleClose = () => {
   resetForm()
   emit('update:visible', false)
+}
+
+const handleDelete = async () => {
+  try {
+    await ElMessageBox.confirm(
+      `确定删除耳标号「${props.editData.earTagNo}」的生猪档案吗？`,
+      '删除确认',
+      { type: 'warning', confirmButtonText: '确定删除', cancelButtonText: '取消' }
+    )
+  } catch {
+    return
+  }
+  deleting.value = true
+  try {
+    await request.delete(`/breeding/pigs/${props.editData.id}`)
+    ElMessage.success('删除成功')
+    emit('saved')
+    handleClose()
+  } finally {
+    deleting.value = false
+  }
 }
 
 const handleSubmit = async () => {

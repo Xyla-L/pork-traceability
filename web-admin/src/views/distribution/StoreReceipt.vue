@@ -473,6 +473,7 @@ async function confirmReceipt() {
     dialogVisible.value = false
     activeTab.value = 'done'
     fetchList()
+    fetchPendingList()
   } catch (error) {
     console.error('签收失败:', error)
   } finally {

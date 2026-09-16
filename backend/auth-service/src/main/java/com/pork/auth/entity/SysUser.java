@@ -42,4 +42,8 @@ public class SysUser {
     private LocalDateTime createTime;
 
     private LocalDateTime updateTime;
+
+    /** 关联机构名称（非数据库字段，由 service 层填充） */
+    @TableField(exist = false)
+    private String orgName;
 }

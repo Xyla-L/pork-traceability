@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 public interface SystemAdminService {
-    PageResult<SysUser> users(String username, String realName, String role, Long orgId, Integer status, long pageNum, long pageSize);
+    PageResult<SysUser> users(String username, String realName, String role, Long orgId, String orgName, Integer status, long pageNum, long pageSize);
     SysUser user(Long id);
     SysUser createUser(SystemRequests.UserCreate request);
     void updateUser(Long id, SystemRequests.UserUpdate request);

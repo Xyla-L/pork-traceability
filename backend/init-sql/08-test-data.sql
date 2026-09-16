@@ -365,6 +365,23 @@ INSERT INTO retail_sale (split_batch_id, product_qr_code, store_id, store_name, 
 (@sp7, 'QR-PORK-TEST-0014', 1014, '宏图生鲜门店', NOW(), NULL, NULL, NULL, 0, NULL, 0, DATE_ADD(CURDATE(), INTERVAL 7 DAY), NULL),
 (@sp1, 'QR-PORK-TEST-0015', 1001, '安心生鲜门店', DATE_SUB(NOW(), INTERVAL 20 DAY), DATE_SUB(NOW(), INTERVAL 18 DAY), 27.50, 0.55, 1, DATE_SUB(NOW(), INTERVAL 20 DAY), 3, DATE_SUB(CURDATE(), INTERVAL 2 DAY), NULL)
 ON DUPLICATE KEY UPDATE status=VALUES(status);
+
+-- 回填 transport_id 和 receipt_id（通过 split_batch_id 跨库关联）
+UPDATE retail_sale rs
+SET transport_id = (
+    SELECT ct.id FROM db_distribution.cold_chain_transport ct
+    WHERE ct.split_batch_id = rs.split_batch_id
+    ORDER BY ct.id LIMIT 1
+)
+WHERE transport_id IS NULL;
+UPDATE retail_sale rs
+SET receipt_id = (
+    SELECT sr.id FROM db_distribution.store_receipt sr
+    WHERE sr.transport_id = rs.transport_id
+    LIMIT 1
+)
+WHERE receipt_id IS NULL AND transport_id IS NOT NULL;
+
 SET @sale1 := (SELECT id FROM retail_sale WHERE product_qr_code='QR-PORK-TEST-0001');
 SET @sale2 := (SELECT id FROM retail_sale WHERE product_qr_code='QR-PORK-TEST-0002');
 SET @sale10 := (SELECT id FROM retail_sale WHERE product_qr_code='QR-PORK-TEST-0010');
@@ -416,21 +433,21 @@ USE db_common;
 -- 消费者举报：已有2条，新增15条
 INSERT INTO complaint_report (report_no, reporter_name, reporter_phone, target_qr_code, target_batch, complaint_text, file_ids, status, handler, handle_note, handle_time, device_id) VALUES
 ('RP-TEST-0001', '张三', '13900000001', 'QR-PORK-TEST-0001', 'SP-TEST-0002', '买到的猪肉有异味，要求退货', JSON_ARRAY(), 0, NULL, NULL, NULL, 'dev-test-001'),
-('RP-TEST-0002', '李四', '13900000002', 'QR-PORK-TEST-0002', 'SP-TEST-0004', '包装破损，产品不新鲜', JSON_ARRAY(), 1, '监管员王', '已联系门店处理', DATE_SUB(NOW(), INTERVAL 5 DAY), 'dev-test-002'),
-('RP-TEST-0003', '王五', '13900000003', 'QR-PORK-TEST-0015', 'SP-TEST-0001', '产品已过期仍在销售', JSON_ARRAY(), 2, '监管员王', '已下架并罚款', DATE_SUB(NOW(), INTERVAL 3 DAY), 'dev-test-003'),
+('RP-TEST-0002', '李四', '13900000002', 'QR-PORK-TEST-0002', 'SP-TEST-0004', '包装破损，产品不新鲜', JSON_ARRAY(), 2, '监管员王', '已联系门店处理', DATE_SUB(NOW(), INTERVAL 5 DAY), 'dev-test-002'),
+('RP-TEST-0003', '王五', '13900000003', 'QR-PORK-TEST-0015', 'SP-TEST-0001', '产品已过期仍在销售', JSON_ARRAY(), 3, '监管员王', '经核实，举报内容不属实，已驳回', DATE_SUB(NOW(), INTERVAL 3 DAY), 'dev-test-003'),
 ('RP-TEST-0004', '赵六', '13900000004', 'QR-PORK-TEST-0003', 'SP-TEST-0006', '二维码扫不出信息', JSON_ARRAY(), 0, NULL, NULL, NULL, 'dev-test-004'),
-('RP-TEST-0005', '钱七', '13900000005', 'QR-PORK-TEST-0004', 'SP-TEST-0008', '肉质颜色异常发黑', JSON_ARRAY(), 1, '监管员王', '已送检，等待结果', DATE_SUB(NOW(), INTERVAL 2 DAY), 'dev-test-005'),
+('RP-TEST-0005', '钱七', '13900000005', 'QR-PORK-TEST-0004', 'SP-TEST-0008', '肉质颜色异常发黑', JSON_ARRAY(), 2, '监管员王', '已送检，等待结果', DATE_SUB(NOW(), INTERVAL 2 DAY), 'dev-test-005'),
 ('RP-TEST-0006', '孙八', '13900000006', 'QR-PORK-TEST-0005', 'SP-TEST-0010', '标签信息与实际不符', JSON_ARRAY(), 2, '监管员王', '已核实，责令整改', DATE_SUB(NOW(), INTERVAL 1 DAY), 'dev-test-006'),
 ('RP-TEST-0007', '周九', '13900000007', 'QR-PORK-TEST-0006', 'SP-TEST-0012', '分量不足，少秤', JSON_ARRAY(), 0, NULL, NULL, NULL, 'dev-test-007'),
-('RP-TEST-0008', '吴十', '13900000008', 'QR-PORK-TEST-0007', 'SP-TEST-0014', '发现异物，疑似毛发', JSON_ARRAY(), 1, '监管员王', '正在调查中', NOW(), 'dev-test-008'),
-('RP-TEST-0009', '郑十一', '13900000009', 'QR-PORK-TEST-0008', 'SP-TEST-0002', '价格标示与结账不一致', JSON_ARRAY(), 2, '监管员王', '已退款并警告', DATE_SUB(NOW(), INTERVAL 4 DAY), 'dev-test-009'),
+('RP-TEST-0008', '吴十', '13900000008', 'QR-PORK-TEST-0007', 'SP-TEST-0014', '发现异物，疑似毛发', JSON_ARRAY(), 2, '监管员王', '正在调查中', NOW(), 'dev-test-008'),
+('RP-TEST-0009', '郑十一', '13900000009', 'QR-PORK-TEST-0008', 'SP-TEST-0002', '价格标示与结账不一致', JSON_ARRAY(), 3, '监管员王', '经核实，举报内容不属实，已驳回', DATE_SUB(NOW(), INTERVAL 4 DAY), 'dev-test-009'),
 ('RP-TEST-0010', '王十二', '13900000010', 'QR-PORK-TEST-0009', 'SP-TEST-0004', '冷链温度不达标，产品变质', JSON_ARRAY(), 0, NULL, NULL, NULL, 'dev-test-010'),
-('RP-TEST-0011', '李十三', '13900000011', 'QR-PORK-TEST-0010', 'SP-TEST-0006', '分割批次信息查询不到', JSON_ARRAY(), 1, '监管员王', '系统数据同步中', NOW(), 'dev-test-011'),
+('RP-TEST-0011', '李十三', '13900000011', 'QR-PORK-TEST-0010', 'SP-TEST-0006', '分割批次信息查询不到', JSON_ARRAY(), 2, '监管员王', '系统数据同步中', NOW(), 'dev-test-011'),
 ('RP-TEST-0012', '张十四', '13900000012', 'QR-PORK-TEST-0011', 'SP-TEST-0008', '检疫章看不清', JSON_ARRAY(), 2, '监管员王', '已补盖清晰印章', DATE_SUB(NOW(), INTERVAL 6 DAY), 'dev-test-012'),
 ('RP-TEST-0013', '钱十五', '13900000013', 'QR-PORK-TEST-0012', 'SP-TEST-0010', '猪肉来源信息与溯源不一致', JSON_ARRAY(), 0, NULL, NULL, NULL, 'dev-test-013'),
-('RP-TEST-0014', '孙十六', '13900000014', 'QR-PORK-TEST-0013', 'SP-TEST-0012', '门店拒绝提供检测报告', JSON_ARRAY(), 1, '监管员王', '已要求门店公示报告', NOW(), 'dev-test-014'),
-('RP-TEST-0015', '周十七', '13900000015', 'QR-PORK-TEST-0014', 'SP-TEST-0014', '怀疑产品未经检验检疫', JSON_ARRAY(), 2, '监管员王', '已核实检验记录，合规', DATE_SUB(NOW(), INTERVAL 2 DAY), 'dev-test-015')
-ON DUPLICATE KEY UPDATE status=VALUES(status);
+('RP-TEST-0014', '孙十六', '13900000014', 'QR-PORK-TEST-0013', 'SP-TEST-0012', '门店拒绝提供检测报告', JSON_ARRAY(), 2, '监管员王', '已要求门店公示报告', NOW(), 'dev-test-014'),
+('RP-TEST-0015', '周十七', '13900000015', 'QR-PORK-TEST-0014', 'SP-TEST-0014', '怀疑产品未经检验检疫', JSON_ARRAY(), 3, '监管员王', '经核实，举报内容不属实，已驳回', DATE_SUB(NOW(), INTERVAL 2 DAY), 'dev-test-015')
+ON DUPLICATE KEY UPDATE status=VALUES(status), handle_note=VALUES(handle_note);
 SET @rp3 := (SELECT id FROM complaint_report WHERE report_no='RP-TEST-0003');
 SET @rp5 := (SELECT id FROM complaint_report WHERE report_no='RP-TEST-0005');
 SET @rp6 := (SELECT id FROM complaint_report WHERE report_no='RP-TEST-0006');

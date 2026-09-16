@@ -100,7 +100,21 @@
           </el-tag>
         </el-form-item>
         <el-form-item label="屠宰场" prop="slaughterhouse">
-          <el-input v-model="batchForm.slaughterhouse" placeholder="请输入屠宰场名称" maxlength="128" />
+          <el-select
+            v-model="batchForm.slaughterhouse"
+            placeholder="请选择或输入屠宰场"
+            filterable
+            allow-create
+            default-first-option
+            style="width: 100%"
+          >
+            <el-option
+              v-for="item in slaughterhouseOptions"
+              :key="item.id"
+              :label="item.name"
+              :value="item.name"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="操作人" prop="operator">
           <el-input v-model="batchForm.operator" placeholder="请输入操作人姓名" maxlength="32" />
@@ -200,6 +214,7 @@ import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { distributionApi } from '@/api/modules/distribution'
 import { pigApi } from '@/api/modules/breeding'
+import request from '@/utils/request'
 
 const router = useRouter()
 const searchForm = reactive({ batchNo: '', operator: '' })
@@ -216,8 +231,28 @@ const editingId = ref<number | null>(null)
 const batchForm = reactive({ pigIds: [] as number[], totalWeightKg: 0, slaughterhouse: '', operator: '', note: '' })
 const batchRules = {
   pigIds: [{ required: true, message: '请至少选择一头生猪', trigger: 'change', type: 'array', min: 1 }],
-  slaughterhouse: [{ required: true, message: '请输入屠宰场名称', trigger: 'blur' }],
+  slaughterhouse: [{ required: true, message: '请选择屠宰场', trigger: 'change' }],
   operator: [{ required: true, message: '请输入操作人姓名', trigger: 'blur' }],
+}
+// 屠宰场下拉：从机构树提取 type=slaughter 的节点
+const slaughterhouseOptions = ref<Array<{ id: number; name: string }>>([])
+const fetchSlaughterhouseList = async () => {
+  try {
+    const tree = await request.get('/system/orgs/tree')
+    const list: Array<{ id: number; name: string }> = []
+    const flatten = (nodes: any[]) => {
+      if (!Array.isArray(nodes)) return
+      nodes.forEach((n) => {
+        if (n.type === 'slaughter') list.push({ id: n.id, name: n.name })
+        if (n.children?.length) flatten(n.children)
+      })
+    }
+    flatten(tree || [])
+    slaughterhouseOptions.value = list
+  } catch (error) {
+    console.error('获取屠宰场列表失败:', error)
+    slaughterhouseOptions.value = []
+  }
 }
 // 生猪下拉选项（真实档案远程搜索）；occupiedBatch 标记已归属的批次号（非空则禁选）
 const pigOptions = ref<Array<{ value: number; label: string; occupiedBatch?: string }>>([])
@@ -413,7 +448,7 @@ function handleView(row: any) {
   detailData.value = row
   detailVisible.value = true
 }
-function handleSplit(row: any) { router.push('/admin/distribution/split') }
+function handleSplit(row: any) { router.push({ path: '/admin/distribution/split', query: { batchNo: row.batchNo } }) }
 function handleChainInfo(row: any) { ElMessage.info(`批次 ${row.batchNo} 暂未上链`) }
 
 async function handleDelete(row: any) {
@@ -474,7 +509,7 @@ async function fetchList() {
   } catch { tableData.value = []; pagination.total = 0 } finally { loading.value = false }
 }
 
-onMounted(() => { fetchOccupancy(); fetchList() })
+onMounted(() => { fetchOccupancy(); fetchList(); fetchSlaughterhouseList() })
 </script>
 
 <style lang="scss" scoped>

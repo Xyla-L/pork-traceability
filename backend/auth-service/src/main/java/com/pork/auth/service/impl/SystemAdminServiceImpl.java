@@ -33,15 +33,38 @@ public class SystemAdminServiceImpl implements SystemAdminService {
     private String defaultPassword;
 
     @Override
-    public PageResult<SysUser> users(String username, String realName, String role, Long orgId, Integer status,
+    public PageResult<SysUser> users(String username, String realName, String role, Long orgId, String orgName, Integer status,
                                      long pageNum, long pageSize) {
+        // 若按机构名称过滤，先解析为机构 ID 集合
+        List<Long> matchedOrgIds = null;
+        if (StringUtils.hasText(orgName)) {
+            List<SysOrg> matched = orgMapper.selectList(Wrappers.<SysOrg>lambdaQuery()
+                    .like(SysOrg::getName, orgName));
+            if (matched.isEmpty()) {
+                return PageResult.of(pageNum, pageSize, 0, List.of());
+            }
+            matchedOrgIds = matched.stream().map(SysOrg::getId).toList();
+        }
+        final List<Long> orgIdFilter = matchedOrgIds;
         Page<SysUser> page = userMapper.selectPage(new Page<>(pageNum, pageSize), Wrappers.<SysUser>lambdaQuery()
                 .like(StringUtils.hasText(username), SysUser::getUsername, username)
                 .like(StringUtils.hasText(realName), SysUser::getRealName, realName)
                 .eq(StringUtils.hasText(role), SysUser::getRole, role)
                 .eq(orgId != null, SysUser::getOrgId, orgId)
+                .in(orgIdFilter != null, SysUser::getOrgId, orgIdFilter)
                 .eq(status != null, SysUser::getStatus, status)
                 .orderByDesc(SysUser::getCreateTime));
+        // 批量填充 orgName
+        List<SysUser> records = page.getRecords();
+        if (!records.isEmpty()) {
+            Set<Long> orgIds = new HashSet<>();
+            for (SysUser u : records) if (u.getOrgId() != null) orgIds.add(u.getOrgId());
+            if (!orgIds.isEmpty()) {
+                Map<Long, String> orgNameMap = new HashMap<>();
+                for (SysOrg o : orgMapper.selectBatchIds(orgIds)) orgNameMap.put(o.getId(), o.getName());
+                for (SysUser u : records) u.setOrgName(orgNameMap.get(u.getOrgId()));
+            }
+        }
         return PageResult.of(page);
     }
 

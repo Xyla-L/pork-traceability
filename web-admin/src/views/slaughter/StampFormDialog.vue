@@ -134,8 +134,23 @@ const searchPigs = async (query) => {
   }
   pigSearchLoading.value = true
   try {
-    const res = await request.get('/breeding/pigs', { params: { earTagNo: query, size: 20 } })
-    pigOptions.value = res?.records || res?.list || []
+    // 条件1：只搜已出栏(status=2)的生猪，即出栏申报审批通过的猪
+    const res = await request.get('/breeding/pigs', {
+      params: { earTagNo: query, status: 2, size: 20 }
+    })
+    const list = res?.records || res?.list || []
+    // 条件2：排除已有胴体盖章记录的生猪，避免重复盖章
+    let excludeIds = []
+    try {
+      const stampRes = await request.get('/slaughter/stamps', {
+        params: { pageNum: 1, pageSize: 500 }
+      })
+      const stampList = stampRes?.records || stampRes?.list || []
+      excludeIds = stampList.map((e) => e.pigId).filter(Boolean)
+    } catch (e) {
+      console.error('获取已有胴体盖章记录失败:', e)
+    }
+    pigOptions.value = list.filter((p) => !excludeIds.includes(p.id))
   } catch (error) {
     console.error('搜索生猪失败:', error)
   } finally {
@@ -143,10 +158,21 @@ const searchPigs = async (query) => {
   }
 }
 
-const handlePigSelect = (earTagNo) => {
+const handlePigSelect = async (earTagNo) => {
   const pig = pigOptions.value.find((p) => p.earTagNo === earTagNo)
-  if (pig) {
-    formData.pigId = pig.id
+  if (!pig) return
+  formData.pigId = pig.id
+  // 自动带入批次号：查询该生猪的入场查验记录
+  try {
+    const res = await request.get('/slaughter/entries', {
+      params: { pigId: pig.id, pageNum: 1, pageSize: 1 }
+    })
+    const records = res?.records || res?.list || []
+    if (records.length > 0 && records[0].batchNo) {
+      formData.batchNo = records[0].batchNo
+    }
+  } catch (e) {
+    console.error('获取批次号失败:', e)
   }
 }
 

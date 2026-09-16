@@ -92,8 +92,10 @@
             <el-option label="系统管理员" value="ADMIN" />
           </el-select>
         </el-form-item>
-        <el-form-item label="所属机构" prop="orgName">
-          <el-input v-model="formData.orgName" placeholder="请输入机构名称" />
+        <el-form-item label="所属机构" prop="orgId">
+          <el-select v-model="formData.orgId" placeholder="请选择机构" filterable clearable style="width: 100%">
+            <el-option v-for="o in orgOptions" :key="o.value" :label="o.label" :value="o.value" />
+          </el-select>
         </el-form-item>
         <el-form-item label="联系电话" prop="phone">
           <el-input v-model="formData.phone" placeholder="请输入联系电话" />
@@ -115,11 +117,13 @@ import { ref, reactive, onMounted } from 'vue'
 import { Search, Refresh, Plus } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { EpTagType } from '@/types/common'
+import { systemUserApi, systemOrgApi } from '@/api/modules/system'
 
 const searchForm = reactive({ username: '', realName: '', role: '', orgName: '', status: null as number | null })
 const tableData = ref<any[]>([])
 const loading = ref(false)
 const pagination = reactive({ pageNum: 1, pageSize: 10, total: 0 })
+const orgOptions = ref<{ label: string; value: number }[]>([])
 
 const roleColor = (r: string): EpTagType => (({ FARMER: 'success', SLAUGHTER_OP: 'danger', DISTRIBUTOR: 'info', RETAILER: 'warning', SUPERVISOR: 'info', ADMIN: 'danger' } as Record<string, EpTagType>)[r] || 'info')
 const roleLabel = (r: string) => ({ FARMER: '养殖场', SLAUGHTER_OP: '屠宰场', DISTRIBUTOR: '配送商', RETAILER: '零售商', SUPERVISOR: '监管', ADMIN: '管理员' } as Record<string, string>)[r] || r
@@ -128,19 +132,18 @@ const dialogVisible = ref(false)
 const isEdit = ref(false)
 const submitting = ref(false)
 const formRef = ref()
-const formData = reactive({ id: 0, username: '', password: '', realName: '', role: '', orgName: '', phone: '', email: '' })
+const formData = reactive({ id: 0, username: '', password: '', nickname: '', realName: '', role: '', orgId: null as number | null, phone: '', email: '', status: 1 })
 const rules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }, { min: 6, message: '密码至少6位', trigger: 'blur' }],
   realName: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
   role: [{ required: true, message: '请选择角色', trigger: 'change' }],
-  orgName: [{ required: true, message: '请输入机构名称', trigger: 'blur' }],
   phone: [{ required: true, message: '请输入联系电话', trigger: 'blur' }],
 }
 
 function handleCreate() {
   isEdit.value = false
-  Object.assign(formData, { id: 0, username: '', password: '', realName: '', role: '', orgName: '', phone: '', email: '' })
+  Object.assign(formData, { id: 0, username: '', password: '', nickname: '', realName: '', role: '', orgId: null, phone: '', email: '', status: 1 })
   dialogVisible.value = true
 }
 function handleEdit(row: any) {
@@ -153,25 +156,42 @@ async function handleSubmit() {
   submitting.value = true
   try {
     if (isEdit.value) {
+      await systemUserApi.update(formData.id, {
+        nickname: formData.nickname, realName: formData.realName, phone: formData.phone,
+        email: formData.email, orgId: formData.orgId, role: formData.role, status: formData.status,
+      })
       ElMessage.success('用户信息更新成功')
     } else {
+      await systemUserApi.create({
+        username: formData.username, password: formData.password, nickname: formData.nickname,
+        realName: formData.realName, phone: formData.phone, email: formData.email,
+        orgId: formData.orgId, role: formData.role, status: 1,
+      })
       ElMessage.success('用户创建成功')
     }
     dialogVisible.value = false
     fetchList()
+  } catch (e) {
+    // 错误已在请求拦截器中提示
   } finally { submitting.value = false }
 }
 function handleResetPwd(row: any) {
-  ElMessageBox.confirm(`确认重置用户 ${row.username} 的密码吗？`, '提示', { type: 'warning' }).then(() => {
-    ElMessage.success(`用户 ${row.username} 密码已重置为默认密码`)
+  ElMessageBox.confirm(`确认重置用户 ${row.username} 的密码吗？`, '提示', { type: 'warning' }).then(async () => {
+    try {
+      await systemUserApi.resetPassword(row.id)
+      ElMessage.success(`用户 ${row.username} 密码已重置为默认密码`)
+    } catch (e) { /* 已提示 */ }
   }).catch(() => {})
 }
 function handleToggleStatus(row: any) {
   const newStatus = row.status === 1 ? 0 : 1
   const action = newStatus === 1 ? '启用' : '禁用'
-  ElMessageBox.confirm(`确认${action}用户 ${row.username} 吗？`, '提示', { type: 'warning' }).then(() => {
-    row.status = newStatus
-    ElMessage.success(`用户${action}成功`)
+  ElMessageBox.confirm(`确认${action}用户 ${row.username} 吗？`, '提示', { type: 'warning' }).then(async () => {
+    try {
+      await systemUserApi.toggleStatus(row.id, newStatus)
+      row.status = newStatus
+      ElMessage.success(`用户${action}成功`)
+    } catch (e) { /* 已提示 */ }
   }).catch(() => {})
 }
 
@@ -180,33 +200,50 @@ function handleReset() { Object.assign(searchForm, { username: '', realName: '',
 function handleSizeChange() { pagination.pageNum = 1; fetchList() }
 function handlePageChange() { fetchList() }
 
-function fetchList() {
+async function fetchList() {
   loading.value = true
-  const roles = ['FARMER', 'SLAUGHTER_OP', 'DISTRIBUTOR', 'RETAILER', 'SUPERVISOR', 'ADMIN']
-  const orgs = ['XX养殖合作社', 'XX市定点屠宰场', 'XX冷链物流公司', 'XX社区超市', '市动物卫生监督所']
-  const list = Array.from({ length: 32 }, (_, i) => ({
-    id: i + 1, username: `user_${String(i + 1).padStart(3, '0')}`,
-    realName: ['张伟', '李娜', '王强', '刘洋', '陈静', '赵立', '孙明', '周芳'][i % 8],
-    role: roles[i % roles.length], orgName: orgs[i % orgs.length],
-    phone: `138${String(10000000 + i * 12345).substring(0, 8)}`,
-    email: `user${i + 1}@porktrace.com`,
-    status: i < 28 ? 1 : 0,
-    createTime: `2024-0${6 + Math.floor(i / 10)}-${String(1 + i % 28).padStart(2, '0')} 10:00:00`
-  }))
-  const filtered = list.filter(item => {
-    if (searchForm.username && !item.username.includes(searchForm.username)) return false
-    if (searchForm.realName && !item.realName.includes(searchForm.realName)) return false
-    if (searchForm.role && item.role !== searchForm.role) return false
-    if (searchForm.orgName && !item.orgName.includes(searchForm.orgName)) return false
-    if (searchForm.status !== null && item.status !== searchForm.status) return false
-    return true
-  })
-  tableData.value = filtered.slice((pagination.pageNum - 1) * pagination.pageSize, pagination.pageNum * pagination.pageSize)
-  pagination.total = filtered.length
-  loading.value = false
+  try {
+    const res: any = await systemUserApi.list({
+      pageNum: pagination.pageNum,
+      pageSize: pagination.pageSize,
+      username: searchForm.username || undefined,
+      realName: searchForm.realName || undefined,
+      role: searchForm.role || undefined,
+      orgName: searchForm.orgName || undefined,
+      status: searchForm.status === null ? undefined : searchForm.status,
+    })
+    tableData.value = res?.records || []
+    pagination.total = res?.total || 0
+  } catch (e) {
+    tableData.value = []
+    pagination.total = 0
+  } finally {
+    loading.value = false
+  }
 }
 
-onMounted(() => fetchList())
+async function loadOrgOptions() {
+  try {
+    const tree: any = await systemOrgApi.tree()
+    const opts: { label: string; value: number }[] = []
+    const walk = (nodes: any[]) => {
+      if (!Array.isArray(nodes)) return
+      for (const n of nodes) {
+        opts.push({ label: n.label || n.name, value: n.id })
+        if (n.children?.length) walk(n.children)
+      }
+    }
+    walk(tree || [])
+    orgOptions.value = opts
+  } catch (e) {
+    orgOptions.value = []
+  }
+}
+
+onMounted(() => {
+  loadOrgOptions()
+  fetchList()
+})
 </script>
 
 <style lang="scss" scoped>

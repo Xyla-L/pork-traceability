@@ -34,17 +34,29 @@
 
     <el-table v-loading="loading" :data="tableData" border stripe @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="50" />
-      <el-table-column prop="qrCode" label="二维码编号" min-width="200" show-overflow-tooltip />
-      <el-table-column prop="batchNo" label="关联批次" width="160" />
-      <el-table-column prop="transportNo" label="运输单号" width="160" />
-      <el-table-column prop="storeName" label="所属门店" width="140" />
-      <el-table-column prop="expireDate" label="过期日期" width="120" align="center" />
+      <el-table-column prop="qrCode" label="二维码编号" min-width="200" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.qrCode || '-' }}</template>
+      </el-table-column>
+      <el-table-column prop="batchNo" label="关联批次" width="160">
+        <template #default="{ row }">{{ row.batchNo || '-' }}</template>
+      </el-table-column>
+      <el-table-column prop="transportNo" label="运输单号" width="160">
+        <template #default="{ row }">{{ row.transportNo || '-' }}</template>
+      </el-table-column>
+      <el-table-column prop="storeName" label="所属门店" width="140">
+        <template #default="{ row }">{{ row.storeName || '-' }}</template>
+      </el-table-column>
+      <el-table-column prop="expireDate" label="过期日期" width="120" align="center">
+        <template #default="{ row }">{{ row.expireDate || '-' }}</template>
+      </el-table-column>
       <el-table-column prop="status" label="状态" width="100" align="center">
         <template #default="{ row }">
           <el-tag :type="qrStatusType(row.status)" size="small">{{ qrStatusLabel(row.status) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="createTime" label="生成时间" width="160" align="center" />
+      <el-table-column prop="createTime" label="生成时间" width="160" align="center">
+        <template #default="{ row }">{{ row.createTime || '-' }}</template>
+      </el-table-column>
       <el-table-column label="二维码预览" width="100" align="center">
         <template #default="{ row }">
           <el-button type="primary" link size="small" @click="handlePreview(row)">预览</el-button>

@@ -71,7 +71,6 @@
         <template #default="{ row }">
           <el-button v-if="!row.handled" type="primary" link size="small" @click="handleDeal(row)">处理</el-button>
           <el-button type="success" link size="small" @click="handleView(row)">追溯</el-button>
-          <span v-if="row.handled" class="handled-info">{{ row.handler }} / {{ row.handleTime }}</span>
         </template>
       </el-table-column>
     </el-table>
