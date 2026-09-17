@@ -41,7 +41,7 @@ export const salesApi = {
   getRecallDetail(id: number) {
     return request.get(`/sales/recalls/${id}`)
   },
-  updateRecallStatus(id: number, data: { status: number }) {
+  updateRecallStatus(id: number, data: { status: number; recalledCount?: number }) {
     return request.put(`/sales/recalls/${id}/status`, data)
   },
 }

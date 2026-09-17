@@ -14,7 +14,7 @@
 
       <!-- 溯源链路 -->
       <view class="card">
-        <view class="section-title">📍 溯源链路</view>
+        <view class="section-title">溯源链路</view>
         <TraceTimeline :chain="normalizedChain" />
       </view>
 
@@ -33,7 +33,7 @@
 
       <!-- 区块链记录 -->
       <view class="card">
-        <view class="section-title">🔗 区块链存证</view>
+        <view class="section-title">区块链存证</view>
         <view class="chain-count">
           共 {{ normalizedChain.blockchain.recordCount }} 条存证记录
         </view>
@@ -50,16 +50,16 @@
 
     <!-- 空/错误状态 -->
     <view v-else class="card">
-      <EmptyState icon="⚠️" text="未找到该产品的溯源信息" show-retry @retry="load" />
+      <EmptyState icon="" text="未找到该产品的溯源信息" show-retry @retry="load" />
     </view>
 
     <!-- 底部悬浮操作栏 -->
     <view v-if="scanResult" class="bottom-bar">
       <view class="bar-report" @click="handleComplaint">
-        <text>⚠️ 举报</text>
+        <text>举报</text>
       </view>
       <view class="bar-verify" @click="handleVerify">
-        <text>🔍 一键区块链验真</text>
+        <text>一键区块链验真</text>
       </view>
     </view>
   </view>
@@ -133,8 +133,18 @@ async function load() {
 
 // 区块链存证类型 → 中文展示名（未收录的类型原样展示）
 const BIZ_TYPE_LABEL = {
-  RETAIL_SALE: '销售激活',
+  QUARANTINE_CERT: '检疫证明',
+  PIG_INDIVIDUAL: '生猪档案',
+  VACCINE_RECORD: '疫苗记录',
+  ENTRY_INSPECTION: '入场查验',
+  SLAUGHTER_INSPECT: '屠宰检验',
+  RACTOPAMINE_TEST: '瘦肉精检测',
+  CARCASS_STAMP: '检疫盖章',
   SPLIT_BATCH: '批次分割',
+  COLD_CHAIN_TRANSPORT: '冷链运输',
+  STORE_RECEIPT: '门店签收',
+  RETAIL_SALE: '销售激活',
+  RECALL_ORDER: '产品召回',
   CARCASS_BATCH: '屠宰分割',
 }
 

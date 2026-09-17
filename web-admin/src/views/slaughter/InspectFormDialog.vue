@@ -124,7 +124,21 @@ const formData = reactive({
 
 const formRules = {
   earTagNo: [{ required: true, message: '请选择生猪', trigger: 'change' }],
-  inspectNo: [{ required: true, message: '请输入检验编号', trigger: 'blur' }],
+  inspectNo: [
+    { required: true, message: '请输入检验编号', trigger: 'blur' },
+    {
+      validator: async (rule, value, callback) => {
+        if (!value || props.editData) return callback()
+        try {
+          const res = await request.get('/slaughter/inspections', { params: { inspectNo: value, pageSize: 1 } })
+          const list = res?.records || res?.list || []
+          if (list.length > 0) return callback(new Error('检验编号已存在'))
+          callback()
+        } catch (e) { callback() }
+      },
+      trigger: 'blur'
+    }
+  ],
   batchNo: [{ required: true, message: '请输入批次号', trigger: 'blur' }],
   inspectType: [{ required: true, message: '请选择检验类型', trigger: 'change' }],
   inspectTime: [{ required: true, message: '请选择检验时间', trigger: 'change' }],
@@ -139,23 +153,34 @@ const searchPigs = async (query) => {
   }
   pigSearchLoading.value = true
   try {
-    // 条件1：只搜已出栏(status=2)的生猪，即出栏申报审批通过的猪
-    const res = await request.get('/breeding/pigs', {
-      params: { earTagNo: query, status: 2, size: 20 }
+    // 条件1：搜已出栏(2)/已屠宰(3)的生猪（作废重录可能发生在屠宰之后），合并两个状态的结果
+    const [res2, res3] = await Promise.all([
+      request.get('/breeding/pigs', { params: { earTagNo: query, status: 2, size: 20 } }),
+      request.get('/breeding/pigs', { params: { earTagNo: query, status: 3, size: 20 } }),
+    ])
+    const merge = (r) => r?.records || r?.list || []
+    const seen = new Set()
+    const list = [...merge(res2), ...merge(res3)].filter((p) => {
+      if (seen.has(p.id)) return false
+      seen.add(p.id)
+      return true
     })
-    const list = res?.records || res?.list || []
-    // 条件2：排除已有屠宰检验记录的生猪，避免重复检验
-    let excludeIds = []
+    // 条件2：分析该猪的检验记录情况（用于过滤与重录放行）
+    let activeIds = []   // 有未作废检验记录的猪（一律排除，避免重复检验）
+    let voidedIds = []   // 有已作废检验记录的猪（重录场景，允许已屠宰的猪出现）
     try {
       const inspRes = await request.get('/slaughter/inspections', {
         params: { pageNum: 1, pageSize: 500 }
       })
       const inspList = inspRes?.records || inspRes?.list || []
-      excludeIds = inspList.map((e) => e.pigId).filter(Boolean)
+      activeIds = inspList.filter((e) => e.status !== 3).map((e) => e.pigId).filter(Boolean)
+      voidedIds = inspList.filter((e) => e.status === 3).map((e) => e.pigId).filter(Boolean)
     } catch (e) {
       console.error('获取已有屠宰检验记录失败:', e)
     }
-    pigOptions.value = list.filter((p) => !excludeIds.includes(p.id))
+    // 排除已有未作废检验记录的猪（防重复检验）；
+    // 其余已出栏/已屠宰的猪均可选（已屠宰 = 首次检验或作废重录场景）
+    pigOptions.value = list.filter((p) => !activeIds.includes(p.id))
   } catch (error) {
     console.error('搜索生猪失败:', error)
   } finally {

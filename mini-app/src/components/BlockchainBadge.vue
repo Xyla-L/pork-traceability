@@ -21,7 +21,7 @@ const props = defineProps({
   },
 })
 
-const icon = computed(() => (props.verified ? '✅' : '⚠️'))
+const icon = computed(() => '')
 const typeClass = computed(() => (props.verified ? 'is-verified' : 'is-unverified'))
 const text = computed(() => props.text || (props.verified ? '区块链已验证' : '未通过区块链验证'))
 </script>

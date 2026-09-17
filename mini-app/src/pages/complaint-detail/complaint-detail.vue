@@ -51,7 +51,7 @@
     </template>
 
     <view v-else class="card">
-      <EmptyState icon="⚠️" text="举报信息不存在" show-retry @retry="load" />
+      <EmptyState icon="" text="举报信息不存在" show-retry @retry="load" />
     </view>
   </view>
 </template>

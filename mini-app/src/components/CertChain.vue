@@ -1,7 +1,7 @@
 <template>
   <view class="cert-chain">
     <view v-for="(cert, idx) in certs" :key="idx" class="cert-item">
-      <view class="cert-badge">✅</view>
+      <view class="cert-badge"></view>
       <view class="cert-body">
         <view class="cert-type">{{ cert.type }}</view>
         <view class="cert-no">编号：{{ cert.certNo }}</view>

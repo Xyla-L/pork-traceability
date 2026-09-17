@@ -1,0 +1,2 @@
+﻿SERVICE                STATUS
+distribution-service   Up 13 seconds (health: starting)

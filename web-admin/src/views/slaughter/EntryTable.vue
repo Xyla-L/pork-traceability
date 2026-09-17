@@ -19,19 +19,12 @@
           <el-tag :type="entryStatusTag(row.status)" size="small">{{ entryStatusLabel(row.status) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="180" fixed="right" align="center">
+      <el-table-column label="操作" width="130" fixed="right" align="center">
         <template #default="{ row }">
           <el-button type="primary" link size="small" @click="handleView(row)">
             查看
           </el-button>
-          <el-button type="warning" link size="small" @click="$emit('edit', row)">
-            编辑
-          </el-button>
-          <el-popconfirm title="确定删除该入场查验记录吗？" @confirm="$emit('delete', row)">
-            <template #reference>
-              <el-button type="danger" link size="small">删除</el-button>
-            </template>
-          </el-popconfirm>
+          <el-button type="warning" link size="small" @click="$emit('edit', row)">编辑</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -72,7 +65,7 @@ defineProps({
   }
 })
 
-defineEmits(['edit', 'delete'])
+defineEmits(['edit'])
 
 const viewVisible = ref(false)
 const currentView = ref({})

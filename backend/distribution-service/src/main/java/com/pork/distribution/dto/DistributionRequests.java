@@ -55,5 +55,5 @@ public final class DistributionRequests {
     public record ReceiptCreate(@NotNull Long transportId, @NotNull Long storeId,
                                 @NotBlank String storeName, @NotBlank String receiver, String receiverPhone,
                                 Integer qtyCheck, String qtyDiffNote, Integer tempCheck, BigDecimal tempValue,
-                                Integer packageIntact, List<String> receiptPhoto, @NotBlank String eSignature) { }
+                                Integer packageIntact, List<String> receiptPhoto, String eSignature) { }
 }

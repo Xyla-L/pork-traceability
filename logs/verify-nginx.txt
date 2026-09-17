@@ -1,0 +1,2 @@
+﻿nginx-get: 401
+{"code":200,"message":"鎿嶄綔鎴愬姛","data":{"fileId":"102695a68d58408ebb268c8b96fe67c6","originalName":"test-upload.png","fileSize":70,"mimeType":"image/png","sha256":"c414cd0e204de974f73753c7e28d7638e7b3691bb8b1a2bab6b25bb7fed7ce77","url":"/api/v1/file/102695a68d58408ebb268c8b96fe67c6"},"traceId":"f0e7239c7cb24db1bdd2037d7a4d908e","timestamp":1789655268850}

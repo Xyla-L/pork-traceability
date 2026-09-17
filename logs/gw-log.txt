@@ -1,0 +1,15 @@
+﻿2026-09-17T22:17:10.521+08:00  INFO 1 --- [gateway-service] [sson-netty-3-11] c.pork.gateway.filter.AuthGlobalFilter   : gateway_forward path=/api/v1/breeding/pigs/16/vaccines userId=1 role=ADMIN
+2026-09-17T22:17:10.522+08:00  INFO 1 --- [gateway-service] [sson-netty-3-19] c.pork.gateway.filter.AuthGlobalFilter   : gateway_forward path=/api/v1/breeding/pigs/15/vaccines userId=1 role=ADMIN
+2026-09-17T22:17:10.522+08:00  INFO 1 --- [gateway-service] [isson-netty-3-9] c.pork.gateway.filter.AuthGlobalFilter   : gateway_forward path=/api/v1/breeding/pigs/14/vaccines userId=1 role=ADMIN
+2026-09-17T22:17:10.540+08:00  INFO 1 --- [gateway-service] [sson-netty-3-15] c.pork.gateway.filter.AuthGlobalFilter   : gateway_forward path=/api/v1/breeding/pigs/12/vaccines userId=1 role=ADMIN
+2026-09-17T22:17:10.540+08:00  INFO 1 --- [gateway-service] [sson-netty-3-17] c.pork.gateway.filter.AuthGlobalFilter   : gateway_forward path=/api/v1/breeding/pigs/13/vaccines userId=1 role=ADMIN
+2026-09-17T22:17:10.543+08:00  INFO 1 --- [gateway-service] [isson-netty-3-3] c.pork.gateway.filter.AuthGlobalFilter   : gateway_forward path=/api/v1/breeding/pigs/9/vaccines userId=1 role=ADMIN
+2026-09-17T22:17:10.543+08:00  INFO 1 --- [gateway-service] [isson-netty-3-9] c.pork.gateway.filter.AuthGlobalFilter   : gateway_forward path=/api/v1/breeding/pigs/11/vaccines userId=1 role=ADMIN
+2026-09-17T22:17:10.549+08:00  INFO 1 --- [gateway-service] [sson-netty-3-13] c.pork.gateway.filter.AuthGlobalFilter   : gateway_forward path=/api/v1/breeding/pigs/8/vaccines userId=1 role=ADMIN
+2026-09-17T22:17:10.549+08:00  INFO 1 --- [gateway-service] [isson-netty-3-6] c.pork.gateway.filter.AuthGlobalFilter   : gateway_forward path=/api/v1/breeding/pigs/7/vaccines userId=1 role=ADMIN
+2026-09-17T22:17:10.564+08:00  INFO 1 --- [gateway-service] [sson-netty-3-17] c.pork.gateway.filter.AuthGlobalFilter   : gateway_forward path=/api/v1/breeding/pigs/6/vaccines userId=1 role=ADMIN
+2026-09-17T22:17:10.569+08:00  INFO 1 --- [gateway-service] [sson-netty-3-19] c.pork.gateway.filter.AuthGlobalFilter   : gateway_forward path=/api/v1/breeding/pigs/5/vaccines userId=1 role=ADMIN
+2026-09-17T22:17:10.569+08:00  INFO 1 --- [gateway-service] [sson-netty-3-27] c.pork.gateway.filter.AuthGlobalFilter   : gateway_forward path=/api/v1/breeding/pigs/4/vaccines userId=1 role=ADMIN
+2026-09-17T22:17:10.574+08:00  INFO 1 --- [gateway-service] [isson-netty-3-5] c.pork.gateway.filter.AuthGlobalFilter   : gateway_forward path=/api/v1/breeding/pigs/3/vaccines userId=1 role=ADMIN
+2026-09-17T22:17:10.574+08:00  INFO 1 --- [gateway-service] [sson-netty-3-31] c.pork.gateway.filter.AuthGlobalFilter   : gateway_forward path=/api/v1/breeding/pigs/2/vaccines userId=1 role=ADMIN
+2026-09-17T22:17:10.576+08:00  INFO 1 --- [gateway-service] [sson-netty-3-21] c.pork.gateway.filter.AuthGlobalFilter   : gateway_forward path=/api/v1/breeding/pigs/1/vaccines userId=1 role=ADMIN

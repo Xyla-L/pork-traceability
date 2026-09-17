@@ -140,7 +140,7 @@ export const mockSafeBuy = {
 /** 一键验真结果 */
 export const mockVerifyResult = {
   verified: true,
-  chainStatus: '✅ 区块链已验证',
+  chainStatus: '区块链已验证',
   detail: '全部 5 条存证记录与链上哈希一致',
   details: [
     { type: '产地检疫', localHash: 'a3f5c8e2', chainHash: 'a3f5c8e2', match: true },

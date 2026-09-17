@@ -23,6 +23,8 @@ import org.springframework.util.StringUtils;
 
 import java.beans.FeatureDescriptor;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -60,9 +62,9 @@ public class PigIndividualServiceImpl extends ServiceImpl<PigIndividualMapper, P
         if (StringUtils.hasText(breed)) {
             wrapper.eq(PigIndividual::getBreed, breed);
         }
-        Integer statusCode = parseStatus(status);
-        if (statusCode != null) {
-            wrapper.eq(PigIndividual::getStatus, statusCode);
+        List<Integer> statusCodes = parseStatuses(status);
+        if (!statusCodes.isEmpty()) {
+            wrapper.in(PigIndividual::getStatus, statusCodes);
         }
         if (StringUtils.hasText(birthDateStart)) {
             wrapper.ge(PigIndividual::getBirthDate, LocalDate.parse(birthDateStart.trim()));
@@ -174,21 +176,26 @@ public class PigIndividualServiceImpl extends ServiceImpl<PigIndividualMapper, P
     }
 
     /**
-     * 解析前端状态参数：优先按中文枚举（在养/已出栏/已屠宰/异常），兼容纯数字字符串
+     * 解析前端状态参数：支持逗号分隔多状态（如 "1,2" 或 "在养,已出栏"），
+     * 单值行为与原逻辑一致；无法解析的部分忽略
      */
-    private Integer parseStatus(String status) {
+    private List<Integer> parseStatuses(String status) {
         if (!StringUtils.hasText(status)) {
-            return null;
+            return List.of();
         }
-        String trimmed = status.trim();
-        Integer code = STATUS_NAME_TO_CODE.get(trimmed);
-        if (code != null) {
-            return code;
+        List<Integer> codes = new ArrayList<>();
+        for (String part : status.split(",")) {
+            String trimmed = part.trim();
+            if (!StringUtils.hasText(trimmed)) continue;
+            Integer code = STATUS_NAME_TO_CODE.get(trimmed);
+            if (code == null && trimmed.matches("\\d+")) {
+                code = Integer.valueOf(trimmed);
+            }
+            if (code != null && !codes.contains(code)) {
+                codes.add(code);
+            }
         }
-        if (trimmed.matches("\\d+")) {
-            return Integer.valueOf(trimmed);
-        }
-        return null;
+        return codes;
     }
 
     private String[] getNullPropertyNames(Object source) {

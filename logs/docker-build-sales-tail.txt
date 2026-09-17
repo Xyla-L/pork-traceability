@@ -1,0 +1,40 @@
+﻿
+#26 [stage-1 6/6] RUN groupadd --system app && useradd --system --gid app --home /app app     && mkdir -p /app/data && chown -R app:app /app
+#26 DONE 1.3s
+
+#27 exporting to image
+#27 exporting layers
+#27 exporting layers 4.9s done
+#27 exporting manifest sha256:a78bbcb5edcc6adf9c0650b9f266d4666f4706f0cb32ba096f74f20f8e33420b 0.0s done
+#27 exporting config sha256:e11e9ae1a73c52358069172bff9ed29f8b20dfdc8307d7bbe7d7de6cb9bd777a 0.0s done
+#27 exporting attestation manifest sha256:dab5ae0751684e34073c3187a51578bbc4a3592af21b292a968e016f14bc8bf3 0.0s done
+#27 exporting manifest list sha256:f19ddb34f42a498ab6cb3915373b4f976168989d14b71c970270dbb2095f01d9
+#27 exporting manifest list sha256:f19ddb34f42a498ab6cb3915373b4f976168989d14b71c970270dbb2095f01d9 0.0s done
+#27 naming to docker.io/library/pork-traceability-sales-service:latest done
+#27 unpacking to docker.io/library/pork-traceability-sales-service:latest
+#27 unpacking to docker.io/library/pork-traceability-sales-service:latest 1.7s done
+#27 DONE 6.8s
+
+#28 resolving provenance for metadata file
+#28 DONE 0.0s
+ Image pork-traceability-sales-service Built 
+docker :  Container pork-traceability-nacos-1 Running 
+所在位置 行:445 字符: 132
++ ... -sales.txt; docker compose up -d sales-service >> e:\pork-traceabilit ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ( Container pork...acos-1 Running :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ Container pork-traceability-mysql-1 Running 
+ Container pork-traceability-rabbitmq-1 Running 
+ Container pork-traceability-redis-1 Running 
+ Container pork-traceability-sales-service-1 Recreate 
+ Container pork-traceability-sales-service-1 Recreated 
+ Container pork-traceability-rabbitmq-1 Waiting 
+ Container pork-traceability-mysql-1 Waiting 
+ Container pork-traceability-redis-1 Waiting 
+ Container pork-traceability-rabbitmq-1 Healthy 
+ Container pork-traceability-mysql-1 Healthy 
+ Container pork-traceability-redis-1 Healthy 
+ Container pork-traceability-sales-service-1 Starting 
+ Container pork-traceability-sales-service-1 Started 

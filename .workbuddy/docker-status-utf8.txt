@@ -1,0 +1,6 @@
+pork-traceability-trace-service-1 | Up 58 seconds (healthy)
+trace-service-1  | 2026-09-18T00:33:09.188+08:00  INFO 1 --- [trace-service] [           main] c.a.nacos.client.config.impl.CacheData   : [fixed-nacos_8848] [add-listener] ok, tenant=, dataId=trace-service.yaml, group=DEFAULT_GROUP, cnt=1
+trace-service-1  | 2026-09-18T00:33:09.189+08:00  INFO 1 --- [trace-service] [           main] c.a.c.n.refresh.NacosContextRefresher    : [Nacos Config] Listening config: dataId=trace-service.yaml, group=DEFAULT_GROUP
+trace-service-1  | 2026-09-18T00:33:10.794+08:00  INFO 1 --- [trace-service] [nio-8086-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+trace-service-1  | 2026-09-18T00:33:10.795+08:00  INFO 1 --- [trace-service] [nio-8086-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+trace-service-1  | 2026-09-18T00:33:10.797+08:00  INFO 1 --- [trace-service] [nio-8086-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 2 ms

@@ -4,7 +4,7 @@
     <canvas id="scan-canvas" type="2d" class="scan-canvas" />
     <!-- 头部品牌区 -->
     <view class="hero">
-      <view class="hero-logo">🐷</view>
+      <view class="hero-logo"></view>
       <view class="hero-title">猪肉产品质量安全溯源</view>
       <view class="hero-subtitle">扫码溯源 · 安心购 · 一键验真</view>
     </view>
@@ -12,7 +12,7 @@
     <!-- 扫码入口大按钮 -->
     <view class="scan-area">
       <view class="scan-btn" @click="handleScan">
-        <text class="scan-icon">📷</text>
+        <text class="scan-icon"></text>
         <text class="scan-text">扫一扫溯源</text>
       </view>
     </view>
@@ -33,7 +33,7 @@
     <!-- 我的举报入口 -->
     <view class="card complaint-entry" @click="goComplaint">
       <view class="complaint-entry-left">
-        <text class="complaint-entry-icon">📋</text>
+        <text class="complaint-entry-icon"></text>
         <text class="complaint-entry-text">我的举报</text>
       </view>
       <text class="recent-arrow">›</text>
@@ -43,7 +43,7 @@
     <view class="card recent">
       <view class="section-title">最近扫码</view>
       <view v-if="recentList.length === 0">
-        <EmptyState icon="🗂️" text="暂无扫码记录" />
+        <EmptyState icon="" text="暂无扫码记录" />
       </view>
       <view v-else>
         <view

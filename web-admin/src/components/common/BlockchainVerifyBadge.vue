@@ -1,7 +1,7 @@
 <template>
   <span class="blockchain-verify-badge" :class="`is-${status}`">
     <template v-if="status === 'confirmed'">
-      <span class="badge-icon">&#x2705;</span>
+      <span class="badge-icon"></span>
       <span class="badge-text">区块链已验证</span>
       <el-tooltip
         v-if="txHash"
@@ -15,7 +15,7 @@
     </template>
 
     <template v-else-if="status === 'pending'">
-      <span class="badge-icon">&#x23F3;</span>
+      <span class="badge-icon"></span>
       <span class="badge-text">上链确认中</span>
     </template>
 

@@ -13,24 +13,12 @@
       <el-table-column prop="injectTime" label="注射时间" min-width="160" align="center" />
       <el-table-column prop="dosage" label="剂量" min-width="100" align="center" />
       <el-table-column prop="operator" label="操作人" min-width="100" show-overflow-tooltip />
-      <el-table-column label="操作" width="220" fixed="right" align="center">
+      <el-table-column label="操作" width="150" fixed="right" align="center">
         <template #default="{ row }">
-          <el-button type="primary" link size="small" @click="$emit('edit', row)">
-            编辑
-          </el-button>
           <el-button type="primary" link size="small" @click="handleViewCert(row)">
             查看凭证
           </el-button>
-          <el-popconfirm
-            title="确定删除该疫苗记录吗？"
-            confirm-button-text="确定"
-            cancel-button-text="取消"
-            @confirm="$emit('delete', row)"
-          >
-            <template #reference>
-              <el-button type="danger" link size="small">删除</el-button>
-            </template>
-          </el-popconfirm>
+          <el-button type="warning" link size="small" @click="$emit('edit', row)">编辑</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -89,7 +77,7 @@ defineProps({
   }
 })
 
-defineEmits(['delete', 'edit'])
+defineEmits(['edit'])
 
 const certVisible = ref(false)
 const certLoading = ref(false)
@@ -125,7 +113,11 @@ const handleViewCert = async (row) => {
   certVisible.value = true
 
   // 后端返回的是文件ID列表，真正的图片需请求 GET /file/{fileId}
-  const fileIds = Array.isArray(row.fileIds) ? row.fileIds : []
+  let fileIds = row.fileIds
+  if (typeof fileIds === 'string') {
+    try { fileIds = JSON.parse(fileIds) } catch { fileIds = [] }
+  }
+  if (!Array.isArray(fileIds)) fileIds = []
   if (fileIds.length === 0) return
 
   certLoading.value = true

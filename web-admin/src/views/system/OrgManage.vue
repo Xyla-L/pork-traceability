@@ -5,7 +5,6 @@
       <div class="org-tree-panel">
         <div class="tree-header">
           <span class="tree-title">机构层级</span>
-          <el-button type="primary" size="small" @click="handleCreate(null)"><el-icon><Plus /></el-icon>新增</el-button>
         </div>
         <el-input v-model="treeFilter" placeholder="搜索机构..." clearable size="small" style="margin-bottom: 12px" />
         <el-tree ref="treeRef" :data="orgTreeData" :props="{ children: 'children', label: 'label' }"
@@ -22,9 +21,8 @@
                 {{ node.label }}
               </span>
               <span class="tree-node-actions">
-                <el-button type="primary" link size="small" @click.stop="handleCreate(data)">+子级</el-button>
-                <el-button type="warning" link size="small" @click.stop="handleEdit(data)">编辑</el-button>
-                <el-button v-if="!data.children?.length" type="danger" link size="small" @click.stop="handleDelete(data)">删除</el-button>
+                <el-button type="primary" link size="small" @click.stop="handleAddChild(data)">添加子级</el-button>
+                <el-button type="primary" link size="small" @click.stop="handleEdit(data)">编辑</el-button>
               </span>
             </div>
           </template>
@@ -44,10 +42,7 @@
             <el-descriptions-item label="创建时间">{{ selectedOrg.createTime || '--' }}</el-descriptions-item>
             <el-descriptions-item label="备注">{{ selectedOrg.remark || '--' }}</el-descriptions-item>
           </el-descriptions>
-          <div class="detail-actions">
-            <el-button type="primary" @click="handleEdit(selectedOrg)">编辑</el-button>
-            <el-button type="danger" plain @click="handleDelete(selectedOrg)">删除</el-button>
-          </div>
+
         </template>
         <el-empty v-else description="请选择左侧机构查看详情" :image-size="80" />
       </div>
@@ -71,8 +66,8 @@
         <el-form-item label="负责人">
           <el-input v-model="formData.manager" placeholder="请输入负责人" />
         </el-form-item>
-        <el-form-item label="联系电话">
-          <el-input v-model="formData.phone" placeholder="请输入联系电话" />
+        <el-form-item label="联系电话" prop="phone">
+          <el-input v-model="formData.phone" placeholder="请输入联系电话" maxlength="11" />
         </el-form-item>
         <el-form-item label="地址">
           <el-input v-model="formData.address" placeholder="请输入地址" />
@@ -112,6 +107,7 @@ const formData = reactive({ id: 0, type: '', label: '', manager: '', phone: '', 
 const rules = {
   type: [{ required: true, message: '请选择机构类型', trigger: 'change' }],
   label: [{ required: true, message: '请输入机构名称', trigger: 'blur' }],
+  phone: [{ pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }],
 }
 const formTitle = ref('新增机构')
 
@@ -124,11 +120,19 @@ watch(treeFilter, (val) => { treeRef.value?.filter(val) })
 
 function handleNodeClick(data: any) { selectedOrg.value = data }
 
-function handleCreate(parent: any) {
+function handleAddRoot() {
   isEdit.value = false
-  isChild.value = !!parent
-  formTitle.value = parent ? `新增子机构（父: ${parent.label}）` : '新增机构'
-  Object.assign(formData, { id: 0, type: parent?.type || '', label: '', manager: '', phone: '', address: '', remark: '', parentId: parent?.id || null })
+  isChild.value = false
+  formTitle.value = '新增机构'
+  Object.assign(formData, { id: 0, type: '', label: '', manager: '', phone: '', address: '', remark: '', parentId: null })
+  dialogVisible.value = true
+}
+
+function handleAddChild(data: any) {
+  isEdit.value = false
+  isChild.value = true
+  formTitle.value = '新增子级机构'
+  Object.assign(formData, { id: 0, type: data.type || '', label: '', manager: '', phone: '', address: '', remark: '', parentId: data.id })
   dialogVisible.value = true
 }
 
@@ -136,22 +140,17 @@ function handleEdit(data: any) {
   isEdit.value = true
   isChild.value = false
   formTitle.value = '编辑机构'
-  Object.assign(formData, { ...data, parentId: data.parentId || null })
+  Object.assign(formData, {
+    id: data.id,
+    type: data.type || '',
+    label: data.label || '',
+    manager: data.manager || '',
+    phone: data.phone || '',
+    address: data.address || '',
+    remark: data.remark || '',
+    parentId: data.parentId || null,
+  })
   dialogVisible.value = true
-}
-
-function handleDelete(data: any) {
-  ElMessageBox.confirm(`确定删除机构 "${data.label}" 吗？`, '警告', { type: 'warning', confirmButtonText: '确定删除' }).then(async () => {
-    try {
-      await systemOrgApi.remove(data.id)
-      ElMessage.success(`机构 "${data.label}" 已删除`)
-      selectedOrg.value = null
-      loadOrgTree()
-    } catch (error) {
-      console.error('删除机构失败:', error)
-      ElMessage.error('删除失败')
-    }
-  }).catch(() => {})
 }
 
 async function handleSubmit() {

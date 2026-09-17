@@ -1,0 +1,60 @@
+﻿
+#88 [trace-service stage-1 6/6] RUN groupadd --system app && useradd --system --gid app --home /app app     && mkdir -p /app/data && chown -R app:app /app
+#88 ...
+
+#89 [file-service] resolving provenance for metadata file
+#89 DONE 0.0s
+
+#88 [trace-service stage-1 6/6] RUN groupadd --system app && useradd --system --gid app --home /app app     && mkdir -p /app/data && chown -R app:app /app
+#88 DONE 1.7s
+
+#86 [blockchain-service] exporting to image
+#86 ...
+
+#90 [trace-service] exporting to image
+#90 exporting layers 6.9s done
+#90 exporting manifest sha256:6055cb96c9d16a802462c11cb84f7c2efdd45c629a38ec3dd96ee6e6c87c4cd5 0.0s done
+#90 exporting config sha256:f4d6b707df3caca091dba9a7cb84113cae26118eb2e0877f0e2d2384c66f5cd4 0.0s done
+#90 exporting attestation manifest sha256:fd9666d59a18787e748d7daa0d00d004f9981bcf801071ff23103143ada74ac3
+#90 exporting attestation manifest sha256:fd9666d59a18787e748d7daa0d00d004f9981bcf801071ff23103143ada74ac3 0.1s done
+#90 exporting manifest list sha256:304567428ef01d9ada55be80861aa09a90a071fb9b92b30d5fc2240b307021be 0.0s done
+#90 naming to docker.io/library/pork-traceability-trace-service:latest done
+#90 unpacking to docker.io/library/pork-traceability-trace-service:latest
+#90 ...
+
+#86 [blockchain-service] exporting to image
+#86 exporting layers 9.2s done
+#86 exporting manifest sha256:2eb5a84935c411492a5588a47923bf6fd77018f6c939f82c0069bcfcc01e1b3e 0.0s done
+#86 exporting config sha256:de635138865e278f86ee99225bad950216ce493ddf8788feeac1b57ff6934d66 0.0s done
+#86 exporting attestation manifest sha256:f3c05d0016c626f02a0b892537c73c8e8f23fb3f729025887050b4da5240f58d 0.0s done
+#86 exporting manifest list sha256:9a2f61c02737ac4a5158c61e31bb9279ca0bbd36e391577ed1b878f21277af96 0.0s done
+#86 naming to docker.io/library/pork-traceability-blockchain-service:latest
+#86 naming to docker.io/library/pork-traceability-blockchain-service:latest done
+#86 unpacking to docker.io/library/pork-traceability-blockchain-service:latest
+#86 ...
+
+#90 [trace-service] exporting to image
+#90 unpacking to docker.io/library/pork-traceability-trace-service:latest 2.3s done
+#90 DONE 9.5s
+
+#86 [blockchain-service] exporting to image
+#86 ...
+
+#91 [trace-service] resolving provenance for metadata file
+#91 DONE 0.0s
+
+#86 [blockchain-service] exporting to image
+#86 unpacking to docker.io/library/pork-traceability-blockchain-service:latest 3.0s done
+#86 DONE 12.5s
+
+#92 [blockchain-service] resolving provenance for metadata file
+#92 DONE 0.0s
+ Image pork-traceability-distribution-service Built 
+ Image pork-traceability-trace-service Built 
+ Image pork-traceability-breeding-service Built 
+ Image pork-traceability-sales-service Built 
+ Image pork-traceability-slaughter-service Built 
+ Image pork-traceability-auth-service Built 
+ Image pork-traceability-gateway-service Built 
+ Image pork-traceability-file-service Built 
+ Image pork-traceability-blockchain-service Built 

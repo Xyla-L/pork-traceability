@@ -16,11 +16,11 @@
 
       <!-- 检疫合格章画廊 -->
       <view class="card">
-        <view class="section-title">🏅 检疫合格章</view>
+        <view class="section-title">检疫合格章</view>
         <scroll-view scroll-x class="gallery">
           <view class="gallery-row">
             <view v-for="(cert, idx) in data.certChain" :key="idx" class="cert-card">
-              <view class="cert-stamp">{{ cert.photo ? '' : '✅' }}</view>
+              <view class="cert-stamp">{{ cert.photo ? '' : '' }}</view>
               <view class="cert-type">{{ cert.type }}</view>
               <view class="cert-no">{{ cert.certNo }}</view>
               <view class="cert-meta">{{ cert.issueOrg }}</view>
@@ -32,13 +32,13 @@
 
       <!-- 检测报告列表 -->
       <view class="card">
-        <view class="section-title">📋 检测报告</view>
+        <view class="section-title">检测报告</view>
         <ReportSummary :reports="data.reports" />
       </view>
 
       <!-- 区块链存证时间轴 -->
       <view class="card">
-        <view class="section-title">🔗 区块链存证时间轴</view>
+        <view class="section-title">区块链存证时间轴</view>
         <view class="chain-timeline">
           <view v-for="(rec, idx) in data.chainRecords" :key="idx" class="ct-node">
             <view class="ct-rail">
@@ -56,7 +56,7 @@
     </template>
 
     <view v-else class="card">
-      <EmptyState icon="⚠️" text="暂无安心购数据" show-retry @retry="load" />
+      <EmptyState icon="" text="暂无安心购数据" show-retry @retry="load" />
     </view>
   </view>
 </template>

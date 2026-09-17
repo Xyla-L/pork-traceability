@@ -13,6 +13,7 @@
           {{ breedLabel(row.breed) }}
         </template>
       </el-table-column>
+      <el-table-column prop="penNo" label="圈舍号" min-width="100" align="center" />
       <el-table-column prop="farmId" label="养殖场" min-width="140" show-overflow-tooltip>
         <template #default="{ row }">
           {{ farmNameMap[row.farmId] || row.farmId }}
@@ -34,9 +35,7 @@
           <el-button v-if="row.status === 1" type="success" link size="small" @click="$emit('apply', row)">
             申请出栏
           </el-button>
-          <el-button type="warning" link size="small" @click="$emit('edit', row)">
-            编辑
-          </el-button>
+          <el-button type="primary" link size="small" @click="$emit('edit', row)">编辑</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -62,7 +61,7 @@ defineProps({
   }
 })
 
-defineEmits(['edit', 'apply'])
+defineEmits(['apply', 'edit'])
 
 const breedMap = {
   'changbai': '长白猪',
@@ -73,7 +72,8 @@ const breedMap = {
 }
 
 const pigStatusType = (status) => {
-  const map = { 1: 'raising', 2: 'transport', 3: 'slaughtered', 4: 'abnormal' }
+  // 生猪状态：1在养 2已出栏 3已屠宰 4异常死亡/淘汰（对应 breeding 枚举）
+  const map = { 1: 'raising', 2: 'soldOut', 3: 'slaughtered', 4: 'abnormal' }
   return map[status] || ''
 }
 

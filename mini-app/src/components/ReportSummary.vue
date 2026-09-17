@@ -3,7 +3,7 @@
     <view v-for="(report, idx) in reports" :key="idx" class="report-item">
       <view class="report-head" @click="toggle(idx)">
         <text class="report-status" :class="report.pass ? 'pass' : 'fail'">
-          {{ report.pass ? '✅' : '⚠️' }}
+          {{ report.pass ? '合格' : '未通过' }}
         </text>
         <text class="report-title">{{ report.title }}</text>
         <text class="report-arrow">{{ expanded[idx] ? '▾' : '▸' }}</text>

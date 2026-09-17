@@ -94,8 +94,8 @@
       :data="tableData"
       :loading="tableLoading"
       :farm-name-map="farmNameMap"
-      @edit="handleEdit"
       @apply="handleApply"
+      @edit="handleEdit"
     />
 
     <!-- 分页 -->
@@ -112,7 +112,7 @@
       />
     </div>
 
-    <!-- 新建/编辑弹窗 -->
+    <!-- 新建弹窗 -->
     <PigFormDialog
       v-model:visible="formDialogVisible"
       :edit-data="currentEditData"

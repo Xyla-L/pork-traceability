@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS cold_chain_transport (
     vehicle_no VARCHAR(16) NOT NULL, vehicle_type VARCHAR(32), refrigeration VARCHAR(64),
     driver_name VARCHAR(32), driver_phone VARCHAR(20), origin VARCHAR(256), destination VARCHAR(256),
     planned_depart DATETIME, planned_arrive DATETIME, depart_time DATETIME, arrive_time DATETIME,
-    status TINYINT DEFAULT 1, create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    status TINYINT DEFAULT 1, content_hash CHAR(64) DEFAULT NULL, create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uk_transport_no (transport_no), INDEX idx_status (status), INDEX idx_batch (split_batch_id)
 ) ENGINE=InnoDB COMMENT='冷链运输';
 

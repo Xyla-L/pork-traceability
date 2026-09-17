@@ -1,0 +1,6 @@
+﻿id	ear_tag_no	status
+19	ET-TEST-0016	2
+id	inspect_no	inspect_type	status	inspect_time
+19	SI-TEST-PRE-011	1	1	2026-09-17 00:00:00
+id	stamp_no	stamp_type	stamp_time
+18	STAMP-DEMO-020	?????	2026-09-17 00:00:00

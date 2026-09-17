@@ -22,7 +22,7 @@
     </view>
 
     <view v-else-if="list.length === 0">
-      <EmptyState icon="📋" text="暂无举报记录" />
+      <EmptyState icon="" text="暂无举报记录" />
     </view>
 
     <view v-else>

@@ -108,7 +108,7 @@ const routes: RouteRecordRaw[] = [
         meta: {
           title: '胴体批次',
           icon: 'Box',
-          roles: ['DISTRIBUTOR', 'SUPERVISOR', 'ADMIN'],
+          roles: ['SLAUGHTER_OP', 'SUPERVISOR', 'ADMIN'],
         },
       },
       {
@@ -118,7 +118,7 @@ const routes: RouteRecordRaw[] = [
         meta: {
           title: '分割操作',
           icon: 'Grid',
-          roles: ['DISTRIBUTOR', 'SUPERVISOR', 'ADMIN'],
+          roles: ['SLAUGHTER_OP', 'DISTRIBUTOR', 'SUPERVISOR', 'ADMIN'],
         },
       },
       {

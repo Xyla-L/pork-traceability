@@ -49,6 +49,7 @@
             <el-option label="待检验" value="待检验" />
             <el-option label="合格" value="合格" />
             <el-option label="不合格" value="不合格" />
+            <el-option label="已作废" value="已作废" />
           </el-select>
         </el-form-item>
         <el-form-item label="检验日期">
@@ -87,8 +88,8 @@
     <InspectTable
       :data="tableData"
       :loading="tableLoading"
+      @voided="fetchList"
       @edit="handleEdit"
-      @delete="handleDelete"
     />
 
     <!-- 分页 -->
@@ -105,7 +106,7 @@
       />
     </div>
 
-    <!-- 新建/编辑弹窗 -->
+    <!-- 新建弹窗 -->
     <InspectFormDialog
       v-model:visible="formDialogVisible"
       :edit-data="currentEditData"
@@ -117,7 +118,6 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { Search, Refresh, Plus } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
 import InspectTable from './InspectTable.vue'
 import InspectFormDialog from './InspectFormDialog.vue'
@@ -221,17 +221,6 @@ const handleEdit = (row) => {
 
 const handleFormSubmit = () => {
   fetchList()
-}
-
-const handleDelete = async (row) => {
-  try {
-    await request.delete(`/slaughter/inspections/${row.id}`)
-    ElMessage.success('删除成功')
-    fetchList()
-  } catch (error) {
-    console.error('删除失败:', error)
-    ElMessage.error('删除失败')
-  }
 }
 
 // ==================== 初始化 ====================

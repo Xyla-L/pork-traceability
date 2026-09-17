@@ -217,13 +217,13 @@ public class TraceQueryServiceImpl implements TraceQueryService {
                     "共查验" + entries.size() + "头生猪；检疫证明编号：" + (certNos.isBlank() ? "无" : certNos), pass));
         }
         if (!preInspections.isEmpty()) {
-            boolean pass = preInspections.stream().allMatch(i -> intEquals(i.get("result"), 1));
+            boolean pass = preInspections.stream().allMatch(this::inspectionPass);
             reports.add(report("宰前检验",
                     pass ? "宰前静养观察与群体检查，健康状况良好，无异常临床表现。" : "宰前检验存在不合格项。",
                     inspectionDetail(preInspections), pass));
         }
         if (!postInspections.isEmpty()) {
-            boolean pass = postInspections.stream().allMatch(i -> intEquals(i.get("result"), 1));
+            boolean pass = postInspections.stream().allMatch(this::inspectionPass);
             reports.add(report("宰后检验",
                     pass ? "胴体及内脏同步检疫，淋巴结、脏器检查未见异常。" : "宰后检验存在不合格项。",
                     inspectionDetail(postInspections), pass));
@@ -238,6 +238,15 @@ public class TraceQueryServiceImpl implements TraceQueryService {
                             + "；共检测" + tests.size() + "批次样本", pass));
         }
         return reports;
+    }
+
+    /**
+     * 检验合格判定：优先用 result（1-合格 0-不合格）；
+     * 兼容旧数据 —— 录入端只填了 status 未填 result 时，以 status 兜底（0待检验 1合格 2不合格）。
+     */
+    private boolean inspectionPass(Map<String, Object> inspection) {
+        if (inspection.get("result") != null) return intEquals(inspection.get("result"), 1);
+        return intEquals(inspection.get("status"), 1);
     }
 
     private String inspectionDetail(List<Map<String, Object>> inspections) {

@@ -44,7 +44,6 @@
     <VaccineTable
       :data="tableData"
       :loading="tableLoading"
-      @delete="handleDelete"
       @edit="handleEdit"
     />
 
@@ -62,7 +61,7 @@
       />
     </div>
 
-    <!-- 录入/编辑疫苗弹窗 -->
+    <!-- 录入疫苗弹窗 -->
     <VaccineFormDialog
       v-model:visible="formDialogVisible"
       :edit-data="currentEditData"
@@ -74,7 +73,6 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { Search, Refresh, Plus } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
 import VaccineTable from './VaccineTable.vue'
 import VaccineFormDialog from './VaccineFormDialog.vue'
@@ -188,20 +186,6 @@ const handleFormSaved = () => {
   // 提交已在 VaccineFormDialog 内部完成并成功，这里只需刷新列表
   currentEditData.value = null
   fetchList()
-}
-
-// ==================== 删除 ====================
-
-const handleDelete = async (row) => {
-  try {
-    // 假设删除接口需要 pigId 和 vaccineId
-    await request.delete(`/breeding/pigs/${row.pigId}/vaccines/${row.id}`)
-    ElMessage.success('删除成功')
-    fetchList()
-  } catch (error) {
-    console.error('删除疫苗记录失败:', error)
-    ElMessage.error('删除失败')
-  }
 }
 
 // ==================== 初始化 ====================

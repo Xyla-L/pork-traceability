@@ -1,0 +1,4 @@
+﻿ear_tag_no	status
+ET-TEST-0016	3
+still_stale
+0

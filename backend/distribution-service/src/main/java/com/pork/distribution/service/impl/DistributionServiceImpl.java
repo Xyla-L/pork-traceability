@@ -32,6 +32,7 @@ public class DistributionServiceImpl implements DistributionService {
     private final TemperatureLogMapper temperatureLogMapper;
     private final StoreReceiptMapper receiptMapper;
     private final ChainEventPublisher chainEvents;
+    private final com.pork.distribution.client.BreedingClient breedingClient;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -42,6 +43,8 @@ public class DistributionServiceImpl implements DistributionService {
         entity.setBatchNo(StringUtils.hasText(request.batchNo()) ? request.batchNo() : BusinessNoGenerator.next("CB"));
         entity.setCreateTime(LocalDateTime.now());
         carcassBatchMapper.insert(entity);
+        // 胴体批次创建意味着生猪已完成屠宰：同步推进生猪档案状态为 3=已屠宰（失败不阻塞业务）
+        syncPigStatus(request.pigIds());
         return entity;
     }
 
@@ -81,6 +84,16 @@ public class DistributionServiceImpl implements DistributionService {
         entity.setOperator(request.operator());
         entity.setNote(request.note());
         carcassBatchMapper.updateById(entity);
+        // 新加入批次的生猪同样需要推进为已屠宰
+        syncPigStatus(newPigs);
+    }
+
+    /** 将生猪档案状态推进为 3=已屠宰（内部调用，幂等、失败不阻塞） */
+    private void syncPigStatus(List<Long> pigIds) {
+        if (pigIds == null || pigIds.isEmpty()) return;
+        for (Long pigId : pigIds.stream().distinct().toList()) {
+            if (pigId != null) breedingClient.advanceStatus(pigId, 3);
+        }
     }
 
     @Override

@@ -77,17 +77,18 @@ export const menuConfig: MenuItem[] = [
     path: '/admin/distribution',
     title: '分割配送',
     icon: 'Box',
-    roles: ['DISTRIBUTOR', 'SUPERVISOR', 'ADMIN'],
+    // RETAILER 也要能看到组内的"门店签收"；SLAUGHTER_OP 能看到胴体批次和分割操作
+    roles: ['SLAUGHTER_OP', 'DISTRIBUTOR', 'RETAILER', 'SUPERVISOR', 'ADMIN'],
     children: [
       {
         path: '/admin/distribution/batch',
         title: '胴体批次',
-        roles: ['DISTRIBUTOR', 'SUPERVISOR', 'ADMIN'],
+        roles: ['SLAUGHTER_OP', 'SUPERVISOR', 'ADMIN'],
       },
       {
         path: '/admin/distribution/split',
         title: '分割操作',
-        roles: ['DISTRIBUTOR', 'SUPERVISOR', 'ADMIN'],
+        roles: ['SLAUGHTER_OP', 'SUPERVISOR', 'ADMIN'],
       },
       {
         path: '/admin/distribution/transport',
@@ -97,7 +98,7 @@ export const menuConfig: MenuItem[] = [
       {
         path: '/admin/distribution/receipt',
         title: '门店签收',
-        roles: ['DISTRIBUTOR', 'RETAILER', 'SUPERVISOR', 'ADMIN'],
+        roles: ['RETAILER', 'SUPERVISOR', 'ADMIN'],
       },
     ],
   },

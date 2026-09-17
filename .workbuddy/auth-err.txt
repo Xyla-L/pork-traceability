@@ -1,0 +1,9 @@
+﻿
+> auth-service-1  | 	at org.apache.catalina.valves.ErrorReportValve.invoke(Erro
+rReportValve.java:93) ~[tomcat-embed-core-10.1.20.jar:10.1.20]
+  auth-service-1  | 	at org.apache.catalina.core.StandardEngineValve.invoke(Sta
+ndardEngineValve.java:74) ~[tomcat-embed-core-10.1.20.jar:10.1.20]
+  auth-service-1  | 	at org.apache.catalina.connector.CoyoteAdapter.service(Coy
+oteAdapter.java:344) ~[tomcat-embed-core-10.1.20.jar:10.1.20]
+
+

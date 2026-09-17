@@ -66,7 +66,7 @@
         <el-select v-model="formData.status" placeholder="请选择状态" style="width: 100%">
           <el-option label="待盖章" :value="0" />
           <el-option label="已盖章" :value="1" />
-          <el-option label="已作废" :value="2" />
+          <!-- 已作废只能通过列表"作废"按钮操作（作废动作需上链存证），不允许在此直接选择 -->
         </el-select>
       </el-form-item>
       <el-form-item label="备注" prop="remark">
@@ -118,9 +118,37 @@ const formData = reactive({
 
 const formRules = {
   earTagNo: [{ required: true, message: '请选择生猪', trigger: 'change' }],
-  stampNo: [{ required: true, message: '请输入盖章编号', trigger: 'blur' }],
+  stampNo: [
+    { required: true, message: '请输入盖章编号', trigger: 'blur' },
+    {
+      validator: async (rule, value, callback) => {
+        if (!value || props.editData) return callback()
+        try {
+          const res = await request.get('/slaughter/stamps', { params: { stampNo: value, pageSize: 1 } })
+          const list = res?.records || res?.list || []
+          if (list.length > 0) return callback(new Error('盖章编号已存在'))
+          callback()
+        } catch (e) { callback() }
+      },
+      trigger: 'blur'
+    }
+  ],
   batchNo: [{ required: true, message: '请输入批次号', trigger: 'blur' }],
-  carcassNo: [{ required: true, message: '请输入胴体编号', trigger: 'blur' }],
+  carcassNo: [
+    { required: true, message: '请输入胴体编号', trigger: 'blur' },
+    {
+      validator: async (rule, value, callback) => {
+        if (!value || props.editData) return callback()
+        try {
+          const res = await request.get('/slaughter/stamps', { params: { carcassNo: value, pageSize: 1 } })
+          const list = res?.records || res?.list || []
+          if (list.length > 0) return callback(new Error('胴体编号已存在'))
+          callback()
+        } catch (e) { callback() }
+      },
+      trigger: 'blur'
+    }
+  ],
   stampType: [{ required: true, message: '请选择印章类型', trigger: 'change' }],
   stampTime: [{ required: true, message: '请选择盖章时间', trigger: 'change' }],
   veterinary: [{ required: true, message: '请输入官方兽医', trigger: 'blur' }],
@@ -134,23 +162,34 @@ const searchPigs = async (query) => {
   }
   pigSearchLoading.value = true
   try {
-    // 条件1：只搜已出栏(status=2)的生猪，即出栏申报审批通过的猪
-    const res = await request.get('/breeding/pigs', {
-      params: { earTagNo: query, status: 2, size: 20 }
+    // 条件1：搜已出栏(2)/已屠宰(3)的生猪（作废重录可能发生在屠宰之后），合并两个状态的结果
+    const [res2, res3] = await Promise.all([
+      request.get('/breeding/pigs', { params: { earTagNo: query, status: 2, size: 20 } }),
+      request.get('/breeding/pigs', { params: { earTagNo: query, status: 3, size: 20 } }),
+    ])
+    const merge = (r) => r?.records || r?.list || []
+    const seen = new Set()
+    const list = [...merge(res2), ...merge(res3)].filter((p) => {
+      if (seen.has(p.id)) return false
+      seen.add(p.id)
+      return true
     })
-    const list = res?.records || res?.list || []
-    // 条件2：排除已有胴体盖章记录的生猪，避免重复盖章
-    let excludeIds = []
+    // 条件2：分析该猪的盖章记录情况（用于过滤与重录放行）
+    let activeIds = []   // 有未作废盖章记录的猪（一律排除，避免重复盖章）
+    let voidedIds = []   // 有已作废盖章记录的猪（重录场景，允许已屠宰的猪出现）
     try {
       const stampRes = await request.get('/slaughter/stamps', {
         params: { pageNum: 1, pageSize: 500 }
       })
       const stampList = stampRes?.records || stampRes?.list || []
-      excludeIds = stampList.map((e) => e.pigId).filter(Boolean)
+      activeIds = stampList.filter((e) => e.status !== 2).map((e) => e.pigId).filter(Boolean)
+      voidedIds = stampList.filter((e) => e.status === 2).map((e) => e.pigId).filter(Boolean)
     } catch (e) {
       console.error('获取已有胴体盖章记录失败:', e)
     }
-    pigOptions.value = list.filter((p) => !excludeIds.includes(p.id))
+    // 排除已有有效盖章记录的猪（防重复盖章）；
+    // 其余已出栏/已屠宰的猪均可选（已屠宰 = 首次盖章或作废重录场景）
+    pigOptions.value = list.filter((p) => !activeIds.includes(p.id))
   } catch (error) {
     console.error('搜索生猪失败:', error)
   } finally {

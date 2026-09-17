@@ -1,0 +1,16 @@
+﻿NAME                                       STATUS
+pork-traceability-auth-service-1           Up About an hour (healthy)
+pork-traceability-blockchain-service-1     Up 6 hours (healthy)
+pork-traceability-breeding-service-1       Up 32 minutes (healthy)
+pork-traceability-distribution-service-1   Up 42 minutes (healthy)
+pork-traceability-file-service-1           Up 6 hours (healthy)
+pork-traceability-ganache-1                Up 17 hours (healthy)
+pork-traceability-gateway-service-1        Up 6 hours (healthy)
+pork-traceability-mysql-1                  Up 14 hours (healthy)
+pork-traceability-nacos-1                  Up 17 hours
+pork-traceability-nginx-1                  Up 4 hours (unhealthy)
+pork-traceability-rabbitmq-1               Up 17 hours (healthy)
+pork-traceability-redis-1                  Up 17 hours (healthy)
+pork-traceability-sales-service-1          Up 42 minutes (healthy)
+pork-traceability-slaughter-service-1      Up 42 minutes (healthy)
+pork-traceability-trace-service-1          Up 42 minutes (healthy)

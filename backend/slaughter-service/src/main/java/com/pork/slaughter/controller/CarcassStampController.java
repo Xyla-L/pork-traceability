@@ -69,4 +69,10 @@ public class CarcassStampController {
         service.deleteStamp(id);
         return Result.success();
     }
+
+    @PutMapping("/{id}/void")
+    public Result<Void> voidRecord(@PathVariable Long id) {
+        service.voidStamp(id);
+        return Result.success();
+    }
 }

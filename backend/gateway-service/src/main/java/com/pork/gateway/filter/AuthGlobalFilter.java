@@ -36,7 +36,7 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
     private static final List<String> PUBLIC_PATHS = List.of(
             "/api/v1/auth/login", "/api/v1/auth/register", "/api/v1/auth/refresh", "/api/v1/consumer/",
             "/actuator/health", "/doc.html", "/v3/api-docs", "/swagger-ui",
-            "/api/v1/trace/search", "/api/v1/file/upload"
+            "/api/v1/trace/search", "/api/v1/file/upload", "/api/v1/file/"
     );
 
     private final ReactiveStringRedisTemplate redis;

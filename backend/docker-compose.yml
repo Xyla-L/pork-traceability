@@ -1,6 +1,8 @@
 name: pork-traceability
 
 x-app-environment: &app-environment
+  # 容器默认 UTC，会导致 LocalDateTime.now() 等业务时间偏差 8 小时，统一设为上海时区
+  TZ: Asia/Shanghai
   NACOS_ADDR: nacos:8848
   NACOS_NAMESPACE: ${NACOS_NAMESPACE:-}
   # Nacos 配置中心地址（spring.config.import 需要，不设则默认 127.0.0.1 导致健康检查 DOWN）
@@ -22,6 +24,12 @@ x-app-environment: &app-environment
   DISTRIBUTION_SERVICE_URL: http://distribution-service:8084
   SALES_SERVICE_URL: http://sales-service:8085
   BLOCKCHAIN_SERVICE_URL: http://blockchain-service:8087
+  # @Value("${services.xxx-url}") 形式的客户端（sales/distribution/slaughter）按此命名解析
+  SERVICES_BREEDING_URL: http://breeding-service:8082
+  SERVICES_SLAUGHTER_URL: http://slaughter-service:8083
+  SERVICES_DISTRIBUTION_URL: http://distribution-service:8084
+  SERVICES_SALES_URL: http://sales-service:8085
+  SERVICES_BLOCKCHAIN_URL: http://blockchain-service:8087
 
 x-app-defaults: &app-defaults
   restart: unless-stopped
@@ -216,8 +224,8 @@ services:
       MAIN_CLASS: com.pork.blockchain.BlockchainApplication
       SERVICE_PORT: 8087
       DB_URL: jdbc:mysql://mysql:3306/db_common?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-      # evm=真实上链到本地 Ganache；如需回退到数据库模拟账本，设置 BLOCKCHAIN_TYPE=local
-      BLOCKCHAIN_TYPE: ${BLOCKCHAIN_TYPE:-evm}
+      # local=数据库模拟账本（补录的历史数据可直接验真）；evm=真实上链到本地 Ganache
+      BLOCKCHAIN_TYPE: ${BLOCKCHAIN_TYPE:-local}
       EVM_RPC_URL: ${EVM_RPC_URL:-http://ganache:8545}
       EVM_CHAIN_ID: ${EVM_CHAIN_ID:-1337}
       # Ganache --wallet.deterministic 首个账户（仅本地开发链，勿用于公网）

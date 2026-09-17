@@ -34,7 +34,7 @@ const nodes = computed(() => {
     {
       key: 'farm',
       title: '养殖',
-      icon: '🐷',
+      icon: '',
       time: c.farm?.name || '--',
       desc: c.farm ? `${c.farm.breed} · 耳标 ${c.farm.earTagNo}` : '',
       done: true,
@@ -43,7 +43,7 @@ const nodes = computed(() => {
     {
       key: 'slaughter',
       title: '屠宰',
-      icon: '🔪',
+      icon: '',
       time: c.slaughter?.slaughterhouse || '--',
       desc: c.slaughter ? `${c.slaughter.inspectResult} · 瘦肉精${c.slaughter.ractopamine}` : '',
       done: true,
@@ -52,16 +52,19 @@ const nodes = computed(() => {
     {
       key: 'split',
       title: '分割',
-      icon: '🍖',
+      icon: '',
       time: c.splitWorkshop?.name || '--',
-      desc: c.splitWorkshop ? `${c.splitWorkshop.productName} · ${c.splitWorkshop.packageType}` : '',
+      // 包装方式缺失时只显示产品名，避免出现 "xxx · null"
+      desc: c.splitWorkshop
+        ? [c.splitWorkshop.productName, c.splitWorkshop.packageType].filter(Boolean).join(' · ')
+        : '',
       done: true,
       active: false,
     },
     {
       key: 'transport',
       title: '运输',
-      icon: '🚚',
+      icon: '',
       time: c.transport?.transportNo || '--',
       desc: c.transport ? `${c.transport.vehicleNo} · 均温 ${c.transport.avgTemp}℃` : '',
       done: true,
@@ -70,7 +73,7 @@ const nodes = computed(() => {
     {
       key: 'store',
       title: '销售',
-      icon: '🏪',
+      icon: '',
       time: c.storeReceipt?.storeName || '--',
       desc: c.storeReceipt ? `签收于 ${c.storeReceipt.receiptTime}` : '',
       done: true,

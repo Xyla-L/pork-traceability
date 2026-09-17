@@ -20,7 +20,7 @@ const MOCK_USERS: MockUser[] = [
   {
     id: 1,
     username: 'admin',
-    password: 'admin123',
+    password: '123456',
     realName: '系统管理员',
     phone: '13800000001',
     orgId: 1,
@@ -33,7 +33,7 @@ const MOCK_USERS: MockUser[] = [
   {
     id: 2,
     username: 'farmer',
-    password: 'farmer123',
+    password: '123456',
     realName: '张养殖',
     phone: '13800000002',
     orgId: 2,
@@ -46,7 +46,7 @@ const MOCK_USERS: MockUser[] = [
   {
     id: 3,
     username: 'slaughter',
-    password: 'slaughter123',
+    password: '123456',
     realName: '李屠宰',
     phone: '13800000003',
     orgId: 3,
@@ -59,7 +59,7 @@ const MOCK_USERS: MockUser[] = [
   {
     id: 4,
     username: 'distributor',
-    password: 'dist123',
+    password: '123456',
     realName: '王配送',
     phone: '13800000004',
     orgId: 4,
@@ -72,7 +72,7 @@ const MOCK_USERS: MockUser[] = [
   {
     id: 5,
     username: 'retailer',
-    password: 'retail123',
+    password: '123456',
     realName: '赵零售',
     phone: '13800000005',
     orgId: 5,

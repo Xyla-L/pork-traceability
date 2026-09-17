@@ -33,6 +33,7 @@ const props = defineProps({
 /** 状态类型 -> { 颜色类型, 显示文字 } 映射 */
 const STATUS_MAP = {
   raising:   { tagType: 'success', label: '在养' },
+  soldOut:   { tagType: 'warning', label: '已出栏' },
   slaughtered: { tagType: 'primary', label: '已屠宰' },
   abnormal:  { tagType: 'danger',  label: '异常' },
   pending:   { tagType: 'info',    label: '待审' },

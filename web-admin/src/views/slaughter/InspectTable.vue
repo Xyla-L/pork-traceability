@@ -27,19 +27,15 @@
           <el-tag :type="inspectStatusTag(row.status)" size="small">{{ inspectStatusLabel(row.status) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="180" fixed="right" align="center">
+      <el-table-column label="操作" width="170" fixed="right" align="center">
         <template #default="{ row }">
           <el-button type="primary" link size="small" @click="handleView(row)">
             查看
           </el-button>
-          <el-button type="warning" link size="small" @click="$emit('edit', row)">
-            编辑
+          <el-button v-if="row.status !== 3" type="warning" link size="small" @click="$emit('edit', row)">编辑</el-button>
+          <el-button v-if="row.status !== 3" type="danger" link size="small" @click="handleVoid(row)">
+            作废
           </el-button>
-          <el-popconfirm title="确定删除该检验记录吗？" @confirm="$emit('delete', row)">
-            <template #reference>
-              <el-button type="danger" link size="small">删除</el-button>
-            </template>
-          </el-popconfirm>
         </template>
       </el-table-column>
     </el-table>
@@ -58,6 +54,12 @@
           <el-tag :type="inspectStatusTag(currentView.status)" size="small">{{ inspectStatusLabel(currentView.status) }}</el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="检验结论" :span="2">{{ currentView.conclusion || '--' }}</el-descriptions-item>
+        <el-descriptions-item label="疫苗记录" :span="2">
+          <div v-if="vaccineRecords.length === 0" style="color: #909399">无疫苗记录</div>
+          <div v-for="v in vaccineRecords" :key="v.id" style="margin-bottom: 4px">
+            {{ v.vaccineName }}（{{ v.batchNo }}）- {{ v.injectTime }} - {{ v.operator }}
+          </div>
+        </el-descriptions-item>
         <el-descriptions-item label="内容哈希" :span="2">
           <span v-if="currentView.contentHash" class="hash-text">{{ currentView.contentHash }}</span>
           <span v-else>--</span>
@@ -69,6 +71,8 @@
 
 <script setup>
 import { ref } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import request from '@/utils/request'
 
 defineProps({
   data: {
@@ -81,21 +85,50 @@ defineProps({
   }
 })
 
-defineEmits(['edit', 'delete'])
-
 const viewVisible = ref(false)
 const currentView = ref({})
+const vaccineRecords = ref([])
 
-const handleView = (row) => {
+const handleView = async (row) => {
   currentView.value = row
+  vaccineRecords.value = []
   viewVisible.value = true
+  if (row.pigId) {
+    try {
+      const res = await request.get(`/breeding/pigs/${row.pigId}/vaccines`)
+      vaccineRecords.value = res?.records || res?.list || []
+    } catch (e) {
+      console.error('获取疫苗记录失败:', e)
+    }
+  }
 }
 
 // 检验类型：1=宰前 2=宰后
 const inspectTypeLabel = (t) => ({ 1: '宰前检验', 2: '宰后检验' }[t] ?? t ?? '--')
-// 状态：0=待检验 1=合格 2=不合格
-const inspectStatusLabel = (s) => ({ 0: '待检验', 1: '合格', 2: '不合格' }[s] ?? '--')
-const inspectStatusTag = (s) => ({ 0: 'info', 1: 'success', 2: 'danger' }[s] ?? 'info')
+// 状态：0=待检验 1=合格 2=不合格 3=已作废
+const inspectStatusLabel = (s) => ({ 0: '待检验', 1: '合格', 2: '不合格', 3: '已作废' }[s] ?? '--')
+const inspectStatusTag = (s) => ({ 0: 'info', 1: 'success', 2: 'danger', 3: 'info' }[s] ?? 'info')
+
+// 作废：检验记录已上链，不支持物理删除，输错信息请作废后重新录入
+const emit = defineEmits(['voided', 'edit'])
+const handleVoid = async (row) => {
+  try {
+    await ElMessageBox.confirm(
+      `确认作废检验记录 ${row.inspectNo || ''} 吗？作废动作将上链存证，且不可恢复。如信息录入有误，请作废后重新新增。`,
+      '作废确认',
+      { confirmButtonText: '确认作废', cancelButtonText: '取消', type: 'warning' }
+    )
+  } catch {
+    return
+  }
+  try {
+    await request.put(`/slaughter/inspections/${row.id}/void`)
+    ElMessage.success('已作废，作废存证已上链')
+    emit('voided')
+  } catch (e) {
+    console.error('作废失败:', e)
+  }
+}
 </script>
 
 <style lang="scss" scoped>

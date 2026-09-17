@@ -1,0 +1,48 @@
+﻿curl.exe : Note: Unnecessary use of -X or --request, POST is already inferred.
+所在位置 行:445 字符: 6
++ $r = curl.exe -s -v --noproxy "*" -g -X POST "http://[::1]:5173/api/v ...
++      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Note: Unnecessa...ready inferred. 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+*   Trying [::1]:5173...
+* Established connection to [::1] (::1 port 5173) from ::1 port 60314 
+* using HTTP/1.x
+> POST /api/v1/file/upload HTTP/1.1
+
+> Host: [::1]:5173
+
+> User-Agent: curl/8.21.0
+
+> Accept: */*
+
+> Content-Length: 274
+
+> Content-Type: multipart/form-data; boundary=------------------------xGj3uXXoG
+ucCdHhiyqOHLi
+
+> 
+
+} [274 bytes data]
+* upload completely sent off: 274 bytes
+< HTTP/1.1 200 OK
+
+< vary: Origin, Access-Control-Request-Method, Access-Control-Request-Headers, 
+Origin, Access-Control-Request-Method, Access-Control-Request-Headers
+
+< transfer-encoding: chunked
+
+< x-trace-id: 6196cff2e9e44738b8e84659ebba5012
+
+< content-type: application/json
+
+< date: Thu, 17 Sep 2026 14:53:59 GMT
+
+< connection: close
+
+< 
+
+{ [368 bytes data]
+* shutting down connection #0
+{"code":200,"message":"鎿嶄綔鎴愬姛","data":{"fileId":"102695a68d58408ebb268c8b96fe67c6","originalName":"test-upload.png","fileSize":70,"mimeType":"image/png","sha256":"c414cd0e204de974f73753c7e28d7638e7b3691bb8b1a2bab6b25bb7fed7ce77","url":"/api/v1/file/102695a68d58408ebb268c8b96fe67c6"},"traceId":"6196cff2e9e44738b8e84659ebba5012","timestamp":1789656839905}

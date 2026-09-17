@@ -84,9 +84,11 @@
             list-type="picture-card"
             :limit="1"
             :on-success="handleUploadSuccess"
+            :on-error="handleUploadError"
+            :on-exceed="handleExceed"
             :on-remove="handleUploadRemove"
             :before-upload="beforeUpload"
-            accept="image/*"
+            accept=".jpg,.jpeg,.png"
           >
             <el-icon><Plus /></el-icon>
           </el-upload>
@@ -184,7 +186,8 @@ const searchPigs = async (query) => {
   pigSearchLoading.value = true
   try {
     const res = await request.get('/breeding/pigs', {
-      params: { earTagNo: query, size: 20 }
+      // 疫苗注射属养殖环节：只可选在养(1)/已出栏(2)的生猪，排除已屠宰(3)、异常(4)
+      params: { earTagNo: query, size: 20, status: '1,2' }
     })
     pigOptions.value = res?.records || res?.list || []
   } catch (error) {
@@ -202,27 +205,47 @@ const handlePigSelect = (earTagNo) => {
 }
 
 // 图片上传相关
-const beforeUpload = (file) => {
-  const isImage = file.type.startsWith('image/')
-  const isLt5M = file.size / 1024 / 1024 < 5
+// 进行中的上传数量：提交前必须为 0，防止"照片未传完就保存记录"导致凭证丢失
+const uploadingCount = ref(0)
 
-  if (!isImage) {
-    ElMessage.error('只能上传图片文件!')
+const beforeUpload = (file) => {
+  // 与后端文件服务白名单对齐（jpg/jpeg/png），webp/heic 等格式后端会拒绝
+  const okExt = /\.(jpe?g|png)$/i.test(file.name || '')
+  if (!okExt) {
+    ElMessage.error('仅支持 jpg、png 格式照片，请转换格式后重新上传')
     return false
   }
+  const isLt5M = file.size / 1024 / 1024 < 5
   if (!isLt5M) {
     ElMessage.error('图片大小不能超过 5MB!')
     return false
   }
+  uploadingCount.value++
   return true
 }
 
 const handleUploadSuccess = (response) => {
+  uploadingCount.value = Math.max(0, uploadingCount.value - 1)
   // el-upload 不走 axios 拦截器，响应为后端原始包装：{ code, data: { fileId, url, ... } }
-  const fileId = response?.data?.fileId || response?.fileId || ''
-  if (fileId && !fileIds.value.includes(fileId)) {
+  // 业务异常（如格式不符）也是 HTTP 200 + code!=200，必须透出后端真实原因
+  const fileId = response?.data?.fileId || ''
+  if (response?.code !== 200 || !fileId) {
+    ElMessage.error(response?.message || '凭证照片上传失败，请移除后重新上传')
+    return
+  }
+  if (!fileIds.value.includes(fileId)) {
     fileIds.value.push(fileId)
   }
+}
+
+const handleUploadError = () => {
+  uploadingCount.value = Math.max(0, uploadingCount.value - 1)
+  fileIds.value = []
+  ElMessage.error('凭证照片上传失败，请检查网络后重新上传')
+}
+
+const handleExceed = () => {
+  ElMessage.warning('最多只能上传1张凭证照片，如需更换请先移除原图')
 }
 
 const handleUploadRemove = (uploadFile) => {
@@ -294,6 +317,7 @@ const resetForm = () => {
   fileIds.value = []
   pigOptions.value = []
   photoLoading.value = false
+  uploadingCount.value = 0
   revokeBlobUrls()
   formRef.value?.resetFields()
 }
@@ -313,6 +337,11 @@ const handleSubmit = async () => {
   // 提交前兜底校验：pigId 未选则提示
   if (!formData.pigId) {
     ElMessage.warning('请先选择生猪')
+    return
+  }
+  // 兜底校验：照片仍在上传中不允许提交，否则记录会缺凭证
+  if (uploadingCount.value > 0) {
+    ElMessage.warning('凭证照片正在上传，请稍候再提交')
     return
   }
 

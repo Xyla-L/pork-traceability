@@ -1,0 +1,10 @@
+﻿Database
+db_breeding
+db_common
+db_distribution
+db_sales
+db_slaughter
+information_schema
+mysql
+performance_schema
+sys

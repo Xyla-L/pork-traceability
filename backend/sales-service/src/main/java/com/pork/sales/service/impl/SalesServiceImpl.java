@@ -139,7 +139,9 @@ public class SalesServiceImpl implements SalesService {
                 .set(RetailSale::getStatus, 2).set(RetailSale::getSellTime, LocalDateTime.now())
                 .set(RetailSale::getSellPrice, request.sellPrice()).set(RetailSale::getSellWeightKg, request.sellWeightKg()));
         if (changed == 0) throw new BusinessException(ErrorCode.RECORD_ALREADY_EXISTS, "产品已被销售");
-        return saleMapper.selectById(row.getId());
+        RetailSale sold = saleMapper.selectById(row.getId());
+        publish("RETAIL_SALE", sold.getId(), sold.getProductQrCode(), HashUtil.sha256Json(sold));
+        return sold;
     }
 
     @Override
@@ -195,7 +197,7 @@ public class SalesServiceImpl implements SalesService {
         return new SaleRecordVO(row.getId(), row.getSplitBatchId(), row.getProductQrCode(), row.getStoreId(), row.getStoreName(),
                 row.getShelfTime(), row.getSellTime(), row.getSellPrice(), row.getSellWeightKg(),
                 row.getIsActivated(), row.getActivateTime(), row.getStatus(), row.getExpireDate(), row.getCreateTime(),
-                productName, batchNo);
+                productName, batchNo, row.getBlockHash());
     }
 
     private Map<String, Object> splitInfo(Long splitBatchId, Map<Long, Map<String, Object>> cache) {
@@ -275,8 +277,9 @@ public class SalesServiceImpl implements SalesService {
         row.setCreateTime(LocalDateTime.now());
         List<Long> batchIds = longList(request.scope().get("batchIds"));
         List<Long> storeIds = longList(request.scope().get("storeIds"));
+        // 受影响范围包含在售(1)与已售出(2)的销售记录——已售出的商品才是召回的主要对象
         var query = Wrappers.<RetailSale>lambdaQuery().in(!batchIds.isEmpty(), RetailSale::getSplitBatchId, batchIds)
-                .in(!storeIds.isEmpty(), RetailSale::getStoreId, storeIds).eq(RetailSale::getStatus, 1);
+                .in(!storeIds.isEmpty(), RetailSale::getStoreId, storeIds).in(RetailSale::getStatus, 1, 2);
         List<RetailSale> affected = batchIds.isEmpty() && storeIds.isEmpty() ? List.of() : saleMapper.selectList(query);
         row.setAffectedCount(affected.size());
         recallMapper.insert(row);
@@ -308,9 +311,19 @@ public class SalesServiceImpl implements SalesService {
             if (request.recalledCount() < 0 || request.recalledCount() > row.getAffectedCount())
                 throw new BusinessException(ErrorCode.PARAM_ERROR, "召回数量超出影响范围");
             row.setRecalledCount(request.recalledCount());
+            // 已召回数量达到受影响数量（且有受影响商品）时，自动完成召回
+            if (row.getAffectedCount() != null && row.getAffectedCount() > 0
+                    && row.getAffectedCount().equals(row.getRecalledCount())) {
+                row.setStatus(3);
+            }
         }
-        if (request.status() == 3) row.setCompletedTime(LocalDateTime.now());
+        if (row.getStatus() == 3 && row.getCompletedTime() == null) row.setCompletedTime(LocalDateTime.now());
         recallMapper.updateById(row);
+        // 进度更新属于关键状态变更，单独上链存证（独立 bizKey，不影响原召回指令的验真）
+        publish("RECALL_ORDER_PROGRESS", row.getId(), row.getRecallNo() + ":PROGRESS",
+                HashUtil.sha256Json(Map.of("recallNo", row.getRecallNo(), "status", row.getStatus(),
+                        "recalledCount", row.getRecalledCount() == null ? 0 : row.getRecalledCount(),
+                        "time", LocalDateTime.now().toString())));
     }
 
     @Override

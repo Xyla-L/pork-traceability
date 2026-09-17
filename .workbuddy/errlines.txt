@@ -1,0 +1,57 @@
+auth-service-1  | 2026-09-18T01:12:18.991+08:00 ERROR 1 --- [auth-service] [nio-8081-exec-9] c.p.web.handler.GlobalExceptionHandler   : 绯荤粺鏈煡寮傚父
+auth-service-1  | org.springframework.web.HttpRequestMethodNotSupportedException: Request method 'POST' is not supported
+auth-service-1  | 	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:93) ~[tomcat-embed-core-10.1.20.jar:10.1.20]
+auth-service-1  | 2026-09-18T01:12:19.209+08:00 ERROR 1 --- [auth-service] [nio-8081-exec-1] c.p.web.handler.GlobalExceptionHandler   : 绯荤粺鏈煡寮傚父
+auth-service-1  | org.springframework.web.HttpRequestMethodNotSupportedException: Request method 'POST' is not supported
+auth-service-1  | 	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:93) ~[tomcat-embed-core-10.1.20.jar:10.1.20]
+auth-service-1  | 2026-09-18T01:12:19.427+08:00 ERROR 1 --- [auth-service] [io-8081-exec-10] c.p.web.handler.GlobalExceptionHandler   : 绯荤粺鏈煡寮傚父
+auth-service-1  | org.springframework.web.HttpRequestMethodNotSupportedException: Request method 'POST' is not supported
+auth-service-1  | 	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:93) ~[tomcat-embed-core-10.1.20.jar:10.1.20]
+auth-service-1  | 2026-09-18T01:12:19.666+08:00 ERROR 1 --- [auth-service] [nio-8081-exec-2] c.p.web.handler.GlobalExceptionHandler   : 绯荤粺鏈煡寮傚父
+auth-service-1  | org.springframework.web.HttpRequestMethodNotSupportedException: Request method 'POST' is not supported
+auth-service-1  | 	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:93) ~[tomcat-embed-core-10.1.20.jar:10.1.20]
+auth-service-1  | 2026-09-18T01:12:19.877+08:00 ERROR 1 --- [auth-service] [nio-8081-exec-3] c.p.web.handler.GlobalExceptionHandler   : 绯荤粺鏈煡寮傚父
+auth-service-1  | org.springframework.web.HttpRequestMethodNotSupportedException: Request method 'POST' is not supported
+auth-service-1  | 	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:93) ~[tomcat-embed-core-10.1.20.jar:10.1.20]
+auth-service-1  | 2026-09-18T01:12:20.088+08:00 ERROR 1 --- [auth-service] [nio-8081-exec-6] c.p.web.handler.GlobalExceptionHandler   : 绯荤粺鏈煡寮傚父
+auth-service-1  | org.springframework.web.HttpRequestMethodNotSupportedException: Request method 'POST' is not supported
+auth-service-1  | 	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:93) ~[tomcat-embed-core-10.1.20.jar:10.1.20]
+auth-service-1  | 2026-09-18T01:12:20.326+08:00 ERROR 1 --- [auth-service] [nio-8081-exec-4] c.p.web.handler.GlobalExceptionHandler   : 绯荤粺鏈煡寮傚父
+auth-service-1  | org.springframework.web.HttpRequestMethodNotSupportedException: Request method 'POST' is not supported
+auth-service-1  | 	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:93) ~[tomcat-embed-core-10.1.20.jar:10.1.20]
+auth-service-1  | 2026-09-18T01:12:20.572+08:00 ERROR 1 --- [auth-service] [nio-8081-exec-5] c.p.web.handler.GlobalExceptionHandler   : 绯荤粺鏈煡寮傚父
+auth-service-1  | org.springframework.web.HttpRequestMethodNotSupportedException: Request method 'POST' is not supported
+auth-service-1  | 	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:93) ~[tomcat-embed-core-10.1.20.jar:10.1.20]
+auth-service-1  | 2026-09-18T01:12:20.782+08:00 ERROR 1 --- [auth-service] [nio-8081-exec-8] c.p.web.handler.GlobalExceptionHandler   : 绯荤粺鏈煡寮傚父
+auth-service-1  | org.springframework.web.HttpRequestMethodNotSupportedException: Request method 'POST' is not supported
+auth-service-1  | 	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:93) ~[tomcat-embed-core-10.1.20.jar:10.1.20]
+auth-service-1  | 2026-09-18T01:12:20.989+08:00 ERROR 1 --- [auth-service] [nio-8081-exec-7] c.p.web.handler.GlobalExceptionHandler   : 绯荤粺鏈煡寮傚父
+auth-service-1  | org.springframework.web.HttpRequestMethodNotSupportedException: Request method 'POST' is not supported
+auth-service-1  | 	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:93) ~[tomcat-embed-core-10.1.20.jar:10.1.20]
+auth-service-1  | 2026-09-18T01:12:21.196+08:00 ERROR 1 --- [auth-service] [nio-8081-exec-9] c.p.web.handler.GlobalExceptionHandler   : 绯荤粺鏈煡寮傚父
+auth-service-1  | org.springframework.web.HttpRequestMethodNotSupportedException: Request method 'POST' is not supported
+auth-service-1  | 	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:93) ~[tomcat-embed-core-10.1.20.jar:10.1.20]
+auth-service-1  | 2026-09-18T01:12:21.410+08:00 ERROR 1 --- [auth-service] [nio-8081-exec-1] c.p.web.handler.GlobalExceptionHandler   : 绯荤粺鏈煡寮傚父
+auth-service-1  | org.springframework.web.HttpRequestMethodNotSupportedException: Request method 'POST' is not supported
+auth-service-1  | 	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:93) ~[tomcat-embed-core-10.1.20.jar:10.1.20]
+auth-service-1  | 2026-09-18T01:12:21.620+08:00 ERROR 1 --- [auth-service] [io-8081-exec-10] c.p.web.handler.GlobalExceptionHandler   : 绯荤粺鏈煡寮傚父
+auth-service-1  | org.springframework.web.HttpRequestMethodNotSupportedException: Request method 'POST' is not supported
+auth-service-1  | 	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:93) ~[tomcat-embed-core-10.1.20.jar:10.1.20]
+auth-service-1  | 2026-09-18T01:12:21.831+08:00 ERROR 1 --- [auth-service] [nio-8081-exec-2] c.p.web.handler.GlobalExceptionHandler   : 绯荤粺鏈煡寮傚父
+auth-service-1  | org.springframework.web.HttpRequestMethodNotSupportedException: Request method 'POST' is not supported
+auth-service-1  | 	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:93) ~[tomcat-embed-core-10.1.20.jar:10.1.20]
+auth-service-1  | 2026-09-18T01:12:22.070+08:00 ERROR 1 --- [auth-service] [nio-8081-exec-3] c.p.web.handler.GlobalExceptionHandler   : 绯荤粺鏈煡寮傚父
+auth-service-1  | org.springframework.web.HttpRequestMethodNotSupportedException: Request method 'POST' is not supported
+auth-service-1  | 	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:93) ~[tomcat-embed-core-10.1.20.jar:10.1.20]
+auth-service-1  | 2026-09-18T01:12:22.279+08:00 ERROR 1 --- [auth-service] [nio-8081-exec-6] c.p.web.handler.GlobalExceptionHandler   : 绯荤粺鏈煡寮傚父
+auth-service-1  | org.springframework.web.HttpRequestMethodNotSupportedException: Request method 'POST' is not supported
+auth-service-1  | 	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:93) ~[tomcat-embed-core-10.1.20.jar:10.1.20]
+auth-service-1  | 2026-09-18T01:12:22.500+08:00 ERROR 1 --- [auth-service] [nio-8081-exec-4] c.p.web.handler.GlobalExceptionHandler   : 绯荤粺鏈煡寮傚父
+auth-service-1  | org.springframework.web.HttpRequestMethodNotSupportedException: Request method 'POST' is not supported
+auth-service-1  | 	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:93) ~[tomcat-embed-core-10.1.20.jar:10.1.20]
+auth-service-1  | 2026-09-18T01:12:22.739+08:00 ERROR 1 --- [auth-service] [nio-8081-exec-5] c.p.web.handler.GlobalExceptionHandler   : 绯荤粺鏈煡寮傚父
+auth-service-1  | org.springframework.web.HttpRequestMethodNotSupportedException: Request method 'POST' is not supported
+auth-service-1  | 	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:93) ~[tomcat-embed-core-10.1.20.jar:10.1.20]
+auth-service-1  | 2026-09-18T01:12:52.547+08:00 ERROR 1 --- [auth-service] [io-8081-exec-10] c.p.web.handler.GlobalExceptionHandler   : 绯荤粺鏈煡寮傚父
+auth-service-1  | org.springframework.web.HttpRequestMethodNotSupportedException: Request method 'POST' is not supported
+auth-service-1  | 	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:93) ~[tomcat-embed-core-10.1.20.jar:10.1.20]

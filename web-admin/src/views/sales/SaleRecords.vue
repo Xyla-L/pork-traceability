@@ -113,6 +113,10 @@
         <el-descriptions-item label="上架时间">{{ viewData.shelfTime || '--' }}</el-descriptions-item>
         <el-descriptions-item label="过期日期">{{ viewData.expireDate || '--' }}</el-descriptions-item>
         <el-descriptions-item label="生成时间" :span="2">{{ viewData.createTime || '--' }}</el-descriptions-item>
+        <el-descriptions-item label="链上哈希" :span="2">
+          <span v-if="viewData.blockHash" class="hash-text">{{ viewData.blockHash }}</span>
+          <span v-else>--</span>
+        </el-descriptions-item>
       </el-descriptions>
     </el-dialog>
   </div>
@@ -226,4 +230,5 @@ onMounted(() => fetchList())
 .search-header { display: flex; justify-content: space-between; align-items: flex-start; }
 .header-actions { flex-shrink: 0; padding-top: 4px; }
 .pagination-wrapper { display: flex; justify-content: center; padding-top: 16px; margin-top: 16px; border-top: 1px solid #ebeef5; }
+.hash-text { font-family: 'Courier New', monospace; font-size: 12px; color: #909399; word-break: break-all; }
 </style>

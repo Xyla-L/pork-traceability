@@ -1,0 +1,5 @@
+﻿id	ear_tag_no	status
+1	ET-DEMO-0001	3
+2	ET-TEST-0001	3
+17	 ET-TEST-0001	1
+21	ET-TEST-0018	3

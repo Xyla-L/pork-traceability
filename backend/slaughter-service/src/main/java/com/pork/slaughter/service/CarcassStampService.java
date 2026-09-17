@@ -26,7 +26,12 @@ public interface CarcassStampService extends IService<CarcassStamp> {
     boolean updateStamp(CarcassStampDTO dto);
 
     /**
-     * 根据ID删除盖章记录
+     * 根据ID删除盖章记录（已上链，禁止物理删除，仅作占位以保持接口兼容）
      */
     boolean deleteStamp(Long id);
+
+    /**
+     * 作废盖章记录（逻辑作废，作废动作单独上链存证）
+     */
+    void voidStamp(Long id);
 }

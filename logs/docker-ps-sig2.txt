@@ -1,0 +1,2 @@
+﻿SERVICE                STATUS
+distribution-service   Up About a minute (healthy)

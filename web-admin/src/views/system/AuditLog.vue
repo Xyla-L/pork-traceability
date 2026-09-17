@@ -5,9 +5,17 @@
       <el-form :model="filterForm" inline>
         <el-form-item label="业务类型">
           <el-select v-model="filterForm.operType" placeholder="全部" clearable style="width: 160px">
+            <el-option label="检疫证明" value="QUARANTINE_CERT" />
+            <el-option label="生猪档案" value="PIG_INDIVIDUAL" />
+            <el-option label="疫苗记录" value="VACCINE_RECORD" />
+            <el-option label="入场查验" value="ENTRY_INSPECTION" />
+            <el-option label="屠宰检验" value="SLAUGHTER_INSPECT" />
+            <el-option label="瘦肉精检测" value="RACTOPAMINE_TEST" />
+            <el-option label="检疫盖章" value="CARCASS_STAMP" />
             <el-option label="批次拆分" value="SPLIT_BATCH" />
-            <el-option label="销售激活" value="RETAIL_SALE" />
+            <el-option label="冷链运输" value="COLD_CHAIN_TRANSPORT" />
             <el-option label="门店签收" value="STORE_RECEIPT" />
+            <el-option label="销售激活" value="RETAIL_SALE" />
             <el-option label="产品召回" value="RECALL_ORDER" />
           </el-select>
         </el-form-item>
@@ -26,7 +34,6 @@
     <div class="stats-bar">
       <el-tag type="success" size="large">总上链数: {{ stats.totalTx }}</el-tag>
       <el-tag type="info" size="large">今日新增: {{ stats.todayTx }}</el-tag>
-      <el-tag type="warning" size="large">今日待确认: {{ stats.pendingTx }}</el-tag>
       <span class="stats-hint">区块高度: #{{ stats.latestBlock }}</span>
     </div>
 
@@ -63,11 +70,6 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="80" fixed="right" align="center">
-        <template #default="{ row }">
-          <el-button type="primary" link size="small" @click="handleView(row)">详情</el-button>
-        </template>
-      </el-table-column>
     </el-table>
 
     <div class="pagination-wrapper">
@@ -81,8 +83,6 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { Search, Refresh } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
-import BlockchainVerifyBadge from '@/components/common/BlockchainVerifyBadge.vue'
 import type { EpTagType } from '@/types/common'
 import { blockchainApi } from '@/api/modules/blockchain'
 
@@ -95,17 +95,46 @@ const pagination = reactive({ pageNum: 1, pageSize: 10, total: 0 })
 const stats = reactive({ totalTx: 0, todayTx: 0, pendingTx: 0, latestBlock: 0 })
 
 const operTypeMap: Record<string, string> = {
-  SPLIT_BATCH: '批次拆分', RETAIL_SALE: '销售激活', STORE_RECEIPT: '门店签收', RECALL_ORDER: '产品召回',
+  QUARANTINE_CERT: '检疫证明',
+  PIG_INDIVIDUAL: '生猪档案',
+  VACCINE_RECORD: '疫苗记录',
+  ENTRY_INSPECTION: '入场查验',
+  SLAUGHTER_INSPECT: '屠宰检验',
+  RACTOPAMINE_TEST: '瘦肉精检测',
+  CARCASS_STAMP: '检疫盖章',
+  SPLIT_BATCH: '批次拆分',
+  COLD_CHAIN_TRANSPORT: '冷链运输',
+  STORE_RECEIPT: '门店签收',
+  RETAIL_SALE: '销售激活',
+  RECALL_ORDER: '产品召回',
+  SLAUGHTER_INSPECT_VOID: '检验作废',
+  CARCASS_STAMP_VOID: '盖章作废',
+  RECALL_ORDER_PROGRESS: '召回进度',
 }
 const operTypeLabel = (t: string) => operTypeMap[t] || t
 const operTypeColor = (t: string): EpTagType => {
-  const colors: Record<string, EpTagType> = { SPLIT_BATCH: 'info', RETAIL_SALE: 'success', STORE_RECEIPT: 'warning', RECALL_ORDER: 'danger' }
+  const colors: Record<string, EpTagType> = {
+    QUARANTINE_CERT: 'primary',
+    PIG_INDIVIDUAL: 'success',
+    VACCINE_RECORD: 'success',
+    ENTRY_INSPECTION: 'info',
+    SLAUGHTER_INSPECT: 'info',
+    RACTOPAMINE_TEST: 'warning',
+    CARCASS_STAMP: 'primary',
+    SPLIT_BATCH: 'info',
+    COLD_CHAIN_TRANSPORT: 'warning',
+    STORE_RECEIPT: 'warning',
+    RETAIL_SALE: 'success',
+    RECALL_ORDER: 'danger',
+    SLAUGHTER_INSPECT_VOID: 'warning',
+    CARCASS_STAMP_VOID: 'warning',
+    RECALL_ORDER_PROGRESS: 'danger',
+  }
   return colors[t] || 'info'
 }
 
 function handleSearch() { pagination.pageNum = 1; fetchList() }
 function handleReset() { filterForm.operType = ''; dateRange.value = null; handleSearch() }
-function handleView(row: any) { ElMessage.info(`存证详情: ${row.txHash}`) }
 function handleSizeChange() { pagination.pageNum = 1; fetchList() }
 function handlePageChange() { fetchList() }
 

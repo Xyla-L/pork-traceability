@@ -1,0 +1,8 @@
+﻿
+
+Id          : 19196
+ProcessName : wslrelay
+Path        : C:\Program Files\WSL\wslrelay.exe
+
+
+

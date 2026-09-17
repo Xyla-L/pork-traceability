@@ -1,0 +1,19 @@
+curl.exe : * Host localhost:8086 was resolved.
+???? ?:445 ??: 6
++ $r = curl.exe -s -v --noproxy "*" "http://localhost:8086/trace/search ...
++      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (* Host localhost:8086 was resolve 
+   d.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+* IPv6: ::1
+* IPv4: 127.0.0.1
+*   Trying [::1]:8086...
+*   Trying 127.0.0.1:8086...
+* connect to ::1 port 8086 from :: port 58662 failed: Connection refused
+* connect to 127.0.0.1 port 8086 from 0.0.0.0 port 58663 failed: Connection ref
+used
+* Failed to connect to localhost:8086 after 2228 ms: Could not connect to serve
+r
+* closing connection #0
+

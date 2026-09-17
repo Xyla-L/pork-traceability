@@ -19,9 +19,14 @@ public interface SlaughterInspectionService extends IService<SlaughterInspection
     boolean updateInspection(Long id, SlaughterInspectionDTO dto);
 
     /**
-     * 删除屠宰检验记录
+     * 删除屠宰检验记录（已上链，禁止物理删除，仅作占位以保持接口兼容）
      */
     boolean deleteInspection(Long id);
+
+    /**
+     * 作废屠宰检验记录（逻辑作废，作废动作单独上链存证）
+     */
+    void voidInspection(Long id);
 
     /**
      * 分页查询屠宰检验记录

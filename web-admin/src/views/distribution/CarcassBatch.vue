@@ -28,7 +28,7 @@
 
     <div class="action-bar">
       <el-button type="primary" @click="handleCreate"><el-icon><Plus /></el-icon>创建批次</el-button>
-      <el-button type="success" :disabled="!currentBatch" @click="handleAppend">
+      <el-button type="success" @click="handleAppend">
         <el-icon><Connection /></el-icon>添加关联生猪
       </el-button>
       <span v-if="currentBatch" class="current-hint">当前批次：{{ currentBatch.batchNo }}（已关联 {{ currentBatch.pigCount }} 头）</span>
@@ -58,19 +58,13 @@
       </el-table-column>
       <el-table-column prop="operator" label="操作人" width="100" align="center" />
       <el-table-column prop="createTime" label="创建时间" width="170" align="center" />
-      <el-table-column label="操作" width="300" fixed="right" align="center">
+      <el-table-column label="操作" width="180" fixed="right" align="center">
         <template #default="{ row }">
           <el-button type="primary" link size="small" @click="handleView(row)">详情</el-button>
           <el-button type="warning" link size="small" @click="handleEdit(row)">编辑</el-button>
           <el-button type="success" link size="small" @click="handleSplit(row)">
             <el-icon><Grid /></el-icon>分割
           </el-button>
-          <el-button type="info" link size="small" @click="handleChainInfo(row)">链上信息</el-button>
-          <el-popconfirm title="确定删除该胴体批次吗？有下游分割时将被拦截" width="220" @confirm="handleDelete(row)">
-            <template #reference>
-              <el-button type="danger" link size="small">删除</el-button>
-            </template>
-          </el-popconfirm>
         </template>
       </el-table-column>
     </el-table>
@@ -319,7 +313,10 @@ function canSelectPig(row: any) {
 }
 
 async function handleAppend() {
-  if (!currentBatch.value) return
+  if (!currentBatch.value) {
+    ElMessage.warning('请先点击列表行选中一个批次')
+    return
+  }
   // 已发生分割的批次直接提示并拦截，不打开弹窗（后端更新接口同样会拦截）
   let hasSplits = false
   try {
@@ -333,7 +330,6 @@ async function handleAppend() {
   appendTarget.value = currentBatch.value
   appendKw.value = ''
   appendSelected.value = []
-  appendBlocked.value = false
   appendForm.totalWeightKg = currentBatch.value.totalWeightKg ?? 0
   appendVisible.value = true
   await fetchOccupancy()
@@ -398,6 +394,7 @@ async function handleCreate() {
   nextTick(() => formRef.value?.clearValidate())
 }
 
+// 编辑批次：回填表单并预置本批次生猪选项（本批次已有猪不被视为占用）
 async function handleEdit(row: any) {
   resetForm()
   isEdit.value = true
@@ -410,10 +407,8 @@ async function handleEdit(row: any) {
   dialogVisible.value = true
   pigOptions.value = []
   await fetchOccupancy()
-  // 先灌入该批次已有关联猪，保证已选项有文字标签；编辑自身批次的猪不标占用
-  ;(row.pigInfos || []).forEach((p: any) => {
-    pigOptions.value.push({ value: p.id, label: p.breed ? `${p.earTagNo}（${p.breed}）` : p.earTagNo })
-  })
+  // 先用行内 pigInfos 补齐本批次猪的选项（含耳标号标签），再加载搜索结果
+  mergePigOptions(row.pigInfos || [], batchForm.pigIds)
   searchPigsForForm('')
   nextTick(() => formRef.value?.clearValidate())
 }
@@ -449,17 +444,6 @@ function handleView(row: any) {
   detailVisible.value = true
 }
 function handleSplit(row: any) { router.push({ path: '/admin/distribution/split', query: { batchNo: row.batchNo } }) }
-function handleChainInfo(row: any) { ElMessage.info(`批次 ${row.batchNo} 暂未上链`) }
-
-async function handleDelete(row: any) {
-  try {
-    await distributionApi.deleteBatch(row.id)
-    ElMessage.success('删除成功')
-    // 删除的是当前页最后一条时回退一页，避免停留在空页
-    if (tableData.value.length === 1 && pagination.pageNum > 1) pagination.pageNum--
-    fetchList()
-  } catch { /* 错误已由拦截器提示（如存在下游分割） */ }
-}
 
 function handleSearch() { pagination.pageNum = 1; fetchList() }
 function handleReset() { searchForm.batchNo = ''; searchForm.operator = ''; dateRange.value = null; handleSearch() }

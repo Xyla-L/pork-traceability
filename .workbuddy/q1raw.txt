@@ -1,0 +1,69 @@
+{"code":200,"message":"鎿嶄綔鎴愬姛","data":{"product":{"id":30,"splitBatchId":20,"transportId":19,"receip
+tId":19,"productQrCode":"QR-PORK-53B558C04FDF42C2A7FE27163035E5EC","storeId":1,"storeName":"缁垮悍鐢熼矞闂ㄥ
+簵","shelfTime":"2026-09-17 23:45:34","sellTime":"2026-09-17 23:45:56","sellPrice":25.0,"sellWeightKg
+":2.0,"isActivated":1,"activateTime":"2026-09-17 23:45:34","status":4,"expireDate":"2026-09-24","blo
+ckHash":null,"createTime":"2026-09-17 23:45:28","name":"鐚墠鑵胯倝","batchNo":"SP20260917295195","packag
+eDate":"2026-09-17 23:19:23","batchWeightKg":10.0,"packageCount":5},"traceChain":{"batchNo":"SP20260
+917295195","upstream":[{"type":"SPLIT","data":{"id":20,"batchNo":"SP20260917295195","parentBatchId":
+19,"splitLevel":1,"productName":"鐚墠鑵胯倝","weightKg":10.0,"packageCount":5,"packageType":null,"splitT
+ime":"2026-09-17 23:19:23","workshop":"鍒嗗壊杞﹂棿A缁?,"workshopTemp":null,"operator":null,"fileIds":null,
+"note":"","contentHash":"ab27c400fee155bd7066b3479b1dbc9e8d3023b42896e4ac91af0f76455c8379","createTi
+me":"2026-09-17 23:19:23"}},{"type":"CARCASS","data":{"id":19,"batchNo":"CB20260917188941","pigIds":
+[20],"totalWeightKg":50.0,"slaughterhouse":"绀鸿寖瀹氱偣灞犲鍦?,"createTime":"2026-09-17 23:18:58","operator
+":"鏉庢搷浣?,"note":""}}],"downstream":{"tree":{"type":"SPLIT","data":{"id":20,"batchNo":"SP202609172951
+95","parentBatchId":19,"splitLevel":1,"productName":"鐚墠鑵胯倝","weightKg":10.0,"packageCount":5,"packa
+geType":null,"splitTime":"2026-09-17 23:19:23","workshop":"鍒嗗壊杞﹂棿A缁?,"workshopTemp":null,"operator":
+null,"fileIds":null,"note":"","contentHash":"ab27c400fee155bd7066b3479b1dbc9e8d3023b42896e4ac91af0f7
+6455c8379","createTime":"2026-09-17 23:19:23"},"children":[]},"splitIds":[20],"logistics":[{"transpo
+rt":{"id":19,"transportNo":"TR20260917810714","splitBatchId":20,"vehicleNo":"绮-0017","vehicleType":
+"鍐疯棌杞?,"refrigeration":"","driverName":"鏉庡徃鏈?,"driverPhone":"12547895321","origin":"绀鸿寖瀹氱偣灞犲鍦?,"des
+tination":"缁垮悍鐢熼矞闂ㄥ簵","plannedDepart":"2026-09-17 00:00:00","plannedArrive":null,"departTime":"2026-
+09-17 23:20:15","arriveTime":"2026-09-17 23:20:34","status":4,"createTime":"2026-09-17 23:20:08"},"t
+emperatureLogs":[{"id":20,"transportId":19,"recordTime":"2026-09-17 23:20:21","temperature":-2.5,"te
+mpRangeMin":-18.0,"tempRangeMax":0.0,"isAbnormal":0,"recorder":"鏉庡徃鏈?,"recordMethod":"MANUAL","creat
+eTime":"2026-09-17 23:20:21"},{"id":21,"transportId":19,"recordTime":"2026-09-17 23:20:22","temperat
+ure":-2.5,"tempRangeMin":-18.0,"tempRangeMax":0.0,"isAbnormal":0,"recorder":"鏉庡徃鏈?,"recordMethod":"M
+ANUAL","createTime":"2026-09-17 23:20:22"}],"receipt":{"id":19,"transportId":19,"storeId":1,"storeNa
+me":"缁垮悍鐢熼矞闂ㄥ簵","receiptTime":"2026-09-17 23:45:03","receiver":"鏉庡簵闀?,"receiverPhone":"","qtyCheck":
+1,"qtyDiffNote":"","tempCheck":1,"tempValue":-12.0,"packageIntact":1,"receiptPhoto":[],"contentHash"
+:"e164d9baabc822760355eedc13954aaa603d1cad35a35831c23e35a396986dcf","createTime":"2026-09-17 23:45:0
+3","transportNo":null,"esignature":null}}],"sales":[{"id":30,"splitBatchId":20,"transportId":19,"rec
+eiptId":19,"productQrCode":"QR-PORK-53B558C04FDF42C2A7FE27163035E5EC","storeId":1,"storeName":"缁垮悍鐢熼
+矞闂ㄥ簵","shelfTime":"2026-09-17 23:45:34","sellTime":"2026-09-17 23:45:56","sellPrice":25.0,"sellWeigh
+tKg":2.0,"isActivated":1,"activateTime":"2026-09-17 23:45:34","status":4,"expireDate":"2026-09-24","
+blockHash":null,"createTime":"2026-09-17 23:45:28"}]},"breeding":[{"id":20,"earTagNo":"ET-TEST-0017"
+,"farmId":2,"farmName":"椤洪懌鍏绘畺鍦?,"breed":"闀跨櫧鐚?,"birthDate":"2026-09-17","gender":2,"penNo":"A-02","
+source":"鑷箒","status":2,"statusLabel":"宸插嚭鏍?,"createTime":"2026-09-17 22:14:38","updateTime":"2026-
+09-17 22:59:10"}],"slaughter":[{"pigId":20,"entries":[{"id":20,"pigId":20,"batchNo":"ET-TEST-0017","
+earTagNo":"ET-TEST-0017","sourceFarm":"椤洪懌鍏绘畺鍦?,"arriveTime":"2026-09-17 00:00:00","weight":120.0,"q
+uarantineCert":"QC-DEMO-0003","vehicleNo":"绮-0017","healthCheck":1,"certVerified":1,"abnormalNote":
+null,"inspector":"鏉庢煡楠?,"status":1,"remark":"","fileIds":null,"createTime":"2026-09-17 23:01:10"}],"
+inspections":[{"id":21,"pigId":20,"inspectNo":"ET-TEST-0017","batchNo":"ET-TEST-0017","earTagNo":"ET
+-TEST-0017","inspectType":2,"inspectTime":"2026-09-17 00:00:00","temperature":null,"organCheck":null
+,"result":null,"status":1,"conclusion":"","issueDesc":null,"disposal":null,"veterinary":"鏉庡吔鍖?,"lice
+nseNo":null,"fileIds":null,"contentHash":"b4e986b2cea765755ff17482739c9a5d321eb943b652f09ba98686a392
+7be1d1","createTime":"2026-09-17 23:12:35","esignature":null}],"ractopamineTests":[{"id":19,"pigId":
+20,"testNo":"SB-DEMO-0017","batchNo":"ET-TEST-0017","earTagNo":"ET-TEST-0017","sampleNo":"SAMPLE-TES
+T-0017","testType":"鐦﹁倝绮炬娴?,"testTime":"2026-09-17 00:00:00","testMethod":"鑳朵綋閲戞硶","testTarget":"莽鈥
+郝惷┾€β该モ€︹€姑ぢ悸γр€奥姑解€?猫沤卤氓鈥︹€姑ヂづ∶ヂ仿疵ㄆ捖?忙虏鈩⒚ぢ嘎伱ㄆ捖好┾€犫€?,"samplePart":null,"result":1,"status":2,"dete
+ctionLimit":null,"operator":"鏉庢娴?,"fileIds":null,"reportUrl":"","remark":"","createTime":"2026-09-1
+7 23:14:08"}],"stamps":[{"id":19,"pigId":20,"batchNo":"ET-TEST-0017","earTagNo":"ET-TEST-0017","carc
+assNo":"SB-DEMO-0017","stampNo":"STAMP-DEMO-0017","stampType":"妫€鐤悎鏍肩珷","stampTime":"2026-09-17 00:
+00:00","stampPosition":"猫茠麓盲陆鈥溍ぢ嘎っぢ韭ㄢ€♀偓茅茠篓","veterinary":"鏉庡吔鍖?,"contentHash":"feefc5576bfcbb593ae
+770f774055567d22989ba01a0090ebba114a872d3a8a4","status":1,"remark":"","createTime":"2026-09-17 23:17
+:48","esignature":null}]}],"blockchain":[{"id":345,"eventId":"843cb646696e0923d510c30835fc540961b183
+62cf9f693413aa3b8b295a8bb8","bizType":"SPLIT_BATCH","bizId":20,"bizKey":"SP20260917295195","contentH
+ash":"ab27c400fee155bd7066b3479b1dbc9e8d3023b42896e4ac91af0f76455c8379","txHash":"0x646a3b475b2e52cf
+f1e2992f152d30054ee34499b7711390c5ddcbd1bc018e6b","blockNumber":210,"chainTime":"2026-09-17 23:19:23
+","status":1,"retryCount":0,"errorMsg":null,"createTime":"2026-09-17 23:19:23","updateTime":"2026-09
+-17 23:19:23"}]},"verification":{"details":[{"type":"RETAIL_SALE","bizId":30,"localHash":"82f937a34c
+ed7d0d9e591e8fe9c43852f88ecf0afcc84dac30cb1a190bb7149a","chainHash":"82f937a34ced7d0d9e591e8fe9c4385
+2f88ecf0afcc84dac30cb1a190bb7149a","match":true,"txHash":"0x511fa8cfc79aaaa37d4e026d25a08a62629c01da
+d19de001b704da714c3fe1a0"},{"type":"RETAIL_SALE","bizId":30,"localHash":"82f937a34ced7d0d9e591e8fe9c
+43852f88ecf0afcc84dac30cb1a190bb7149a","chainHash":"82f937a34ced7d0d9e591e8fe9c43852f88ecf0afcc84dac
+30cb1a190bb7149a","match":true,"txHash":"0x79266442da3213f4704f532545cbe964456600954c715c96461c2f8e5
+415e13c"},{"type":"SPLIT_BATCH","bizId":20,"localHash":"ab27c400fee155bd7066b3479b1dbc9e8d3023b42896
+e4ac91af0f76455c8379","chainHash":"ab27c400fee155bd7066b3479b1dbc9e8d3023b42896e4ac91af0f76455c8379"
+,"match":true,"txHash":"0x646a3b475b2e52cff1e2992f152d30054ee34499b7711390c5ddcbd1bc018e6b"}],"allVe
+rified":true,"chainStatus":"鍖哄潡閾惧凡楠岃瘉","detail":"鍏ㄩ儴瀛樿瘉璁板綍涓庨摼涓婂搱甯屼竴鑷?,"verified":true}},"traceId":"c
+0ef79c9a0c14e1a88b5cedeb73596b8","timestamp":1789664015088}

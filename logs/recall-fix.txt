@@ -1,0 +1,4 @@
+﻿id	recall_no	affected_count	recalled_count
+18	RC20260917556108	1	0
+id	split_batch_id	store_id	status
+30	20	1	4

@@ -1,0 +1,20 @@
+﻿docker :  Container pork-traceability-redis-1 Running 
+所在位置 行:445 字符: 137
++ ... ld-sig.txt; docker compose up -d distribution-service >> e:\pork-trac ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ( Container pork...edis-1 Running :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ Container pork-traceability-rabbitmq-1 Running 
+ Container pork-traceability-mysql-1 Running 
+ Container pork-traceability-nacos-1 Running 
+ Container pork-traceability-distribution-service-1 Recreate 
+ Container pork-traceability-distribution-service-1 Recreated 
+ Container pork-traceability-redis-1 Waiting 
+ Container pork-traceability-rabbitmq-1 Waiting 
+ Container pork-traceability-mysql-1 Waiting 
+ Container pork-traceability-rabbitmq-1 Healthy 
+ Container pork-traceability-redis-1 Healthy 
+ Container pork-traceability-mysql-1 Healthy 
+ Container pork-traceability-distribution-service-1 Starting 
+ Container pork-traceability-distribution-service-1 Started 

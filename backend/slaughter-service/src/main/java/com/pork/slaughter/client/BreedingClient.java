@@ -2,6 +2,7 @@ package com.pork.slaughter.client;
 
 import com.pork.core.enums.ErrorCode;
 import com.pork.core.exception.BusinessException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
@@ -10,6 +11,7 @@ import org.springframework.web.client.RestClientException;
 
 import java.util.Map;
 
+@Slf4j
 @Component
 public class BreedingClient {
     private final RestClient restClient;
@@ -33,6 +35,19 @@ public class BreedingClient {
             throw e;
         } catch (RestClientException | NumberFormatException e) {
             throw new BusinessException(ErrorCode.REMOTE_CALL_ERROR, "养殖服务不可用或返回数据异常");
+        }
+    }
+
+    /**
+     * 推进生猪状态（1在养 2已出栏 3已屠宰 4异常）。下游同步失败不抛出异常，避免阻塞业务主流程。
+     */
+    public void advanceStatus(Long pigId, int status) {
+        try {
+            restClient.put()
+                    .uri(breedingUrl + "/breeding/internal/pigs/{id}/status?status={status}", pigId, status)
+                    .retrieve().toBodilessEntity();
+        } catch (RestClientException e) {
+            log.warn("生猪状态同步失败 pigId={}, status={}", pigId, status, e);
         }
     }
 

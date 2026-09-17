@@ -155,8 +155,8 @@ import { traceApi } from '@/api/modules/trace'
 
 const route = useRoute()
 
-// 搜索：优先用路由 query.keyword（从举报/其他页面跳转带入），否则用默认演示值
-const keyword = ref((route.query.keyword as string) || 'QR-PORK-DEMO-0001')
+// 搜索：优先用路由 query.keyword 或 query.qrCode（从过期预警/举报等页面跳转带入），否则用默认演示值
+const keyword = ref((route.query.keyword as string) || (route.query.qrCode as string) || 'QR-PORK-DEMO-0001')
 const hasSearched = ref(false)
 const searching = ref(false)
 const searchHints = ['SP-DEMO-0002', 'CB-DEMO-0001', 'QR-PORK-DEMO-0001']
@@ -318,6 +318,25 @@ async function handleSearch() {
   }
 }
 
+const bizTypeMap: Record<string, string> = {
+  QUARANTINE_CERT: '检疫证明',
+  PIG_INDIVIDUAL: '生猪档案',
+  VACCINE_RECORD: '疫苗记录',
+  ENTRY_INSPECTION: '入场查验',
+  SLAUGHTER_INSPECT: '屠宰检验',
+  RACTOPAMINE_TEST: '瘦肉精检测',
+  CARCASS_STAMP: '检疫盖章',
+  SPLIT_BATCH: '批次拆分',
+  COLD_CHAIN_TRANSPORT: '冷链运输',
+  STORE_RECEIPT: '门店签收',
+  RETAIL_SALE: '销售激活',
+  RECALL_ORDER: '产品召回',
+  SLAUGHTER_INSPECT_VOID: '检验作废',
+  CARCASS_STAMP_VOID: '盖章作废',
+  RECALL_ORDER_PROGRESS: '召回进度',
+}
+const bizTypeLabel = (t: string) => bizTypeMap[t] || t
+
 async function handleVerify(silent: unknown = false) {
   const productQr = traceData.value?.product?.qrCode
   const kw = keyword.value.trim()
@@ -338,7 +357,7 @@ async function handleVerify(silent: unknown = false) {
     verifyResult.value = {
       allVerified: !!res.allVerified,
       details: (Array.isArray(res.details) ? res.details : []).map((d: any) => ({
-        bizType: pick(d?.type),
+        bizType: bizTypeLabel(d?.type),
         bizName: `存证记录 #${pick(d?.bizId)}`,
         localHash: d?.localHash ?? '',
         onChainHash: d?.chainHash ?? '',

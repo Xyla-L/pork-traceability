@@ -1,0 +1,60 @@
+﻿
+breeding-service-1      | 2026-09-17T21:35:16.403+08:00  INFO 1 --- [breeding-s
+ervice] [           main] com.pork.breeding.BreedingApplication    : Starting B
+reedingApplication v1.0-SNAPSHOT using Java 17.0.20 with PID 1 (/app/app.jar st
+arted by app in /app)
+trace-service-1         | 2026-09-18T00:33:05.307+08:00  INFO 1 --- [trace-serv
+ice] [           main] o.s.cloud.context.scope.GenericScope     : BeanFactory i
+d=e790e6c8-09cd-329a-ac44-b895c9240398
+rabbitmq-1              | 2026-09-17 01:57:17.366403+00:00 [info] <0.256.0> Run
+ning boot step rabbit_management_load_definitions defined by app rabbitmq_manag
+ement[0m
+rabbitmq-1              | 2026-09-17 12:27:52.120084+00:00 [info] <0.5403.0> ac
+cepting AMQP connection <0.5403.0> (172.18.0.7:38732 -> 172.18.0.3:5672)[0m
+rabbitmq-1              | 2026-09-17 12:27:52.146507+00:00 [info] <0.5403.0> co
+nnection <0.5403.0> (172.18.0.7:38732 -> 172.18.0.3:5672) has a client-provided
+ name: rabbitConnectionFactory#57fec63f:0[0m
+rabbitmq-1              | 2026-09-17 12:27:52.151983+00:00 [info] <0.5403.0> co
+nnection <0.5403.0> (172.18.0.7:38732 -> 172.18.0.3:5672 - rabbitConnectionFact
+ory#57fec63f:0): user 'pork' authenticated and granted access to vhost '/'[0m
+rabbitmq-1              | 2026-09-17 13:47:58.873214+00:00 [info] <0.5403.0> cl
+osing AMQP connection <0.5403.0> (172.18.0.7:38732 -> 172.18.0.3:5672 - rabbitC
+onnectionFactory#57fec63f:0, vhost: '/', user: 'pork')[0m
+auth-service-1          | 2026-09-18T01:28:34.086+08:00  WARN 1 --- [auth-servi
+ce] [nio-8081-exec-9] com.pork.auth.config.SecurityConfig      : auth_service_f
+orbidden path=/system/orgs/tree reason=Access Denied
+auth-service-1          | 2026-09-18T01:28:45.176+08:00  WARN 1 --- [auth-servi
+ce] [nio-8081-exec-3] com.pork.auth.config.SecurityConfig      : auth_service_f
+orbidden path=/system/orgs/tree reason=Access Denied
+auth-service-1          | 2026-09-18T01:28:51.036+08:00  WARN 1 --- [auth-servi
+ce] [nio-8081-exec-8] com.pork.auth.config.SecurityConfig      : auth_service_f
+orbidden path=/system/orgs/tree reason=Access Denied
+auth-service-1          | 2026-09-18T01:28:56.300+08:00  WARN 1 --- [auth-servi
+ce] [nio-8081-exec-5] com.pork.auth.config.SecurityConfig      : auth_service_f
+orbidden path=/system/orgs/tree reason=Access Denied
+auth-service-1          | 2026-09-18T01:30:47.309+08:00  WARN 1 --- [auth-servi
+ce] [nio-8081-exec-3] com.pork.auth.config.SecurityConfig      : auth_service_f
+orbidden path=/system/orgs/tree reason=Access Denied
+auth-service-1          | 2026-09-18T01:31:09.811+08:00  WARN 1 --- [auth-servi
+ce] [nio-8081-exec-7] com.pork.auth.config.SecurityConfig      : auth_service_f
+orbidden path=/system/orgs/tree reason=Access Denied
+auth-service-1          | 2026-09-18T01:31:45.779+08:00  WARN 1 --- [auth-servi
+ce] [nio-8081-exec-3] com.pork.auth.config.SecurityConfig      : auth_service_f
+orbidden path=/system/orgs/tree reason=Access Denied
+auth-service-1          | 2026-09-18T01:31:53.872+08:00  WARN 1 --- [auth-servi
+ce] [nio-8081-exec-8] com.pork.auth.config.SecurityConfig      : auth_service_f
+orbidden path=/system/orgs/tree reason=Access Denied
+auth-service-1          | 2026-09-18T01:31:59.324+08:00  WARN 1 --- [auth-servi
+ce] [nio-8081-exec-5] com.pork.auth.config.SecurityConfig      : auth_service_f
+orbidden path=/system/orgs/tree reason=Access Denied
+auth-service-1          | 2026-09-18T01:33:08.183+08:00  WARN 1 --- [auth-servi
+ce] [nio-8081-exec-1] com.pork.auth.config.SecurityConfig      : auth_service_f
+orbidden path=/system/orgs/tree reason=Access Denied
+auth-service-1          | 2026-09-18T01:33:37.733+08:00  WARN 1 --- [auth-servi
+ce] [nio-8081-exec-6] com.pork.auth.config.SecurityConfig      : auth_service_f
+orbidden path=/system/orgs/tree reason=Access Denied
+auth-service-1          | 2026-09-18T01:36:41.914+08:00  WARN 1 --- [auth-servi
+ce] [nio-8081-exec-1] com.pork.auth.config.SecurityConfig      : auth_service_f
+orbidden path=/system/orgs/tree reason=Access Denied
+
+

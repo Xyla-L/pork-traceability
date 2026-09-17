@@ -92,9 +92,6 @@
     </el-form>
 
     <template #footer>
-      <el-button v-if="isEdit" type="danger" :loading="deleting" @click="handleDelete">
-        删 除
-      </el-button>
       <el-button @click="handleClose">取 消</el-button>
       <el-button type="primary" :loading="submitting" @click="handleSubmit">
         确 定
@@ -131,7 +128,7 @@
         <el-input v-model="farmForm.contactPerson" placeholder="请输入联系人" maxlength="32" clearable />
       </el-form-item>
       <el-form-item label="联系电话" prop="contactPhone">
-        <el-input v-model="farmForm.contactPhone" placeholder="请输入联系电话" maxlength="20" clearable />
+        <el-input v-model="farmForm.contactPhone" placeholder="请输入联系电话" maxlength="11" clearable />
       </el-form-item>
       <el-form-item label="养殖规模" prop="scale">
         <el-input-number v-model="farmForm.scale" :min="1" :max="99999" style="width: 200px" />
@@ -146,7 +143,7 @@
 
 <script setup>
 import { ref, reactive, computed, watch, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
 import request from '@/utils/request'
@@ -166,7 +163,6 @@ const emit = defineEmits(['update:visible', 'saved', 'farmCreated'])
 
 const formRef = ref(null)
 const submitting = ref(false)
-const deleting = ref(false)
 const farmList = ref([])
 
 const isEdit = computed(() => !!props.editData)
@@ -260,7 +256,8 @@ const farmForm = reactive({
 const farmRules = {
   farmName: [{ required: true, message: '请输入养殖场名称', trigger: 'blur' }],
   licenseNo: [{ required: true, message: '请输入许可证编号', trigger: 'blur' }],
-  scale: [{ required: true, message: '请输入养殖规模', trigger: 'blur' }]
+  scale: [{ required: true, message: '请输入养殖规模', trigger: 'blur' }],
+  contactPhone: [{ pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }]
 }
 
 const resetFarmForm = () => {
@@ -333,27 +330,6 @@ watch(
 const handleClose = () => {
   resetForm()
   emit('update:visible', false)
-}
-
-const handleDelete = async () => {
-  try {
-    await ElMessageBox.confirm(
-      `确定删除耳标号「${props.editData.earTagNo}」的生猪档案吗？`,
-      '删除确认',
-      { type: 'warning', confirmButtonText: '确定删除', cancelButtonText: '取消' }
-    )
-  } catch {
-    return
-  }
-  deleting.value = true
-  try {
-    await request.delete(`/breeding/pigs/${props.editData.id}`)
-    ElMessage.success('删除成功')
-    emit('saved')
-    handleClose()
-  } finally {
-    deleting.value = false
-  }
 }
 
 const handleSubmit = async () => {

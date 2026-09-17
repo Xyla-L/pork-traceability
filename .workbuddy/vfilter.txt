@@ -1,0 +1,2 @@
+status=1,2 -> ET-TEST-0018
+search 0017 with status=1,2 -> total=0

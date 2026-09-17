@@ -1,0 +1,16 @@
+﻿SERVICE                STATUS
+auth-service           Up 2 hours (healthy)
+blockchain-service     Up 2 hours (healthy)
+breeding-service       Up 46 minutes (healthy)
+distribution-service   Up 33 minutes (healthy)
+file-service           Up 2 hours (healthy)
+ganache                Up 12 hours (healthy)
+gateway-service        Up 2 hours (healthy)
+mysql                  Up 10 hours (healthy)
+nacos                  Up 12 hours
+nginx                  Up 10 hours (unhealthy)
+rabbitmq               Up 12 hours (healthy)
+redis                  Up 12 hours (healthy)
+sales-service          Up About an hour (healthy)
+slaughter-service      Up 46 minutes (healthy)
+trace-service          Up 2 hours (healthy)

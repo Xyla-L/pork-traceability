@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS farm (
 CREATE TABLE IF NOT EXISTS pig_individual (
     id BIGINT PRIMARY KEY AUTO_INCREMENT, ear_tag_no VARCHAR(32) NOT NULL, farm_id BIGINT NOT NULL,
     breed VARCHAR(32), birth_date DATE, gender TINYINT DEFAULT 1, pen_no VARCHAR(16), source VARCHAR(64), status TINYINT DEFAULT 1,
-    deleted TINYINT DEFAULT 0, create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    deleted TINYINT DEFAULT 0, content_hash CHAR(64) DEFAULT NULL, create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uk_ear_tag (ear_tag_no), INDEX idx_farm_status (farm_id, status), INDEX idx_deleted (deleted)
 ) ENGINE=InnoDB COMMENT='生猪个体档案';
@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS vaccine_record (
     id BIGINT PRIMARY KEY AUTO_INCREMENT, pig_id BIGINT NOT NULL, vaccine_name VARCHAR(64) NOT NULL,
     batch_no VARCHAR(32) NOT NULL, manufacturer VARCHAR(128), inject_time DATETIME NOT NULL,
     dosage VARCHAR(16), inject_site VARCHAR(32), operator VARCHAR(32) NOT NULL, file_ids JSON,
-    create_time DATETIME DEFAULT CURRENT_TIMESTAMP, INDEX idx_pig (pig_id), INDEX idx_time (inject_time)
+    content_hash CHAR(64) DEFAULT NULL, create_time DATETIME DEFAULT CURRENT_TIMESTAMP, INDEX idx_pig (pig_id), INDEX idx_time (inject_time)
 ) ENGINE=InnoDB COMMENT='疫苗注射记录';
 
 CREATE TABLE IF NOT EXISTS slaughter_apply (

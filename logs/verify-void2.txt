@@ -1,0 +1,2 @@
+﻿gateway void HTTP NotFound
+nginx health HTTP 200

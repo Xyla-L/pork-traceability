@@ -162,7 +162,7 @@ function handleDeal(row: any) {
 }
 
 function handleView(row: any) {
-  router.push('/admin/trace/search')
+  router.push({ path: '/admin/trace/search', query: { qrCode: row.productQrCode } })
 }
 
 async function handleSubmit() {

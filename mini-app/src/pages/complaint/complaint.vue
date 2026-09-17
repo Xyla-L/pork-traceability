@@ -24,12 +24,12 @@
     </view>
 
     <view class="card">
-      <view class="section-title">上传照片（选填）</view>
+      <view class="section-title">上传照片</view>
       <PhotoUpload ref="photoRef" @change="onPhotosChange" />
     </view>
 
     <view class="card">
-      <view class="section-title">联系方式（选填，便于反馈）</view>
+      <view class="section-title">联系方式</view>
       <view class="contact-row">
         <input v-model="form.reporterName" class="contact-input" type="text" placeholder="姓名" />
       </view>
@@ -79,6 +79,12 @@ function onPhotosChange(photos) {
 async function handleSubmit() {
   if (!form.complaintText.trim()) {
     uni.showToast({ title: '请填写问题描述', icon: 'none' })
+    return
+  }
+
+  // 手机号为选填，但填写时必须符合格式
+  if (form.reporterPhone && !/^1[3-9]\d{9}$/.test(form.reporterPhone)) {
+    uni.showToast({ title: '请输入正确的手机号', icon: 'none' })
     return
   }
 

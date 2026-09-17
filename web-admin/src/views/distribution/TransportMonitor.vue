@@ -52,12 +52,6 @@
         <el-table-column label="操作" width="200" align="center" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click.stop="selectTransport(row)">监控详情</el-button>
-            <el-button link type="primary" size="small" @click.stop="openEdit(row)">编辑</el-button>
-            <el-popconfirm title="确认删除该运单？温度打卡记录将一并删除" @confirm="handleDelete(row)">
-              <template #reference>
-                <el-button link type="danger" size="small" @click.stop>删除</el-button>
-              </template>
-            </el-popconfirm>
           </template>
         </el-table-column>
       </el-table>
@@ -247,21 +241,13 @@
         </el-row>
         <el-row :gutter="12">
           <el-col :span="12">
-            <el-form-item label="制冷机组">
-              <el-input v-model="createForm.refrigeration" placeholder="如 冷王T-800" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12"></el-col>
-        </el-row>
-        <el-row :gutter="12">
-          <el-col :span="12">
             <el-form-item label="司机姓名" prop="driverName">
               <el-input v-model="createForm.driverName" placeholder="请输入司机姓名" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="司机电话">
-              <el-input v-model="createForm.driverPhone" placeholder="请输入手机号" />
+            <el-form-item label="司机电话" prop="driverPhone">
+              <el-input v-model="createForm.driverPhone" placeholder="请输入手机号" maxlength="11" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -550,6 +536,7 @@ const createRules = {
   driverName: [{ required: true, message: '请输入司机姓名', trigger: 'blur' }],
   origin: [{ required: true, message: '请输入起运地', trigger: 'blur' }],
   destination: [{ required: true, message: '请输入目的地', trigger: 'blur' }],
+  driverPhone: [{ pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }],
 }
 
 async function searchSplits(kw: string) {
@@ -623,43 +610,6 @@ async function openCreate() {
   nextTick(() => createFormRef.value?.clearValidate())
 }
 
-async function openEdit(row: any) {
-  editingId.value = row.id
-  editingStatus.value = row.status
-  Object.assign(createForm, {
-    splitBatchId: row.splitBatchId, vehicleNo: row.vehicleNo || '', vehicleType: row.vehicleType || '',
-    refrigeration: row.refrigeration || '', driverName: row.driverName || '', driverPhone: row.driverPhone || '',
-    origin: row.origin || '', destination: row.destination || '',
-    plannedDepart: row.plannedDepart || '', plannedArrive: row.plannedArrive || '',
-  })
-  createVisible.value = true
-  await searchSplits('')
-  // 确保当前关联的分割批次在下拉选项中（可能不在最近20条内）
-  if (createForm.splitBatchId && !splitOptions.value.some((s: any) => s.id === createForm.splitBatchId)) {
-    try {
-      const s: any = await distributionApi.getSplitDetail(createForm.splitBatchId)
-      splitOptions.value.unshift(s)
-      splitMap[s.id] = s
-    } catch { /* 忽略 */ }
-  }
-  nextTick(() => createFormRef.value?.clearValidate())
-}
-
-async function handleDelete(row: any) {
-  try {
-    await distributionApi.deleteTransport(row.id)
-    ElMessage.success(`运单 ${row.transportNo} 已删除`)
-    // 删掉的是当前监控运单时，删除后选中本页第一条
-    const wasCurrent = currentTransport.value?.id === row.id
-    if (transportList.value.length === 1 && query.pageNum > 1) query.pageNum -= 1
-    await fetchTransports()
-    if (wasCurrent) {
-      if (transportList.value[0]) await selectTransport(transportList.value[0])
-      else { currentTransport.value = null; currentTemp.value = null; checkInList.value = []; transportTimeline.value = [] }
-    }
-  } catch { /* 拦截器已提示（如已签收运单） */ }
-}
-
 async function submitCreate() {
   if (!createFormRef.value) return
   await createFormRef.value.validate(async (valid) => {
@@ -718,7 +668,7 @@ onUnmounted(() => {
   .route-arrow { display: inline-block; vertical-align: middle; margin: 0 4px; color: #c0c4cc; }
 }
 :deep(.el-table .current-row) { background-color: #ecf5ff !important; }
-.pager { display: flex; justify-content: flex-end; margin-top: 12px; }
+.pager { display: flex; justify-content: center; margin-top: 12px; }
 
 // 运输信息条
 .transport-info-bar { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; padding: 16px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; margin-bottom: 20px; }

@@ -43,12 +43,6 @@
       </div>
       <div class="toolbar-right">
         <el-button type="primary" @click="handleCreateSplit"><el-icon><Plus /></el-icon>新建分割</el-button>
-        <el-button type="warning" :disabled="!selectedSplit" @click="handleEditSelected">
-          <el-icon><Edit /></el-icon>编辑分割
-        </el-button>
-        <el-button type="danger" :disabled="!selectedSplit" @click="handleDeleteSelected">
-          <el-icon><Delete /></el-icon>删除分割
-        </el-button>
         <span v-if="selectedSplit" class="select-hint selected">已选中：{{ selectedSplit.productName }}（{{ selectedSplit.batchNo }}）</span>
         <span v-else-if="selectedNode" class="select-hint">根胴体批次请到「胴体批次」页面操作</span>
         <span v-else class="select-hint">请先点击树中的分割节点</span>
@@ -69,7 +63,7 @@
           <TreeNode :node="splitTree" :highlighted="highlightedBatch === splitTree.batchNo"
             :selected-key="selectedKey"
             @view-detail="showDetail" @split="handleCreateSplitFrom" @chain-info="showChainInfo"
-            @edit="handleEditNode" @delete="handleDeleteNode" @select="handleSelectNode" />
+            @select="handleSelectNode" />
         </div>
       </div>
     </el-card>
@@ -166,8 +160,8 @@
 <script setup lang="ts">
 import { ref, reactive, computed, h, defineComponent, onMounted, nextTick, provide, inject, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { Search, Plus, Edit, Delete } from '@element-plus/icons-vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { Search, Plus } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import BlockchainVerifyBadge from '@/components/common/BlockchainVerifyBadge.vue'
 import { distributionApi } from '@/api/modules/distribution'
 import request from '@/utils/request'
@@ -176,7 +170,7 @@ import request from '@/utils/request'
 const TreeNode = defineComponent({
   name: 'TreeNode',
   props: { node: Object, highlighted: Boolean, selectedKey: { type: String, default: '' } },
-  emits: ['view-detail', 'split', 'chain-info', 'edit', 'delete', 'select'],
+  emits: ['view-detail', 'split', 'chain-info', 'select'],
   setup(props, { emit }) {
     const isExpanded = ref(true)
     const globalExpand = inject<any>('splitTreeExpand', null)
@@ -211,12 +205,7 @@ const TreeNode = defineComponent({
         h('span', { class: 'node-actions', onClick: (e: Event) => e.stopPropagation() }, [
           h('el-button', { size: 'small', type: 'primary', link: true, onClick: () => emit('view-detail', node.value) }, { default: () => '详情' }),
           h('el-button', { size: 'small', type: 'success', link: true, onClick: () => emit('split', node.value) }, { default: () => '分割' }),
-          // 编辑仅针对分割节点；根胴体批次请到胴体批次页面编辑
-          nodeType(node.value) === 'SPLIT'
-            ? h('el-button', { size: 'small', type: 'warning', link: true, onClick: () => emit('edit', node.value) }, { default: () => '编辑' })
-            : null,
           h('el-button', { size: 'small', type: 'info', link: true, onClick: () => emit('chain-info', node.value) }, { default: () => '链上' }),
-          h('el-button', { size: 'small', type: 'danger', link: true, onClick: () => emit('delete', node.value) }, { default: () => '删除' }),
         ]),
       ]),
       isExpanded.value && hasChildren.value
@@ -229,8 +218,6 @@ const TreeNode = defineComponent({
                 onViewDetail: (n: any) => emit('view-detail', n),
                 onSplit: (n: any) => emit('split', n),
                 onChainInfo: (n: any) => emit('chain-info', n),
-                onEdit: (n: any) => emit('edit', n),
-                onDelete: (n: any) => emit('delete', n),
                 onSelect: (n: any) => emit('select', n),
               })
             )
@@ -418,25 +405,6 @@ function handleCreateSplitFrom(node: SplitNode) {
   nextTick(() => splitFormRef.value?.clearValidate())
 }
 
-// 从树节点点「编辑」：回填该分割批次，父批次/层级锁定不可改
-function handleEditNode(node: SplitNode) {
-  if (!node || nodeType(node) !== 'SPLIT') return
-  refreshParentOptions()
-  splitEditMode.value = true
-  editingSplitId.value = node.id
-  parentLocked.value = true
-  splitForm.parentId = nodeOptionValue(node)
-  splitForm.splitLevel = node.splitLevel || 1
-  splitForm.maxWeight = 999999 // 编辑时不再按父批次余量限制重量
-  splitForm.productName = node.productName || ''
-  splitForm.weightKg = node.weightKg ?? 10
-  splitForm.packageCount = node.packageCount || 1
-  splitForm.workshop = node.workshop || ''
-  splitForm.note = node.note || ''
-  splitDialogVisible.value = true
-  nextTick(() => splitFormRef.value?.clearValidate())
-}
-
 async function doSplit() {
   await splitFormRef.value?.validate()
   splitting.value = true
@@ -466,39 +434,6 @@ async function doSplit() {
     splitDialogVisible.value = false
     loadTree()
   } catch { /* 错误已由拦截器提示；validate 未通过也走此分支 */ } finally { splitting.value = false }
-}
-
-// 工具栏：编辑/删除当前选中的分割节点
-function handleEditSelected() {
-  if (selectedSplit.value) handleEditNode(selectedSplit.value)
-}
-async function handleDeleteSelected() {
-  if (selectedSplit.value) await handleDeleteNode(selectedSplit.value)
-}
-
-// 删除树节点：根节点删胴体批次，其余删分割批次；下游关联由后端拦截
-async function handleDeleteNode(node: SplitNode) {
-  const isCarcass = nodeType(node) === 'CARCASS'
-  try {
-    await ElMessageBox.confirm(
-      isCarcass
-        ? `确定删除胴体批次「${node.batchNo}」吗？该批次下存在分割记录时将无法删除。`
-        : `确定删除分割批次「${node.batchNo}」吗？存在子分割或冷链运输任务时将无法删除。`,
-      '删除确认',
-      { type: 'warning', confirmButtonText: '确定删除', cancelButtonText: '取消' }
-    )
-  } catch { return }
-  try {
-    if (isCarcass) {
-      await distributionApi.deleteBatch(node.id)
-      currentBatchNo.value = '' // loadTree 会自动改选最新批次
-    } else {
-      await distributionApi.deleteSplit(node.id)
-    }
-    ElMessage.success('删除成功')
-    drawerVisible.value = false
-    await loadTree()
-  } catch { /* 错误已由拦截器提示（如存在下游数据） */ }
 }
 
 function showChainInfo(node: SplitNode) {

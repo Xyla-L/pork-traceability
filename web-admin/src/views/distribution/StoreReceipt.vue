@@ -107,11 +107,6 @@
             <template #default="{ row }">
               <el-button type="primary" link size="small" @click="handleView(row)">详情</el-button>
               <el-button type="success" link size="small" @click="handleVerify(row)">验真</el-button>
-              <el-popconfirm title="确定删除该签收记录吗？" width="220" @confirm="handleDelete(row)">
-                <template #reference>
-                  <el-button type="danger" link size="small">删除</el-button>
-                </template>
-              </el-popconfirm>
             </template>
           </el-table-column>
         </el-table>
@@ -194,18 +189,6 @@
             </el-radio-group>
           </el-form-item>
         </el-form>
-      </el-card>
-      <!-- 签名 -->
-      <el-card shadow="hover" class="check-card signature-card">
-        <template #header><span class="check-title">签收人签名</span></template>
-        <div class="signature-area">
-          <canvas ref="signCanvasRef" width="400" height="120" class="sign-canvas"
-            @mousedown="startSign" @mousemove="drawSign" @mouseup="endSign" @mouseleave="endSign"></canvas>
-          <div class="sign-actions">
-            <el-button size="small" @click="clearSign">清除</el-button>
-            <span class="sign-hint">请在框内签名</span>
-          </div>
-        </div>
       </el-card>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -308,17 +291,6 @@ function handleView(row: any) {
 }
 function handleVerify(row: any) { ElMessage.success(`区块链验真通过: ${row.receiptNo}`) }
 
-async function handleDelete(row: any) {
-  try {
-    await distributionApi.deleteReceipt(row.id)
-    ElMessage.success('删除成功')
-    if (tableData.value.length === 1 && pagination.pageNum > 1) pagination.pageNum--
-    fetchList()
-  } catch (error) {
-    console.error('删除签收记录失败:', error)
-  }
-}
-
 function handleSearch() { pagination.pageNum = 1; fetchList() }
 function handleReset() { Object.assign(searchForm, { transportNo: '', storeName: '', statusFilter: null }); dateRange.value = null; handleSearch() }
 function handleSizeChange() { pagination.pageNum = 1; fetchList() }
@@ -384,36 +356,7 @@ const receiptForm = reactive({
   tempValue: -12,
   packageIntact: 1,
   receiptPhoto: [] as string[],
-  eSignature: '',
 })
-
-const signCanvasRef = ref<HTMLCanvasElement>()
-let isDrawing = false
-let ctx: CanvasRenderingContext2D | null = null
-
-function startSign(e: MouseEvent) {
-  if (!signCanvasRef.value) return
-  ctx = signCanvasRef.value.getContext('2d')
-  if (!ctx) return
-  isDrawing = true
-  const rect = signCanvasRef.value.getBoundingClientRect()
-  ctx.beginPath()
-  ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top)
-  ctx.strokeStyle = '#333'
-  ctx.lineWidth = 2
-}
-function drawSign(e: MouseEvent) {
-  if (!isDrawing || !ctx || !signCanvasRef.value) return
-  const rect = signCanvasRef.value.getBoundingClientRect()
-  ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top)
-  ctx.stroke()
-}
-function endSign() { isDrawing = false; ctx = null }
-function clearSign() {
-  if (!signCanvasRef.value) return
-  const c = signCanvasRef.value.getContext('2d')
-  if (c) c.clearRect(0, 0, 400, 120)
-}
 
 function openConfirmDialog(row: any) {
   receiptData.transportNo = row.transportNo
@@ -430,7 +373,6 @@ function openConfirmDialog(row: any) {
   receiptForm.tempCheck = 1
   receiptForm.tempValue = -12
   receiptForm.packageIntact = 1
-  clearSign()
   dialogVisible.value = true
 }
 
@@ -447,12 +389,6 @@ async function confirmReceipt() {
     ElMessage.warning('请输入签收人姓名')
     return
   }
-  const canvas = signCanvasRef.value
-  const signData = canvas ? canvas.toDataURL('image/png') : ''
-  if (!signData || signData === 'data:image/png;base64,') {
-    ElMessage.warning('请先签名')
-    return
-  }
   submitting.value = true
   try {
     await distributionApi.createReceipt({
@@ -467,7 +403,6 @@ async function confirmReceipt() {
       tempValue: receiptForm.tempValue,
       packageIntact: receiptForm.packageIntact,
       receiptPhoto: receiptForm.receiptPhoto,
-      eSignature: signData,
     })
     ElMessage.success('门店签收确认成功，数据已上链')
     dialogVisible.value = false
@@ -492,11 +427,6 @@ onMounted(() => fetchPendingList())
 .receipt-checks { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
 .check-card { border: 1px solid #ebeef5; }
 .check-title { font-size: 14px; font-weight: 600; }
-.signature-card { margin-bottom: 0; }
-.signature-area { display: flex; flex-direction: column; align-items: center; gap: 8px; }
-.sign-canvas { border: 1px dashed #dcdfe6; border-radius: 6px; cursor: crosshair; background: #fafafa; }
-.sign-actions { display: flex; align-items: center; gap: 12px; }
-.sign-hint { font-size: 12px; color: #c0c4cc; }
 .unit-hint { font-size: 13px; color: #909399; }
 .hash-text { font-family: 'Courier New', monospace; font-size: 12px; color: #909399; word-break: break-all; }
 </style>

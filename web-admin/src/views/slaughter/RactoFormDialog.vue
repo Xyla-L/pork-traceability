@@ -130,9 +130,37 @@ const formData = reactive({
 
 const formRules = {
   earTagNo: [{ required: true, message: '请选择生猪', trigger: 'change' }],
-  testNo: [{ required: true, message: '请输入检测编号', trigger: 'blur' }],
+  testNo: [
+    { required: true, message: '请输入检测编号', trigger: 'blur' },
+    {
+      validator: async (rule, value, callback) => {
+        if (!value || props.editData) return callback()
+        try {
+          const res = await request.get('/slaughter/ractopamine', { params: { testNo: value, pageSize: 1 } })
+          const list = res?.records || res?.list || []
+          if (list.length > 0) return callback(new Error('检测编号已存在'))
+          callback()
+        } catch (e) { callback() }
+      },
+      trigger: 'blur'
+    }
+  ],
   batchNo: [{ required: true, message: '请输入批次号', trigger: 'blur' }],
-  sampleNo: [{ required: true, message: '请输入样本编号', trigger: 'blur' }],
+  sampleNo: [
+    { required: true, message: '请输入样本编号', trigger: 'blur' },
+    {
+      validator: async (rule, value, callback) => {
+        if (!value || props.editData) return callback()
+        try {
+          const res = await request.get('/slaughter/ractopamine', { params: { sampleNo: value, pageSize: 1 } })
+          const list = res?.records || res?.list || []
+          if (list.length > 0) return callback(new Error('样本编号已存在'))
+          callback()
+        } catch (e) { callback() }
+      },
+      trigger: 'blur'
+    }
+  ],
   testType: [{ required: true, message: '请选择检测项目', trigger: 'change' }],
   testMethod: [{ required: true, message: '请输入检测方法', trigger: 'blur' }],
   testTime: [{ required: true, message: '请选择检测时间', trigger: 'change' }],
@@ -148,23 +176,13 @@ const searchPigs = async (query) => {
   }
   pigSearchLoading.value = true
   try {
-    // 条件1：只搜已出栏(status=2)的生猪，即出栏申报审批通过的猪
+    // 只搜已出栏(status=2)的生猪（出栏审批通过、尚未进入屠宰环节）；
+    // 瘦肉精检测无作废/重录场景，已屠宰(3)的猪不再可选，
+    // 同一头猪不同检测项目可多次检测，防重由检测编号/样本编号唯一性校验兜底
     const res = await request.get('/breeding/pigs', {
       params: { earTagNo: query, status: 2, size: 20 }
     })
-    const list = res?.records || res?.list || []
-    // 条件2：排除已有瘦肉精检测记录的生猪，避免重复检测
-    let excludeIds = []
-    try {
-      const ractoRes = await request.get('/slaughter/ractopamine', {
-        params: { pageNum: 1, pageSize: 500 }
-      })
-      const ractoList = ractoRes?.records || ractoRes?.list || []
-      excludeIds = ractoList.map((e) => e.pigId).filter(Boolean)
-    } catch (e) {
-      console.error('获取已有瘦肉精检测记录失败:', e)
-    }
-    pigOptions.value = list.filter((p) => !excludeIds.includes(p.id))
+    pigOptions.value = res?.records || res?.list || []
   } catch (error) {
     console.error('搜索生猪失败:', error)
   } finally {

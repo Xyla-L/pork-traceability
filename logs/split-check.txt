@@ -1,0 +1,3 @@
+﻿id	ear_tag_no	inspect_type	result	status
+20	ET-TEST-0017	2	NULL	3
+20	ET-TEST-0017	2	NULL	1

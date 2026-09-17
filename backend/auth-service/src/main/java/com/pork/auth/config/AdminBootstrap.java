@@ -27,7 +27,7 @@ public class AdminBootstrap implements ApplicationRunner {
 
     @Value("${security.bootstrap-admin.username:${BOOTSTRAP_ADMIN_USERNAME:admin}}")
     private String username;
-    @Value("${security.bootstrap-admin.password:${BOOTSTRAP_ADMIN_PASSWORD:ChangeMe123!}}")
+    @Value("${security.bootstrap-admin.password:${BOOTSTRAP_ADMIN_PASSWORD:123456}}")
     private String password;
 
     @Override

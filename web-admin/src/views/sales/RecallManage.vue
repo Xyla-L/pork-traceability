@@ -42,9 +42,11 @@
           </div>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="80" fixed="right" align="center">
+      <el-table-column label="操作" width="150" fixed="right" align="center">
         <template #default="{ row }">
           <el-button type="primary" link size="small" @click="handleView(row)">详情</el-button>
+          <el-button v-if="row.status === 1 || row.status === 2" type="warning" link size="small"
+            @click="openProgressDialog(row)">进度上报</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -88,6 +90,30 @@
       </template>
     </el-dialog>
 
+    <!-- 进度上报弹窗：召回原因/范围已上链不可改，只更新进度 -->
+    <el-dialog v-model="progressVisible" title="召回进度上报" width="460px" destroy-on-close>
+      <el-form ref="progressFormRef" :model="progressForm" :rules="progressRules" label-width="90px">
+        <el-form-item label="召回编号">
+          <span>{{ progressRow?.recallNo || '-' }}</span>
+        </el-form-item>
+        <el-form-item label="执行状态" prop="status">
+          <el-radio-group v-model="progressForm.status">
+            <el-radio :value="2">执行中</el-radio>
+            <el-radio :value="3">已完成</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="已召回数" prop="recalledCount">
+          <el-input-number v-model="progressForm.recalledCount" :min="0"
+            :max="progressRow?.affectedCount || undefined" style="width: 100%" />
+          <div class="progress-text">受影响共 {{ progressRow?.affectedCount ?? '-' }} 件，不能超出该数量</div>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="progressVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleProgressSubmit" :loading="progressSubmitting">提交进度</el-button>
+      </template>
+    </el-dialog>
+
     <!-- 详情弹窗 -->
     <el-dialog v-model="detailVisible" title="召回详情" width="600px">
       <el-descriptions :column="2" border>
@@ -98,6 +124,7 @@
         </el-descriptions-item>
         <el-descriptions-item label="发起人">{{ detailData.initiator || '-' }}</el-descriptions-item>
         <el-descriptions-item label="发起时间">{{ detailData.initiateTime || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="完成时间" v-if="detailData.status === 3">{{ detailData.completedTime || '-' }}</el-descriptions-item>
         <el-descriptions-item label="执行状态">
           <el-tag :type="statusTagType(detailData.status)" size="small">{{ statusLabel(detailData.status) }}</el-tag>
         </el-descriptions-item>
@@ -121,41 +148,22 @@
         <el-descriptions-item label="备注说明" :span="2">{{ detailData.note || '--' }}</el-descriptions-item>
       </el-descriptions>
       <template #footer>
-        <el-button v-if="canUpdate" type="primary" @click="openProgressDialog">更新进度</el-button>
-        <el-button v-if="canRevoke" type="warning" @click="handleRevoke">撤销召回</el-button>
         <el-button @click="detailVisible = false">关闭</el-button>
-      </template>
-    </el-dialog>
-
-    <!-- 更新进度弹窗 -->
-    <el-dialog v-model="progressVisible" title="更新召回进度" width="460px" destroy-on-close>
-      <el-form :model="progressForm" label-width="100px">
-        <el-form-item label="当前进度">
-          <el-progress :percentage="progressForm.pct" :stroke-width="16" />
-        </el-form-item>
-        <el-form-item label="已召回数量" required>
-          <el-input-number v-model="progressForm.recalled" :min="0" :max="progressForm.max" style="width: 180px" />
-          <span class="progress-hint"> / {{ progressForm.max }} 件</span>
-        </el-form-item>
-        <el-form-item label="备注">
-          <el-input v-model="progressForm.note" placeholder="进度说明" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="progressVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmitProgress">确认</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { WarningFilled } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { EpTagType } from '@/types/common'
 import { salesApi } from '@/api/modules/sales'
 import { distributionApi } from '@/api/modules/distribution'
+import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
 
 const tableData = ref<any[]>([])
 const loading = ref(false)
@@ -202,12 +210,6 @@ async function fetchStoreOptions() {
 // 详情弹窗
 const detailVisible = ref(false)
 const detailData = ref<any>({})
-const canUpdate = computed(() => [1, 2].includes(detailData.value.status))
-const canRevoke = computed(() => detailData.value.status === 1)
-
-// 进度更新
-const progressVisible = ref(false)
-const progressForm = reactive({ pct: 0, recalled: 0, max: 100, note: '', row: null as any })
 const progressPct = (row: any) => row.affectedCount ? Math.round(row.recalledCount / row.affectedCount * 100) : 0
 
 function handleCreate() {
@@ -245,7 +247,9 @@ async function handleSubmitRecall() {
   try {
     await salesApi.createRecall({
       reason: recallForm.reason, riskLevel: recallForm.riskLevel,
-      batchIds: recallForm.batchIds, storeIds: recallForm.storeIds, note: recallForm.note,
+      // 后端 RecallCreate 要求 scope(Map) 与 initiator 必填，batchIds/storeIds 需放入 scope
+      scope: { batchIds: recallForm.batchIds, storeIds: recallForm.storeIds, note: recallForm.note },
+      initiator: authStore.user?.realName || authStore.user?.username || '管理员',
     })
     ElMessage.success('召回指令已发布，数据已上链')
     dialogVisible.value = false
@@ -253,40 +257,76 @@ async function handleSubmitRecall() {
   } catch { /* 错误已由拦截器提示 */ } finally { submitting.value = false }
 }
 
-function openProgressDialog() {
-  progressForm.row = detailData.value
-  progressForm.max = detailData.value.affectedCount
-  progressForm.recalled = detailData.value.recalledCount
-  progressForm.pct = progressPct(detailData.value)
-  progressForm.note = ''
+// 进度上报弹窗
+const progressVisible = ref(false)
+const progressSubmitting = ref(false)
+const progressFormRef = ref()
+const progressRow = ref<any>(null)
+const progressForm = reactive({ status: 2, recalledCount: 0 })
+const progressRules = {
+  status: [{ required: true, message: '请选择执行状态', trigger: 'change' }],
+  recalledCount: [{ required: true, message: '请填写已召回数量', trigger: 'blur' }],
+}
+
+function openProgressDialog(row: any) {
+  progressRow.value = row
+  progressForm.status = row.status === 1 ? 2 : row.status
+  progressForm.recalledCount = row.recalledCount ?? 0
   progressVisible.value = true
 }
 
-async function handleSubmitProgress() {
-  if (progressForm.row) {
-    try {
-      await salesApi.updateRecallStatus(progressForm.row.id, { status: 3 })
-      ElMessage.success('召回进度已更新')
-      progressVisible.value = false
-      detailVisible.value = false
-      fetchList()
-    } catch { /* 错误已由拦截器提示 */ }
+async function handleProgressSubmit() {
+  await progressFormRef.value?.validate()
+  const affected = progressRow.value?.affectedCount
+  if (progressForm.recalledCount > affected) {
+    ElMessage.warning('已召回数量不能超出受影响数量')
+    return
   }
+  progressSubmitting.value = true
+  try {
+    await salesApi.updateRecallStatus(progressRow.value.id, {
+      status: progressForm.status,
+      recalledCount: progressForm.recalledCount,
+    })
+    ElMessage.success('召回进度已更新，状态变更已上链存证')
+    progressVisible.value = false
+    fetchList()
+  } catch { /* 错误已由拦截器提示 */ } finally { progressSubmitting.value = false }
 }
 
-async function handleRevoke() {
-  ElMessageBox.confirm(`确认撤销召回 "${detailData.value.recallNo}" 吗？此操作不可逆`, '警告', { type: 'warning' }).then(async () => {
-    try {
-      await salesApi.updateRecallStatus(detailData.value.id, { status: 4 })
-      ElMessage.success('召回已撤销')
-      detailVisible.value = false
-      fetchList()
-    } catch { /* 错误已由拦截器提示 */ }
-  }).catch(() => {})
-}
-
-function handleView(row: any) {
-  detailData.value = row
+async function handleView(row: any) {
+  detailData.value = { ...row }
+  // 解析 scope 中的召回范围和目标门店
+  try {
+    const scope = typeof row.scope === 'string' ? JSON.parse(row.scope) : (row.scope || {})
+    // 召回范围
+    const batchNames: string[] = []
+    if (scope.batchNo) {
+      batchNames.push(scope.batchNo)
+    } else if (scope.batchIds?.length) {
+      // 如果是 batchIds 数组，尝试匹配
+      if (!batchOptions.value.length) await fetchBatchOptions()
+      scope.batchIds.forEach((bid: number) => {
+        const match = batchOptions.value.find(b => b.value === bid)
+        if (match) batchNames.push(match.label)
+      })
+      if (!batchNames.length) batchNames.push(`批次#${scope.batchIds.join(', #')}`)
+    }
+    detailData.value.batchNames = batchNames
+    // 目标门店
+    const storeNames: string[] = []
+    if (scope.storeIds?.length) {
+      if (!storeOptions.value.length) await fetchStoreOptions()
+      scope.storeIds.forEach((sid: number) => {
+        const match = storeOptions.value.find(s => s.value === sid)
+        if (match) storeNames.push(match.label)
+        else storeNames.push(`门店#${sid}`)
+      })
+    }
+    detailData.value.storeNames = storeNames
+  } catch {
+    // scope 解析失败时不影响基本展示
+  }
   detailVisible.value = true
 }
 
@@ -311,6 +351,5 @@ onMounted(() => fetchList())
 .pagination-wrapper { display: flex; justify-content: center; padding-top: 16px; margin-top: 16px; border-top: 1px solid #ebeef5; }
 .progress-cell { display: flex; align-items: center; gap: 10px; }
 .progress-text { font-size: 12px; color: #909399; white-space: nowrap; flex-shrink: 0; }
-.progress-hint { font-size: 14px; color: #909399; margin-left: 4px; }
 .scope-tags { display: flex; flex-wrap: wrap; }
 </style>

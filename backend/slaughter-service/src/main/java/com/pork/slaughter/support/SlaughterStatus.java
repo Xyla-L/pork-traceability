@@ -7,7 +7,7 @@ import java.util.Map;
 
 public final class SlaughterStatus {
     private static final Map<String, Integer> ENTRY = Map.of("待查验", 0, "合格", 1, "不合格", 2);
-    private static final Map<String, Integer> INSPECTION = Map.of("待检验", 0, "合格", 1, "不合格", 2);
+    private static final Map<String, Integer> INSPECTION = Map.of("待检验", 0, "合格", 1, "不合格", 2, "已作废", 3);
     private static final Map<String, Integer> TEST = Map.of("待检测", 0, "检测中", 1, "已完成", 2);
     private static final Map<String, Integer> STAMP = Map.of("待盖章", 0, "已盖章", 1, "已作废", 2);
 
@@ -48,7 +48,10 @@ public final class SlaughterStatus {
     }
 
     public static String entryLabel(Integer value) { return label(value, "待查验", "合格", "不合格"); }
-    public static String inspectionLabel(Integer value) { return label(value, "待检验", "合格", "不合格"); }
+    public static String inspectionLabel(Integer value) {
+        if (value != null && value == 3) return "已作废";
+        return label(value, "待检验", "合格", "不合格");
+    }
     public static String testLabel(Integer value) { return label(value, "待检测", "检测中", "已完成"); }
     public static String stampLabel(Integer value) { return label(value, "待盖章", "已盖章", "已作废"); }
     public static String inspectTypeLabel(Integer value) {

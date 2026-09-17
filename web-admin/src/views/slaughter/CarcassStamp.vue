@@ -88,8 +88,8 @@
     <StampTable
       :data="tableData"
       :loading="tableLoading"
+      @voided="fetchList"
       @edit="handleEdit"
-      @delete="handleDelete"
     />
 
     <!-- 分页 -->
@@ -106,7 +106,7 @@
       />
     </div>
 
-    <!-- 新建/编辑弹窗 -->
+    <!-- 新建弹窗 -->
     <StampFormDialog
       v-model:visible="formDialogVisible"
       :edit-data="currentEditData"
@@ -118,7 +118,6 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { Search, Refresh, Plus } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
 import StampTable from './StampTable.vue'
 import StampFormDialog from './StampFormDialog.vue'
@@ -222,17 +221,6 @@ const handleEdit = (row) => {
 
 const handleFormSubmit = () => {
   fetchList()
-}
-
-const handleDelete = async (row) => {
-  try {
-    await request.delete(`/slaughter/stamps/${row.id}`)
-    ElMessage.success('删除成功')
-    fetchList()
-  } catch (error) {
-    console.error('删除失败:', error)
-    ElMessage.error('删除失败')
-  }
 }
 
 // ==================== 初始化 ====================

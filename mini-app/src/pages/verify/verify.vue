@@ -11,7 +11,7 @@
     <template v-else-if="result">
       <!-- 通过 -->
       <view v-if="result.verified" class="verify-center pass">
-        <view class="big-icon">✅</view>
+        <view class="big-icon"></view>
         <view class="big-title">区块链已验证</view>
         <view class="big-sub">全部 {{ result.details.length }} 条记录匹配</view>
         <view class="big-tip">可放心购买</view>
@@ -19,7 +19,7 @@
 
       <!-- 失败 -->
       <view v-else class="verify-center fail">
-        <view class="big-icon">⚠️</view>
+        <view class="big-icon"></view>
         <view class="big-title">数据可能被篡改</view>
         <view class="big-sub">请谨慎购买</view>
       </view>
@@ -37,14 +37,14 @@
           <text class="col-type">{{ d.type }}</text>
           <text class="col-hash">{{ d.localHash }}</text>
           <text class="col-hash">{{ d.chainHash }}</text>
-          <text class="col-match" :class="d.match ? 'ok' : 'no'">{{ d.match ? '✅ 匹配' : '❌ 不一致' }}</text>
+          <text class="col-match" :class="d.match ? 'ok' : 'no'">{{ d.match ? '匹配' : '不一致' }}</text>
         </view>
       </view>
     </template>
 
     <!-- 初始/空状态 -->
     <view v-else class="card">
-      <EmptyState icon="🔍" text="尚未开始验真" show-retry @retry="startVerify" />
+      <EmptyState icon="" text="尚未开始验真" show-retry @retry="startVerify" />
     </view>
   </view>
 </template>

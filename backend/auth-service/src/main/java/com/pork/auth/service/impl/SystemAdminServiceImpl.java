@@ -29,7 +29,7 @@ public class SystemAdminServiceImpl implements SystemAdminService {
     private final SysUserMapper userMapper;
     private final SysOrgMapper orgMapper;
 
-    @Value("${security.default-password:${BOOTSTRAP_ADMIN_PASSWORD:ChangeMe123!}}")
+    @Value("${security.default-password:${BOOTSTRAP_ADMIN_PASSWORD:123456}}")
     private String defaultPassword;
 
     @Override

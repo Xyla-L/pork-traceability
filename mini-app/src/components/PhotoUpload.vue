@@ -3,11 +3,11 @@
     <view class="pu-list">
       <view v-for="(photo, idx) in photos" :key="idx" class="pu-item">
         <image class="pu-img" :src="photo" mode="aspectFill" @click="preview(idx)" />
-        <view class="pu-del" @click="remove(idx)">✕</view>
+        <view class="pu-del" @click="remove(idx)"></view>
       </view>
 
       <view v-if="photos.length < max" class="pu-add" @click="choose">
-        <text class="pu-add-icon">＋</text>
+        <text class="pu-add-icon"></text>
         <text class="pu-add-text">添加图片</text>
       </view>
     </view>

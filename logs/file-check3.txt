@@ -1,0 +1,12 @@
+﻿Tables_in_db_common
+blockchain_ledger
+blockchain_record
+complaint_report
+file_metadata
+sys_org
+sys_permission
+sys_role
+sys_role_permission
+sys_user
+sys_user_role
+user_notification

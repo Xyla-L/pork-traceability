@@ -1,0 +1,5 @@
+﻿NAME                                       STATUS
+pork-traceability-distribution-service-1   Up About a minute (healthy)
+pork-traceability-sales-service-1          Up About a minute (healthy)
+pork-traceability-slaughter-service-1      Up About a minute (healthy)
+pork-traceability-trace-service-1          Up About a minute (healthy)

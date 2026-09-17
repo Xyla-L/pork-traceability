@@ -1,0 +1,2 @@
+﻿NAME                               IMAGE                            COMMAND                   SERVICE        CREATED          STATUS                    PORTS
+pork-traceability-auth-service-1   pork-traceability-auth-service   "sh -c 'exec java $J鈥?   auth-service   43 seconds ago   Up 41 seconds (healthy)   

@@ -10,7 +10,7 @@
 defineProps({
   icon: {
     type: String,
-    default: '📭',
+    default: '',
   },
   text: {
     type: String,

@@ -35,6 +35,12 @@ public class SlaughterInspectionController {
         return Result.success();
     }
 
+    @PutMapping("/{id}/void")
+    public Result<Void> voidRecord(@PathVariable Long id) {
+        slaughterInspectionService.voidInspection(id);
+        return Result.success();
+    }
+
     @GetMapping
     public Result<PageResult<SlaughterInspectionVO>> pageQuery(SlaughterInspectionDTO dto) {
         Page<SlaughterInspectionVO> page = slaughterInspectionService.pageQuery(dto);

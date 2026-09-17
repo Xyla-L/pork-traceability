@@ -44,11 +44,17 @@ public class SlaughterInternalController {
             row.put("entries", entryMapper.selectList(Wrappers.<EntryInspection>lambdaQuery()
                     .eq(EntryInspection::getPigId, pigId).orderByDesc(EntryInspection::getArriveTime)));
             row.put("inspections", inspectionMapper.selectList(Wrappers.<SlaughterInspection>lambdaQuery()
-                    .eq(SlaughterInspection::getPigId, pigId).orderByAsc(SlaughterInspection::getInspectTime)));
+                    .eq(SlaughterInspection::getPigId, pigId)
+                    // 已作废记录不进入溯源链展示
+                    .ne(SlaughterInspection::getStatus, 3)
+                    .orderByAsc(SlaughterInspection::getInspectTime)));
             row.put("ractopamineTests", testMapper.selectList(Wrappers.<RactopamineTest>lambdaQuery()
                     .eq(RactopamineTest::getPigId, pigId).orderByAsc(RactopamineTest::getTestTime)));
             row.put("stamps", stampMapper.selectList(Wrappers.<CarcassStamp>lambdaQuery()
-                    .eq(CarcassStamp::getPigId, pigId).orderByDesc(CarcassStamp::getStampTime)));
+                    .eq(CarcassStamp::getPigId, pigId)
+                    // 已作废记录不进入溯源链展示
+                    .ne(CarcassStamp::getStatus, 2)
+                    .orderByDesc(CarcassStamp::getStampTime)));
             result.add(row);
         }
         return Result.success(result);

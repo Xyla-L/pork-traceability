@@ -30,6 +30,8 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/login", "/auth/register", "/auth/refresh", "/actuator/health", "/doc.html/**", "/v3/api-docs/**", "/swagger-ui/**").permitAll()
+                        // 机构树是各业务页面的公共基础数据（养殖场/门店下拉），登录即可读
+                        .requestMatchers("/system/orgs/tree").authenticated()
                         .requestMatchers("/system/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .exceptionHandling(errors -> errors.authenticationEntryPoint((request, response, exception) -> {

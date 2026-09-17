@@ -1,0 +1,6 @@
+﻿ Container pork-traceability-redis-1 Waiting 
+ Container pork-traceability-mysql-1 Healthy 
+ Container pork-traceability-rabbitmq-1 Healthy 
+ Container pork-traceability-redis-1 Healthy 
+ Container pork-traceability-sales-service-1 Starting 
+ Container pork-traceability-sales-service-1 Started 

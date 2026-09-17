@@ -66,7 +66,6 @@
         <template #default="{ row }">
           <el-button v-if="row.status === 0" type="success" link size="small" @click="handleActivate(row)">激活</el-button>
           <el-button type="primary" link size="small" @click="handleDownload(row)">下载</el-button>
-          <el-button v-if="row.status === 3" type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -299,14 +298,6 @@ async function handleActivate(row: any) {
   } catch {
     /* 取消或错误 */
   }
-}
-
-function handleDelete(row: any) {
-  ElMessageBox.confirm(`确定删除二维码 ${row.qrCode}？`, '确认', { type: 'warning' })
-    .then(() => {
-      ElMessage.info('后端暂未提供二维码删除接口')
-    })
-    .catch(() => {})
 }
 
 function handleSearch() {

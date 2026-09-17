@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -96,18 +97,50 @@ public class CarcassStampServiceImpl extends ServiceImpl<CarcassStampMapper, Car
         if (dto.getId() == null) {
             throw new BusinessException(ErrorCode.PARAM_MISSING, "ID不能为空");
         }
-        if (this.getById(dto.getId()) == null) throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, "检疫盖章记录不存在");
+        CarcassStamp old = this.getById(dto.getId());
+        if (old == null) throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, "检疫盖章记录不存在");
+        if (old.getStatus() != null && old.getStatus() == 2)
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "已作废记录不可编辑，请重新录入");
+        if (dto.getStatus() != null && dto.getStatus() == 2)
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "作废请使用作废功能，不可通过编辑设置");
         CarcassStamp stamp = new CarcassStamp();
         BeanUtils.copyProperties(dto, stamp);
         stamp.setContentHash(HashUtil.sha256Json(dto));
         if (!this.updateById(stamp)) throw new BusinessException(ErrorCode.DATABASE_ERROR, "检疫盖章更新失败");
+        // 已上链数据：编辑后重新发布新哈希（链上按 bizKey 保留版本历史，验真取最新）
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("stampNo", old.getStampNo());
+        payload.put("pigId", old.getPigId());
+        chainEvents.publish(ChainTxMessage.create("SLAUGHTER_INSPECT", old.getId(), old.getStampNo(),
+                stamp.getContentHash(), payload));
         return true;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public void voidStamp(Long id) {
+        CarcassStamp old = this.getById(id);
+        if (old == null) throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, "检疫盖章记录不存在");
+        if (old.getStatus() != null && old.getStatus() == 2) return; // 已作废，幂等
+        CarcassStamp stamp = new CarcassStamp();
+        stamp.setId(id);
+        stamp.setStatus(2);
+        if (!this.updateById(stamp)) throw new BusinessException(ErrorCode.DATABASE_ERROR, "检疫盖章作废失败");
+        // 作废动作本身单独上链存证（独立 bizKey，不影响原记录哈希验真）
+        String voidBizKey = old.getStampNo() + ":VOID";
+        String voidHash = HashUtil.sha256Json(Map.of("bizKey", old.getStampNo(), "action", "VOID",
+                "voidTime", LocalDateTime.now().toString()));
+        Map<String, Object> voidPayload = new HashMap<>();
+        voidPayload.put("stampNo", old.getStampNo());
+        voidPayload.put("pigId", old.getPigId());
+        voidPayload.put("action", "VOID");
+        chainEvents.publish(ChainTxMessage.create("CARCASS_STAMP_VOID", id, voidBizKey, voidHash, voidPayload));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean deleteStamp(Long id) {
-        if (!this.removeById(id)) throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, "检疫盖章记录不存在");
-        return true;
+        // 盖章记录已上链存证，物理删除会造成链上哈希无法溯源验证，必须走逻辑作废
+        throw new BusinessException(ErrorCode.BUSINESS_ERROR, "盖章记录已上链，不可删除，请使用作废功能");
     }
 }

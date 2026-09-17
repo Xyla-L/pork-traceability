@@ -1,7 +1,7 @@
 <template>
   <view class="safe-buy-panel">
     <view class="sbp-header">
-      <text class="sbp-title">🛡️ 安心购</text>
+      <text class="sbp-title">安心购</text>
       <BlockchainBadge :verified="verified" />
     </view>
 

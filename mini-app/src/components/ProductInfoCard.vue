@@ -21,9 +21,9 @@
     </view>
 
     <view class="pic-countdown" :class="countdownClass">
-      <text v-if="daysLeft > 0">⏳ 剩余 {{ daysLeft }} 天</text>
-      <text v-else-if="daysLeft === 0">⚠️ 今天到期</text>
-      <text v-else>❌ 已过期 {{ -daysLeft }} 天</text>
+      <text v-if="daysLeft > 0">剩余 {{ daysLeft }} 天</text>
+      <text v-else-if="daysLeft === 0">今天到期</text>
+      <text v-else>已过期 {{ -daysLeft }} 天</text>
     </view>
   </view>
 </template>

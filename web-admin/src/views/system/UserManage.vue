@@ -56,7 +56,6 @@
       <el-table-column prop="createTime" label="创建时间" width="160" align="center" />
       <el-table-column label="操作" width="180" fixed="right" align="center">
         <template #default="{ row }">
-          <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
           <el-button type="warning" link size="small" @click="handleResetPwd(row)">重置密码</el-button>
           <el-button v-if="row.status === 1" type="danger" link size="small" @click="handleToggleStatus(row)">禁用</el-button>
           <el-button v-else type="success" link size="small" @click="handleToggleStatus(row)">启用</el-button>
@@ -98,7 +97,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="联系电话" prop="phone">
-          <el-input v-model="formData.phone" placeholder="请输入联系电话" />
+          <el-input v-model="formData.phone" placeholder="请输入联系电话" maxlength="11" />
         </el-form-item>
         <el-form-item label="邮箱">
           <el-input v-model="formData.email" placeholder="请输入邮箱" />
@@ -138,17 +137,15 @@ const rules = {
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }, { min: 6, message: '密码至少6位', trigger: 'blur' }],
   realName: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
   role: [{ required: true, message: '请选择角色', trigger: 'change' }],
-  phone: [{ required: true, message: '请输入联系电话', trigger: 'blur' }],
+  phone: [
+    { required: true, message: '请输入联系电话', trigger: 'blur' },
+    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' },
+  ],
 }
 
 function handleCreate() {
   isEdit.value = false
   Object.assign(formData, { id: 0, username: '', password: '', nickname: '', realName: '', role: '', orgId: null, phone: '', email: '', status: 1 })
-  dialogVisible.value = true
-}
-function handleEdit(row: any) {
-  isEdit.value = true
-  Object.assign(formData, { ...row, password: '' })
   dialogVisible.value = true
 }
 async function handleSubmit() {
@@ -179,7 +176,7 @@ function handleResetPwd(row: any) {
   ElMessageBox.confirm(`确认重置用户 ${row.username} 的密码吗？`, '提示', { type: 'warning' }).then(async () => {
     try {
       await systemUserApi.resetPassword(row.id)
-      ElMessage.success(`用户 ${row.username} 密码已重置为默认密码`)
+      ElMessage.success(`用户 ${row.username} 密码已重置为 123456`)
     } catch (e) { /* 已提示 */ }
   }).catch(() => {})
 }

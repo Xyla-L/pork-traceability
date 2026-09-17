@@ -76,7 +76,6 @@
       :data="tableData"
       :loading="tableLoading"
       @edit="handleEdit"
-      @delete="handleDelete"
     />
 
     <!-- 分页 -->
@@ -93,7 +92,7 @@
       />
     </div>
 
-    <!-- 新建/编辑/查验弹窗 -->
+    <!-- 新建/查验弹窗 -->
     <EntryFormDialog
       v-model:visible="formDialogVisible"
       :edit-data="currentEditData"
@@ -106,7 +105,6 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { Search, Refresh, Plus } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
 import EntryTable from './EntryTable.vue'
 import EntryFormDialog from './EntryFormDialog.vue'
@@ -210,17 +208,6 @@ const handleEdit = (row) => {
 
 const handleFormSubmit = () => {
   fetchList()
-}
-
-const handleDelete = async (row) => {
-  try {
-    await request.delete(`/slaughter/entries/${row.id}`)
-    ElMessage.success('删除成功')
-    fetchList()
-  } catch (error) {
-    console.error('删除失败:', error)
-    ElMessage.error('删除失败')
-  }
 }
 
 // ==================== 初始化 ====================

@@ -1,0 +1,4 @@
+﻿PUT http://localhost:8080/api/v1/slaughter/inspections/1/void -> Unauthorized
+PUT http://localhost:8080/api/v1/slaughter/stamps/1/void -> Unauthorized
+PUT http://localhost:8080/api/v1/slaughter/inspections?pageNum=1 -> Unauthorized
+GET list -> Unauthorized

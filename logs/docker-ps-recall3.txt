@@ -1,0 +1,2 @@
+﻿SERVICE         STATUS
+sales-service   Up About a minute (healthy)

@@ -1,0 +1,2 @@
+﻿id	recall_no	status	affected_count	recalled_count	scope
+18	RC20260917556108	2	0	0	{"note": "", "batchIds": [20], "storeIds": [1]}

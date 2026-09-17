@@ -13,29 +13,20 @@
       <el-table-column prop="stampType" label="印章类型" min-width="140" align="center" />
       <el-table-column prop="stampTime" label="盖章时间" min-width="160" align="center" />
       <el-table-column prop="veterinary" label="检疫员" min-width="100" align="center" />
-      <el-table-column prop="isVerified" label="区块链核验" min-width="120" align="center">
-        <template #default="{ row }">
-          <blockchain-verify-badge :verified="!!row.contentHash" :tx-hash="row.contentHash" />
-        </template>
-      </el-table-column>
       <el-table-column prop="status" label="状态" min-width="100" align="center">
         <template #default="{ row }">
           <el-tag :type="stampStatusTag(row.status)" size="small">{{ stampStatusLabel(row.status) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="180" fixed="right" align="center">
+      <el-table-column label="操作" width="170" fixed="right" align="center">
         <template #default="{ row }">
           <el-button type="primary" link size="small" @click="handleView(row)">
             查看
           </el-button>
-          <el-button type="warning" link size="small" @click="$emit('edit', row)">
-            编辑
+          <el-button v-if="row.status === 0 || row.status === 1" type="warning" link size="small" @click="$emit('edit', row)">编辑</el-button>
+          <el-button v-if="row.status === 0 || row.status === 1" type="danger" link size="small" @click="handleVoid(row)">
+            作废
           </el-button>
-          <el-popconfirm title="确定删除该盖章记录吗？" @confirm="$emit('delete', row)">
-            <template #reference>
-              <el-button type="danger" link size="small">删除</el-button>
-            </template>
-          </el-popconfirm>
         </template>
       </el-table-column>
     </el-table>
@@ -49,13 +40,8 @@
         <el-descriptions-item label="印章类型">{{ currentView.stampType }}</el-descriptions-item>
         <el-descriptions-item label="盖章时间">{{ currentView.stampTime }}</el-descriptions-item>
         <el-descriptions-item label="官方兽医">{{ currentView.veterinary }}</el-descriptions-item>
-        <el-descriptions-item label="盖章部位">{{ currentView.stampPosition || '--' }}</el-descriptions-item>
         <el-descriptions-item label="状态">
           <el-tag :type="stampStatusTag(currentView.status)" size="small">{{ stampStatusLabel(currentView.status) }}</el-tag>
-        </el-descriptions-item>
-        <el-descriptions-item label="内容哈希" :span="2">
-          <span v-if="currentView.contentHash" class="hash-text">{{ currentView.contentHash }}</span>
-          <span v-else>--</span>
         </el-descriptions-item>
       </el-descriptions>
     </el-dialog>
@@ -64,6 +50,8 @@
 
 <script setup>
 import { ref } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import request from '@/utils/request'
 import BlockchainVerifyBadge from '@/components/common/BlockchainVerifyBadge.vue'
 
 defineProps({
@@ -77,8 +65,6 @@ defineProps({
   }
 })
 
-defineEmits(['edit', 'delete'])
-
 const viewVisible = ref(false)
 const currentView = ref({})
 
@@ -90,6 +76,27 @@ const handleView = (row) => {
 // 状态：0=待盖章 1=已盖章 2=已作废
 const stampStatusLabel = (s) => ({ 0: '待盖章', 1: '已盖章', 2: '已作废' }[s] ?? '--')
 const stampStatusTag = (s) => ({ 0: 'info', 1: 'success', 2: 'danger' }[s] ?? 'info')
+
+// 作废：盖章记录已上链，不支持物理删除，输错信息请作废后重新录入
+const emit = defineEmits(['voided', 'edit'])
+const handleVoid = async (row) => {
+  try {
+    await ElMessageBox.confirm(
+      `确认作废盖章记录 ${row.stampNo || ''} 吗？作废动作将上链存证，且不可恢复。如信息录入有误，请作废后重新新增。`,
+      '作废确认',
+      { confirmButtonText: '确认作废', cancelButtonText: '取消', type: 'warning' }
+    )
+  } catch {
+    return
+  }
+  try {
+    await request.put(`/slaughter/stamps/${row.id}/void`)
+    ElMessage.success('已作废，作废存证已上链')
+    emit('voided')
+  } catch (e) {
+    console.error('作废失败:', e)
+  }
+}
 </script>
 
 <style lang="scss" scoped>

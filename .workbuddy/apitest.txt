@@ -1,0 +1,7 @@
+/distribution/batches -> 200
+/distribution/splits -> 200
+/distribution/transports -> 200
+/distribution/receipts -> 200
+/distribution/stores -> 200
+/distribution/batches/pig-occupancy -> 200
+/breeding/pigs?pageNum=1&pageSize=1 -> 200

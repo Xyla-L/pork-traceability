@@ -153,19 +153,19 @@ ON DUPLICATE KEY UPDATE status=VALUES(status);
 -- 屠宰检验：已有3条，新增15条（宰前+宰后）
 INSERT INTO slaughter_inspection (pig_id, inspect_no, batch_no, ear_tag_no, inspect_type, inspect_time, temperature, organ_check, result, status, conclusion, veterinary, license_no, e_signature, file_ids, content_hash) VALUES
 (@pig1, 'SI-TEST-PRE-001', 'SB-TEST-0001', 'ET-TEST-0001', 1, DATE_SUB(NOW(), INTERVAL 18 DAY), 38.5, '{"appearance":"normal"}', 1, 1, '宰前检验合格', '王兽医', 'VET-TEST-001', 'TEST-VET-SIG', '[]', SHA2(CONCAT('SI-TEST-PRE-001', @pig1), 256)),
-(@pig1, 'SI-TEST-POST-001', 'SB-TEST-0001', 'ET-TEST-0001', 2, DATE_SUB(NOW(), INTERVAL 17 DAY), NULL, '{"heart":"normal","liver":"normal","lung":"normal"}', 1, 1, '宰后检验合格', '王兽医', 'VET-TEST-001', 'TEST-VET-SIG', '[]', SHA2(CONCAT('SI-TEST-POST-001', @pig1), 256)),
+(@pig1, 'SI-TEST-POST-001', 'SB-TEST-0001', 'ET-TEST-0001', 2, DATE_SUB(NOW(), INTERVAL 17 DAY), 38.5, '{"heart":"normal","liver":"normal","lung":"normal"}', 1, 1, '宰后检验合格', '王兽医', 'VET-TEST-001', 'TEST-VET-SIG', '[]', SHA2(CONCAT('SI-TEST-POST-001', @pig1), 256)),
 (@pig2, 'SI-TEST-PRE-002', 'SB-TEST-0002', 'ET-TEST-0002', 1, DATE_SUB(NOW(), INTERVAL 17 DAY), 39.0, '{"appearance":"normal"}', 1, 1, '宰前检验合格', '王兽医', 'VET-TEST-001', 'TEST-VET-SIG', '[]', SHA2(CONCAT('SI-TEST-PRE-002', @pig2), 256)),
-(@pig2, 'SI-TEST-POST-002', 'SB-TEST-0002', 'ET-TEST-0002', 2, DATE_SUB(NOW(), INTERVAL 16 DAY), NULL, '{"heart":"normal","liver":"normal","lung":"normal"}', 1, 1, '宰后检验合格', '王兽医', 'VET-TEST-001', 'TEST-VET-SIG', '[]', SHA2(CONCAT('SI-TEST-POST-002', @pig2), 256)),
+(@pig2, 'SI-TEST-POST-002', 'SB-TEST-0002', 'ET-TEST-0002', 2, DATE_SUB(NOW(), INTERVAL 16 DAY), 39.0, '{"heart":"normal","liver":"normal","lung":"normal"}', 1, 1, '宰后检验合格', '王兽医', 'VET-TEST-001', 'TEST-VET-SIG', '[]', SHA2(CONCAT('SI-TEST-POST-002', @pig2), 256)),
 (@pig4, 'SI-TEST-PRE-004', 'SB-TEST-0004', 'ET-TEST-0004', 1, DATE_SUB(NOW(), INTERVAL 14 DAY), 38.8, '{"appearance":"normal"}', 1, 1, '宰前检验合格', '赵兽医', 'VET-TEST-002', 'TEST-VET-SIG', '[]', SHA2(CONCAT('SI-TEST-PRE-004', @pig4), 256)),
-(@pig4, 'SI-TEST-POST-004', 'SB-TEST-0004', 'ET-TEST-0004', 2, DATE_SUB(NOW(), INTERVAL 13 DAY), NULL, '{"heart":"normal","liver":"normal","lung":"normal"}', 1, 1, '宰后检验合格', '赵兽医', 'VET-TEST-002', 'TEST-VET-SIG', '[]', SHA2(CONCAT('SI-TEST-POST-004', @pig4), 256)),
+(@pig4, 'SI-TEST-POST-004', 'SB-TEST-0004', 'ET-TEST-0004', 2, DATE_SUB(NOW(), INTERVAL 13 DAY), 38.8, '{"heart":"normal","liver":"normal","lung":"normal"}', 1, 1, '宰后检验合格', '赵兽医', 'VET-TEST-002', 'TEST-VET-SIG', '[]', SHA2(CONCAT('SI-TEST-POST-004', @pig4), 256)),
 (@pig5, 'SI-TEST-PRE-005', 'SB-TEST-0005', 'ET-TEST-0005', 1, DATE_SUB(NOW(), INTERVAL 13 DAY), 39.2, '{"appearance":"normal"}', 1, 1, '宰前检验合格', '赵兽医', 'VET-TEST-002', 'TEST-VET-SIG', '[]', SHA2(CONCAT('SI-TEST-PRE-005', @pig5), 256)),
-(@pig5, 'SI-TEST-POST-005', 'SB-TEST-0005', 'ET-TEST-0005', 2, DATE_SUB(NOW(), INTERVAL 12 DAY), NULL, '{"heart":"normal","liver":"normal","lung":"normal"}', 1, 1, '宰后检验合格', '赵兽医', 'VET-TEST-002', 'TEST-VET-SIG', '[]', SHA2(CONCAT('SI-TEST-POST-005', @pig5), 256)),
+(@pig5, 'SI-TEST-POST-005', 'SB-TEST-0005', 'ET-TEST-0005', 2, DATE_SUB(NOW(), INTERVAL 12 DAY), 39.2, '{"heart":"normal","liver":"normal","lung":"normal"}', 1, 1, '宰后检验合格', '赵兽医', 'VET-TEST-002', 'TEST-VET-SIG', '[]', SHA2(CONCAT('SI-TEST-POST-005', @pig5), 256)),
 (@pig6, 'SI-TEST-PRE-006', 'SB-TEST-0006', 'ET-TEST-0006', 1, DATE_SUB(NOW(), INTERVAL 11 DAY), 38.6, '{"appearance":"normal"}', 1, 1, '宰前检验合格', '李兽医', 'VET-TEST-003', 'TEST-VET-SIG', '[]', SHA2(CONCAT('SI-TEST-PRE-006', @pig6), 256)),
-(@pig6, 'SI-TEST-POST-006', 'SB-TEST-0006', 'ET-TEST-0006', 2, DATE_SUB(NOW(), INTERVAL 10 DAY), NULL, '{"heart":"normal","liver":"normal","lung":"normal"}', 1, 1, '宰后检验合格', '李兽医', 'VET-TEST-003', 'TEST-VET-SIG', '[]', SHA2(CONCAT('SI-TEST-POST-006', @pig6), 256)),
+(@pig6, 'SI-TEST-POST-006', 'SB-TEST-0006', 'ET-TEST-0006', 2, DATE_SUB(NOW(), INTERVAL 10 DAY), 38.6, '{"heart":"normal","liver":"normal","lung":"normal"}', 1, 1, '宰后检验合格', '李兽医', 'VET-TEST-003', 'TEST-VET-SIG', '[]', SHA2(CONCAT('SI-TEST-POST-006', @pig6), 256)),
 (@pig7, 'SI-TEST-PRE-007', 'SB-TEST-0007', 'ET-TEST-0007', 1, DATE_SUB(NOW(), INTERVAL 9 DAY), 39.5, '{"appearance":"slightly_abnormal"}', 1, 1, '宰前检验合格', '李兽医', 'VET-TEST-003', 'TEST-VET-SIG', '[]', SHA2(CONCAT('SI-TEST-PRE-007', @pig7), 256)),
-(@pig7, 'SI-TEST-POST-007', 'SB-TEST-0007', 'ET-TEST-0007', 2, DATE_SUB(NOW(), INTERVAL 8 DAY), NULL, '{"heart":"normal","liver":"mild_lesion","lung":"normal"}', 1, 1, '宰后检验合格，肝脏轻度病变已处理', '李兽医', 'VET-TEST-003', 'TEST-VET-SIG', '[]', SHA2(CONCAT('SI-TEST-POST-007', @pig7), 256)),
+(@pig7, 'SI-TEST-POST-007', 'SB-TEST-0007', 'ET-TEST-0007', 2, DATE_SUB(NOW(), INTERVAL 8 DAY), 39.5, '{"heart":"normal","liver":"mild_lesion","lung":"normal"}', 1, 1, '宰后检验合格，肝脏轻度病变已处理', '李兽医', 'VET-TEST-003', 'TEST-VET-SIG', '[]', SHA2(CONCAT('SI-TEST-POST-007', @pig7), 256)),
 (@pig8, 'SI-TEST-PRE-008', 'SB-TEST-0008', 'ET-TEST-0008', 1, DATE_SUB(NOW(), INTERVAL 8 DAY), 38.9, '{"appearance":"normal"}', 1, 1, '宰前检验合格', '刘兽医', 'VET-TEST-004', 'TEST-VET-SIG', '[]', SHA2(CONCAT('SI-TEST-PRE-008', @pig8), 256)),
-(@pig8, 'SI-TEST-POST-008', 'SB-TEST-0008', 'ET-TEST-0008', 2, DATE_SUB(NOW(), INTERVAL 7 DAY), NULL, '{"heart":"normal","liver":"normal","lung":"normal"}', 1, 1, '宰后检验合格', '刘兽医', 'VET-TEST-004', 'TEST-VET-SIG', '[]', SHA2(CONCAT('SI-TEST-POST-008', @pig8), 256)),
+(@pig8, 'SI-TEST-POST-008', 'SB-TEST-0008', 'ET-TEST-0008', 2, DATE_SUB(NOW(), INTERVAL 7 DAY), 38.9, '{"heart":"normal","liver":"normal","lung":"normal"}', 1, 1, '宰后检验合格', '刘兽医', 'VET-TEST-004', 'TEST-VET-SIG', '[]', SHA2(CONCAT('SI-TEST-POST-008', @pig8), 256)),
 (@pig10, 'SI-TEST-PRE-010', 'SB-TEST-0010', 'ET-TEST-0010', 1, DATE_SUB(NOW(), INTERVAL 5 DAY), 38.7, '{"appearance":"normal"}', 1, 1, '宰前检验合格', '周兽医', 'VET-TEST-005', 'TEST-VET-SIG', '[]', SHA2(CONCAT('SI-TEST-PRE-010', @pig10), 256))
 ON DUPLICATE KEY UPDATE status=VALUES(status), result=VALUES(result);
 
@@ -245,24 +245,35 @@ SET @cb13 := (SELECT id FROM carcass_batch WHERE batch_no='CB-TEST-0013');
 SET @cb14 := (SELECT id FROM carcass_batch WHERE batch_no='CB-TEST-0014');
 SET @cb15 := (SELECT id FROM carcass_batch WHERE batch_no='CB-TEST-0015');
 
--- 分割批次：已有2条，新增15条
+-- 分割批次：已有2条，新增15条（先插入level=1，再插入level=2以建立正确的父子关系）
 INSERT INTO split_batch (batch_no, parent_batch_id, split_level, product_name, weight_kg, package_count, package_type, split_time, workshop, workshop_temp, operator, file_ids, content_hash) VALUES
 ('SP-TEST-0001', @cb1, 1, '二分体', 41.2, 1, '白条', DATE_SUB(NOW(), INTERVAL 16 DAY), '示范分割车间', 8.0, '陈分割', '[]', SHA2(CONCAT('SP-TEST-0001', @cb1), 256)),
-('SP-TEST-0002', @cb1, 2, '猪前腿肉', 10.5, 20, '真空包装', DATE_SUB(NOW(), INTERVAL 15 DAY), '示范分割车间', 6.5, '陈分割', '[]', SHA2(CONCAT('SP-TEST-0002', @cb1), 256)),
 ('SP-TEST-0003', @cb2, 1, '二分体', 42.5, 1, '白条', DATE_SUB(NOW(), INTERVAL 14 DAY), '示范分割车间', 8.0, '陈分割', '[]', SHA2(CONCAT('SP-TEST-0003', @cb2), 256)),
-('SP-TEST-0004', @cb2, 2, '猪后腿肉', 12.0, 15, '真空包装', DATE_SUB(NOW(), INTERVAL 13 DAY), '示范分割车间', 6.5, '陈分割', '[]', SHA2(CONCAT('SP-TEST-0004', @cb2), 256)),
 ('SP-TEST-0005', @cb3, 1, '二分体', 39.0, 1, '白条', DATE_SUB(NOW(), INTERVAL 12 DAY), '示范分割车间', 8.0, '陈分割', '[]', SHA2(CONCAT('SP-TEST-0005', @cb3), 256)),
-('SP-TEST-0006', @cb3, 2, '猪排骨', 8.5, 10, '真空包装', DATE_SUB(NOW(), INTERVAL 11 DAY), '示范分割车间', 6.5, '陈分割', '[]', SHA2(CONCAT('SP-TEST-0006', @cb3), 256)),
 ('SP-TEST-0007', @cb4, 1, '二分体', 44.0, 1, '白条', DATE_SUB(NOW(), INTERVAL 10 DAY), '示范分割车间', 8.0, '陈分割', '[]', SHA2(CONCAT('SP-TEST-0007', @cb4), 256)),
-('SP-TEST-0008', @cb4, 2, '猪五花肉', 15.0, 25, '真空包装', DATE_SUB(NOW(), INTERVAL 9 DAY), '示范分割车间', 6.5, '陈分割', '[]', SHA2(CONCAT('SP-TEST-0008', @cb4), 256)),
 ('SP-TEST-0009', @cb5, 1, '二分体', 37.5, 1, '白条', DATE_SUB(NOW(), INTERVAL 8 DAY), '示范分割车间', 8.0, '陈分割', '[]', SHA2(CONCAT('SP-TEST-0009', @cb5), 256)),
-('SP-TEST-0010', @cb5, 2, '猪里脊', 5.5, 8, '真空包装', DATE_SUB(NOW(), INTERVAL 7 DAY), '示范分割车间', 6.5, '陈分割', '[]', SHA2(CONCAT('SP-TEST-0010', @cb5), 256)),
 ('SP-TEST-0011', @cb6, 1, '二分体', 40.0, 1, '白条', DATE_SUB(NOW(), INTERVAL 6 DAY), '示范分割车间', 8.0, '陈分割', '[]', SHA2(CONCAT('SP-TEST-0011', @cb6), 256)),
-('SP-TEST-0012', @cb6, 2, '猪前腿肉', 11.0, 22, '真空包装', DATE_SUB(NOW(), INTERVAL 5 DAY), '示范分割车间', 6.5, '陈分割', '[]', SHA2(CONCAT('SP-TEST-0012', @cb6), 256)),
 ('SP-TEST-0013', @cb7, 1, '二分体', 45.0, 1, '白条', DATE_SUB(NOW(), INTERVAL 4 DAY), '示范分割车间', 8.0, '陈分割', '[]', SHA2(CONCAT('SP-TEST-0013', @cb7), 256)),
-('SP-TEST-0014', @cb7, 2, '猪排骨', 9.0, 12, '真空包装', DATE_SUB(NOW(), INTERVAL 3 DAY), '示范分割车间', 6.5, '陈分割', '[]', SHA2(CONCAT('SP-TEST-0014', @cb7), 256)),
 ('SP-TEST-0015', @cb8, 1, '二分体', 41.5, 1, '白条', DATE_SUB(NOW(), INTERVAL 2 DAY), '示范分割车间', 8.0, '陈分割', '[]', SHA2(CONCAT('SP-TEST-0015', @cb8), 256))
 ON DUPLICATE KEY UPDATE content_hash=VALUES(content_hash);
+-- 设置level=1分割批次的变量，用于level=2的parent_batch_id
+SET @lv1_1 := (SELECT id FROM split_batch WHERE batch_no='SP-TEST-0001');
+SET @lv1_2 := (SELECT id FROM split_batch WHERE batch_no='SP-TEST-0003');
+SET @lv1_3 := (SELECT id FROM split_batch WHERE batch_no='SP-TEST-0005');
+SET @lv1_4 := (SELECT id FROM split_batch WHERE batch_no='SP-TEST-0007');
+SET @lv1_5 := (SELECT id FROM split_batch WHERE batch_no='SP-TEST-0009');
+SET @lv1_6 := (SELECT id FROM split_batch WHERE batch_no='SP-TEST-0011');
+SET @lv1_7 := (SELECT id FROM split_batch WHERE batch_no='SP-TEST-0013');
+INSERT INTO split_batch (batch_no, parent_batch_id, split_level, product_name, weight_kg, package_count, package_type, split_time, workshop, workshop_temp, operator, file_ids, content_hash) VALUES
+('SP-TEST-0002', @lv1_1, 2, '猪前腿肉', 10.5, 20, '真空包装', DATE_SUB(NOW(), INTERVAL 15 DAY), '示范分割车间', 6.5, '陈分割', '[]', SHA2(CONCAT('SP-TEST-0002', @lv1_1), 256)),
+('SP-TEST-0004', @lv1_2, 2, '猪后腿肉', 12.0, 15, '真空包装', DATE_SUB(NOW(), INTERVAL 13 DAY), '示范分割车间', 6.5, '陈分割', '[]', SHA2(CONCAT('SP-TEST-0004', @lv1_2), 256)),
+('SP-TEST-0006', @lv1_3, 2, '猪排骨', 8.5, 10, '真空包装', DATE_SUB(NOW(), INTERVAL 11 DAY), '示范分割车间', 6.5, '陈分割', '[]', SHA2(CONCAT('SP-TEST-0006', @lv1_3), 256)),
+('SP-TEST-0008', @lv1_4, 2, '猪五花肉', 15.0, 25, '真空包装', DATE_SUB(NOW(), INTERVAL 9 DAY), '示范分割车间', 6.5, '陈分割', '[]', SHA2(CONCAT('SP-TEST-0008', @lv1_4), 256)),
+('SP-TEST-0010', @lv1_5, 2, '猪里脊', 5.5, 8, '真空包装', DATE_SUB(NOW(), INTERVAL 7 DAY), '示范分割车间', 6.5, '陈分割', '[]', SHA2(CONCAT('SP-TEST-0010', @lv1_5), 256)),
+('SP-TEST-0012', @lv1_6, 2, '猪前腿肉', 11.0, 22, '真空包装', DATE_SUB(NOW(), INTERVAL 5 DAY), '示范分割车间', 6.5, '陈分割', '[]', SHA2(CONCAT('SP-TEST-0012', @lv1_6), 256)),
+('SP-TEST-0014', @lv1_7, 2, '猪排骨', 9.0, 12, '真空包装', DATE_SUB(NOW(), INTERVAL 3 DAY), '示范分割车间', 6.5, '陈分割', '[]', SHA2(CONCAT('SP-TEST-0014', @lv1_7), 256))
+ON DUPLICATE KEY UPDATE content_hash=VALUES(content_hash);
+-- 设置level=2分割批次的变量，用于运输和销售等下游表
 SET @sp1 := (SELECT id FROM split_batch WHERE batch_no='SP-TEST-0002');
 SET @sp2 := (SELECT id FROM split_batch WHERE batch_no='SP-TEST-0004');
 SET @sp3 := (SELECT id FROM split_batch WHERE batch_no='SP-TEST-0006');
@@ -426,9 +437,128 @@ INSERT INTO recall_order (recall_no, reason, risk_level, scope, initiator, initi
 ('RC-TEST-0015', '产品异物举报', 1, '{"batchNo":"SP-TEST-0014","storeIds":[1014]}', '杨店长', DATE_ADD(NOW(), INTERVAL 3 DAY), 1, NULL, 12, 0, NULL)
 ON DUPLICATE KEY UPDATE status=VALUES(status);
 
+-- 补全销售记录数据：激活未激活产品、销售所有在售产品、设置区块链哈希
+-- 1) 激活所有未激活产品
+UPDATE retail_sale SET is_activated=1, activate_time=DATE_SUB(NOW(), INTERVAL 2 DAY), shelf_time=DATE_SUB(NOW(), INTERVAL 2 DAY) WHERE is_activated=0;
+
+-- 2) 销售所有在售产品(status=1)
+UPDATE retail_sale SET status=2, sell_time=DATE_SUB(NOW(), INTERVAL 1 DAY), sell_price=ROUND(20 + RAND() * 20, 2), sell_weight_kg=ROUND(0.3 + RAND() * 0.4, 2) WHERE status=1;
+
+-- 3) 为所有已售(status=2)和已过期(status=3)记录设置 block_hash（模拟区块链上链回写）
+UPDATE retail_sale SET block_hash=SHA2(CONCAT(product_qr_code, ':', id), 256) WHERE status IN (2, 3) AND block_hash IS NULL;
+
+-- 4) 为召回指令设置 block_hash
+UPDATE recall_order SET block_hash=SHA2(CONCAT(recall_no, ':', id), 256) WHERE block_hash IS NULL;
+
 -- ========== db_common ==========
 
 USE db_common;
+
+-- 批量补录区块链存证记录和本地账本（模拟历史数据上链）
+SET @b := (SELECT COALESCE(MAX(block_number), 0) FROM blockchain_ledger);
+
+-- 屠宰检验
+INSERT INTO blockchain_record (event_id, biz_type, biz_id, biz_key, content_hash, tx_hash, block_number, chain_time, status, retry_count, create_time, update_time)
+SELECT SHA2(CONCAT('SLAUGHTER_INSPECT:', id, ':', content_hash), 256), 'SLAUGHTER_INSPECT', id, CAST(id AS CHAR), content_hash,
+  CONCAT('0x', SHA2(CONCAT('slaughter_inspect:', id, ':', content_hash), 256)), @b := @b + 1, NOW(), 1, 0, NOW(), NOW()
+FROM db_slaughter.slaughter_inspection WHERE content_hash IS NOT NULL
+  AND id NOT IN (SELECT biz_id FROM blockchain_record WHERE biz_type='SLAUGHTER_INSPECT')
+ON DUPLICATE KEY UPDATE status=1;
+
+-- 胴体印章
+INSERT INTO blockchain_record (event_id, biz_type, biz_id, biz_key, content_hash, tx_hash, block_number, chain_time, status, retry_count, create_time, update_time)
+SELECT SHA2(CONCAT('CARCASS_STAMP:', id, ':', content_hash), 256), 'CARCASS_STAMP', id, CAST(id AS CHAR), content_hash,
+  CONCAT('0x', SHA2(CONCAT('carcass_stamp:', id, ':', content_hash), 256)), @b := @b + 1, NOW(), 1, 0, NOW(), NOW()
+FROM db_slaughter.carcass_stamp WHERE content_hash IS NOT NULL
+ON DUPLICATE KEY UPDATE status=1;
+
+-- 分割批次
+INSERT INTO blockchain_record (event_id, biz_type, biz_id, biz_key, content_hash, tx_hash, block_number, chain_time, status, retry_count, create_time, update_time)
+SELECT SHA2(CONCAT('SPLIT_BATCH:', id, ':', content_hash), 256), 'SPLIT_BATCH', id, batch_no, content_hash,
+  CONCAT('0x', SHA2(CONCAT('split_batch:', id, ':', content_hash), 256)), @b := @b + 1, NOW(), 1, 0, NOW(), NOW()
+FROM db_distribution.split_batch WHERE content_hash IS NOT NULL
+  AND id NOT IN (SELECT biz_id FROM blockchain_record WHERE biz_type='SPLIT_BATCH')
+ON DUPLICATE KEY UPDATE status=1;
+
+-- 门店签收
+INSERT INTO blockchain_record (event_id, biz_type, biz_id, biz_key, content_hash, tx_hash, block_number, chain_time, status, retry_count, create_time, update_time)
+SELECT SHA2(CONCAT('STORE_RECEIPT:', id, ':', content_hash), 256), 'STORE_RECEIPT', id, CAST(id AS CHAR), content_hash,
+  CONCAT('0x', SHA2(CONCAT('store_receipt:', id, ':', content_hash), 256)), @b := @b + 1, NOW(), 1, 0, NOW(), NOW()
+FROM db_distribution.store_receipt WHERE content_hash IS NOT NULL
+  AND id NOT IN (SELECT biz_id FROM blockchain_record WHERE biz_type='STORE_RECEIPT')
+ON DUPLICATE KEY UPDATE status=1;
+
+-- 销售记录
+INSERT INTO blockchain_record (event_id, biz_type, biz_id, biz_key, content_hash, tx_hash, block_number, chain_time, status, retry_count, create_time, update_time)
+SELECT SHA2(CONCAT('RETAIL_SALE:', id, ':', block_hash), 256), 'RETAIL_SALE', id, product_qr_code, block_hash,
+  CONCAT('0x', SHA2(CONCAT('retail_sale:', id, ':', block_hash), 256)), @b := @b + 1, NOW(), 1, 0, NOW(), NOW()
+FROM db_sales.retail_sale WHERE block_hash IS NOT NULL
+  AND id NOT IN (SELECT biz_id FROM blockchain_record WHERE biz_type='RETAIL_SALE')
+ON DUPLICATE KEY UPDATE status=1;
+
+-- 检疫证明
+INSERT INTO blockchain_record (event_id, biz_type, biz_id, biz_key, content_hash, tx_hash, block_number, chain_time, status, retry_count, create_time, update_time)
+SELECT SHA2(CONCAT('QUARANTINE_CERT:', id, ':', content_hash), 256), 'QUARANTINE_CERT', id, cert_no, content_hash,
+  CONCAT('0x', SHA2(CONCAT('quarantine_cert:', id, ':', content_hash), 256)), @b := @b + 1, NOW(), 1, 0, NOW(), NOW()
+FROM db_breeding.quarantine_certificate WHERE content_hash IS NOT NULL
+ON DUPLICATE KEY UPDATE status=1;
+
+-- 同步写入本地账本（缺失的记录）
+INSERT INTO blockchain_ledger (biz_key, content_hash, tx_hash, block_number, chain_time)
+SELECT br.biz_key, br.content_hash, br.tx_hash, @b := @b + 1, br.chain_time
+FROM blockchain_record br
+LEFT JOIN blockchain_ledger bl ON bl.biz_key = br.biz_key AND bl.content_hash = br.content_hash
+WHERE bl.id IS NULL AND br.status = 1
+ON DUPLICATE KEY UPDATE block_number=VALUES(block_number);
+
+-- 新增业务类型 content_hash 填充和上链补录
+-- 1) 填充 content_hash
+UPDATE db_slaughter.entry_inspection SET content_hash = SHA2(CONCAT(id, ':', pig_id, ':', arrive_time, ':', ear_tag_no), 256) WHERE content_hash IS NULL;
+UPDATE db_slaughter.ractopamine_test SET content_hash = SHA2(CONCAT(id, ':', pig_id, ':', test_no, ':', sample_no), 256) WHERE content_hash IS NULL;
+UPDATE db_distribution.cold_chain_transport SET content_hash = SHA2(CONCAT(id, ':', transport_no, ':', split_batch_id, ':', vehicle_no), 256) WHERE content_hash IS NULL;
+UPDATE db_breeding.pig_individual SET content_hash = SHA2(CONCAT(id, ':', ear_tag_no, ':', breed, ':', farm_id), 256) WHERE content_hash IS NULL;
+UPDATE db_breeding.vaccine_record SET content_hash = SHA2(CONCAT(id, ':', pig_id, ':', vaccine_name, ':', batch_no), 256) WHERE content_hash IS NULL;
+
+-- 2) 补录上链记录
+SET @b := (SELECT COALESCE(MAX(block_number), 0) FROM blockchain_ledger);
+
+INSERT INTO blockchain_record (event_id, biz_type, biz_id, biz_key, content_hash, tx_hash, block_number, chain_time, status, retry_count, create_time, update_time)
+SELECT SHA2(CONCAT('ENTRY_INSPECTION:', id, ':', content_hash), 256), 'ENTRY_INSPECTION', id, batch_no, content_hash,
+  CONCAT('0x', SHA2(CONCAT('entry_inspection:', id, ':', content_hash), 256)), @b := @b + 1, NOW(), 1, 0, NOW(), NOW()
+FROM db_slaughter.entry_inspection WHERE content_hash IS NOT NULL
+ON DUPLICATE KEY UPDATE status=1;
+
+INSERT INTO blockchain_record (event_id, biz_type, biz_id, biz_key, content_hash, tx_hash, block_number, chain_time, status, retry_count, create_time, update_time)
+SELECT SHA2(CONCAT('RACTOPAMINE_TEST:', id, ':', content_hash), 256), 'RACTOPAMINE_TEST', id, test_no, content_hash,
+  CONCAT('0x', SHA2(CONCAT('ractopamine_test:', id, ':', content_hash), 256)), @b := @b + 1, NOW(), 1, 0, NOW(), NOW()
+FROM db_slaughter.ractopamine_test WHERE content_hash IS NOT NULL
+ON DUPLICATE KEY UPDATE status=1;
+
+INSERT INTO blockchain_record (event_id, biz_type, biz_id, biz_key, content_hash, tx_hash, block_number, chain_time, status, retry_count, create_time, update_time)
+SELECT SHA2(CONCAT('COLD_CHAIN_TRANSPORT:', id, ':', content_hash), 256), 'COLD_CHAIN_TRANSPORT', id, transport_no, content_hash,
+  CONCAT('0x', SHA2(CONCAT('cold_chain_transport:', id, ':', content_hash), 256)), @b := @b + 1, NOW(), 1, 0, NOW(), NOW()
+FROM db_distribution.cold_chain_transport WHERE content_hash IS NOT NULL
+ON DUPLICATE KEY UPDATE status=1;
+
+INSERT INTO blockchain_record (event_id, biz_type, biz_id, biz_key, content_hash, tx_hash, block_number, chain_time, status, retry_count, create_time, update_time)
+SELECT SHA2(CONCAT('PIG_INDIVIDUAL:', id, ':', content_hash), 256), 'PIG_INDIVIDUAL', id, ear_tag_no, content_hash,
+  CONCAT('0x', SHA2(CONCAT('pig_individual:', id, ':', content_hash), 256)), @b := @b + 1, NOW(), 1, 0, NOW(), NOW()
+FROM db_breeding.pig_individual WHERE content_hash IS NOT NULL
+ON DUPLICATE KEY UPDATE status=1;
+
+INSERT INTO blockchain_record (event_id, biz_type, biz_id, biz_key, content_hash, tx_hash, block_number, chain_time, status, retry_count, create_time, update_time)
+SELECT SHA2(CONCAT('VACCINE_RECORD:', id, ':', content_hash), 256), 'VACCINE_RECORD', id, CONCAT(pig_id, '-', batch_no), content_hash,
+  CONCAT('0x', SHA2(CONCAT('vaccine_record:', id, ':', content_hash), 256)), @b := @b + 1, NOW(), 1, 0, NOW(), NOW()
+FROM db_breeding.vaccine_record WHERE content_hash IS NOT NULL
+ON DUPLICATE KEY UPDATE status=1;
+
+-- 3) 同步写入 ledger
+INSERT INTO blockchain_ledger (biz_key, content_hash, tx_hash, block_number, chain_time)
+SELECT br.biz_key, br.content_hash, br.tx_hash, @b := @b + 1, br.chain_time
+FROM blockchain_record br
+LEFT JOIN blockchain_ledger bl ON bl.biz_key = br.biz_key AND bl.content_hash = br.content_hash
+WHERE bl.id IS NULL AND br.status = 1
+ON DUPLICATE KEY UPDATE block_number=VALUES(block_number);
 
 -- 消费者举报：已有2条，新增15条
 INSERT INTO complaint_report (report_no, reporter_name, reporter_phone, target_qr_code, target_batch, complaint_text, file_ids, status, handler, handle_note, handle_time, device_id) VALUES
