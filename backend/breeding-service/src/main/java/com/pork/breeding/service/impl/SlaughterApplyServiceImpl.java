@@ -108,18 +108,43 @@ public class SlaughterApplyServiceImpl extends ServiceImpl<SlaughterApplyMapper,
             throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, "生猪档案不存在");
         }
 
-        // 数据库 UK(uk_pig) 保证同一头猪仅一条申报，这里提前给出友好提示
-        Long exists = this.baseMapper.selectCount(
-                Wrappers.<SlaughterApply>lambdaQuery().eq(SlaughterApply::getPigId, dto.getPigId()));
-        if (exists != null && exists > 0) {
-            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "该生猪已存在出栏申报记录");
+        // 数据库 UK(uk_pig) 保证同一头猪仅一条申报记录：
+        // 待审/已通过 一律拦截；已驳回(2) 允许在同一行上重新提交，避免驳回后这头猪再也申报不了
+        SlaughterApply exists = this.getOne(
+                Wrappers.<SlaughterApply>lambdaQuery()
+                        .eq(SlaughterApply::getPigId, dto.getPigId())
+                        .orderByDesc(SlaughterApply::getId)
+                        .last("LIMIT 1"));
+        if (exists != null && exists.getApprovalStatus() != null && exists.getApprovalStatus() != STATUS_REJECTED) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR, exists.getApprovalStatus() == STATUS_APPROVED
+                    ? "该生猪出栏申报已通过，不能重复申报"
+                    : "该生猪已存在待审批的出栏申报，请等待审批结果");
+        }
+
+        Double weightKg = dto.getWeightKg() == null ? null : dto.getWeightKg().doubleValue();
+        if (exists != null) {
+            // 驳回后重新申报：复用原行（uk_pig 只允许一行），重置为待审并清空上一次的审批结论
+            boolean updated = this.update(Wrappers.<SlaughterApply>lambdaUpdate()
+                    .eq(SlaughterApply::getId, exists.getId())
+                    .set(SlaughterApply::getApplyNo, BusinessNoGenerator.next("SA"))
+                    .set(SlaughterApply::getApplyTime, LocalDateTime.now())
+                    .set(SlaughterApply::getWeightKg, weightKg)
+                    .set(SlaughterApply::getTargetSlaughterhouse, dto.getTargetSlaughterhouse())
+                    .set(SlaughterApply::getApprovalStatus, STATUS_PENDING)
+                    .set(SlaughterApply::getApprover, null)
+                    .set(SlaughterApply::getApprovalTime, null)
+                    .set(SlaughterApply::getRejectReason, null));
+            if (!updated) {
+                throw new BusinessException(ErrorCode.DATABASE_ERROR, "出栏申报重新提交失败");
+            }
+            return exists.getId();
         }
 
         SlaughterApply apply = new SlaughterApply();
         apply.setPigId(dto.getPigId());
         apply.setApplyNo(BusinessNoGenerator.next("SA"));
         apply.setApplyTime(LocalDateTime.now());
-        apply.setWeightKg(dto.getWeightKg() == null ? null : dto.getWeightKg().doubleValue());
+        apply.setWeightKg(weightKg);
         apply.setTargetSlaughterhouse(dto.getTargetSlaughterhouse());
         apply.setApprovalStatus(STATUS_PENDING);
         apply.setCreateTime(LocalDateTime.now());

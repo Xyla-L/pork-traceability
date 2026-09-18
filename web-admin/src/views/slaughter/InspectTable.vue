@@ -32,7 +32,6 @@
           <el-button type="primary" link size="small" @click="handleView(row)">
             查看
           </el-button>
-          <el-button v-if="row.status !== 3" type="warning" link size="small" @click="$emit('edit', row)">编辑</el-button>
           <el-button v-if="row.status !== 3" type="danger" link size="small" @click="handleVoid(row)">
             作废
           </el-button>

@@ -1,0 +1,9 @@
+﻿== apply re-submit test ==
+pork-traceability-breeding-service-1 Up 57 seconds (healthy)
+LOGIN OK base=http://localhost:8080/api/v1 tokenLen=196
+rejected applies count=2
+use existing rejected apply id=8 pigId=8 applyNo=SA-TEST-0007
+RESUBMIT -> code=200 msg=æä½æå id=8
+after resubmit: status=0 applyNo=SA20260918161060 reason=[] approver=[]
+cleanup reject -> code=200 msg=æä½æå
+== done ==

@@ -69,7 +69,6 @@
       </el-form-item>
       <el-form-item label="状态" prop="status">
         <el-select v-model="formData.status" placeholder="请选择状态" style="width: 100%">
-          <el-option label="待检验" :value="0" />
           <el-option label="合格" :value="1" />
           <el-option label="不合格" :value="2" />
         </el-select>
@@ -118,7 +117,7 @@ const formData = reactive({
   veterinary: '',
   // 宰后检验不量体温，允许为空；不要用 0 兜底（会存成无效的 0.0）
   temperature: null,
-  status: 0,
+  status: 1,
   conclusion: ''
 })
 
@@ -219,7 +218,7 @@ const resetForm = () => {
   formData.inspectTime = ''
   formData.veterinary = ''
   formData.temperature = null
-  formData.status = 0
+  formData.status = 1
   formData.conclusion = ''
   pigOptions.value = []
 }

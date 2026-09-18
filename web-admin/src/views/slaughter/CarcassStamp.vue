@@ -47,7 +47,6 @@
             clearable
             style="width: 120px"
           >
-            <el-option label="待盖章" value="待盖章" />
             <el-option label="已盖章" value="已盖章" />
             <el-option label="已作废" value="已作废" />
           </el-select>

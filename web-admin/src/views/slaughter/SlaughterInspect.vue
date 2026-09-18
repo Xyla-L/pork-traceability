@@ -46,7 +46,6 @@
             clearable
             style="width: 120px"
           >
-            <el-option label="待检验" value="待检验" />
             <el-option label="合格" value="合格" />
             <el-option label="不合格" value="不合格" />
             <el-option label="已作废" value="已作废" />

@@ -64,7 +64,6 @@
       </el-form-item>
       <el-form-item label="状态" prop="status">
         <el-select v-model="formData.status" placeholder="请选择状态" style="width: 100%">
-          <el-option label="待盖章" :value="0" />
           <el-option label="已盖章" :value="1" />
           <!-- 已作废只能通过列表"作废"按钮操作（作废动作需上链存证），不允许在此直接选择 -->
         </el-select>
@@ -112,7 +111,7 @@ const formData = reactive({
   stampType: '检疫合格章',
   stampTime: '',
   veterinary: '',
-  status: 0,
+  status: 1,
   remark: ''
 })
 
@@ -237,7 +236,7 @@ const resetForm = () => {
   formData.stampType = '检疫合格章'
   formData.stampTime = ''
   formData.veterinary = ''
-  formData.status = 0
+  formData.status = 1
   formData.remark = ''
   pigOptions.value = []
 }
