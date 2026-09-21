@@ -1,0 +1,23 @@
+﻿docker : mysql: [Warning] Using a password on the command line interface can be
+ insecure.
+所在位置 行:445 字符: 115
++ ... sql" -Raw | docker exec -i pork-traceability-mysql-1 mysql -uroot -pc ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (mysql: [Warning...an be insecure. 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ERROR 1146 (42S02) at line 6: Table 'db_distribution.store' doesn't exist
+s
+--- transports ---
+id	transport_no	status
+26	TR20260921960501	4
+25	TR20260921178079	4
+24	TR20260921347325	4
+23	TR20260918403942	4
+22	TR20260918484678	4
+21	TR20260918499959	4
+s
+--- sellable qr ---
+s
+--- stores ---

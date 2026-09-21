@@ -1,0 +1,7 @@
+﻿=== in-container 127.0.0.1 ===
+ok
+=== in-container /api/v1 via nginx ===
+{"code":1001,"message":"瀵嗙爜涓嶈兘涓虹┖, 鐢ㄦ埛鍚嶄笉鑳戒负绌?,"data":null,"traceId":"7e5ea0dd18844713b8e72872dccc6147","timestamp":1789981944391}
+=== host localhost:80 ===
+status=200
+{"code":1001,"message":"ç¨æ·åä¸è½ä¸ºç©º, å¯ç ä¸è½ä¸ºç©º","data":null,"traceId":"2c400f23ceca407eb30607ef6f4c8429","timestamp":1789981944465}

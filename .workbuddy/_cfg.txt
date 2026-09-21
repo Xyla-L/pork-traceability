@@ -1,0 +1,834 @@
+﻿name: pork-traceability
+services:
+  auth-service:
+    build:
+      context: E:\pork-traceability\backend
+      dockerfile: Dockerfile
+      args:
+        SERVICE: auth-service
+    depends_on:
+      mysql:
+        condition: service_healthy
+        required: true
+      nacos:
+        condition: service_started
+        required: true
+      redis:
+        condition: service_healthy
+        required: true
+    environment:
+      BLOCKCHAIN_SERVICE_URL: http://blockchain-service:8087
+      BOOTSTRAP_ADMIN_PASSWORD: "123456"
+      BOOTSTRAP_ADMIN_USERNAME: admin
+      BREEDING_SERVICE_URL: http://breeding-service:8082
+      DB_PASSWORD: "123456"
+      DB_URL: jdbc:mysql://mysql:3306/db_common?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      DB_USERNAME: pork_user
+      DISTRIBUTION_SERVICE_URL: http://distribution-service:8084
+      JWT_SECRET: a46c2954591d0245fba4e9a3068e3a8682c2d2ce95ef3521
+      MAIN_CLASS: com.pork.auth.AuthApplication
+      NACOS_ADDR: nacos:8848
+      NACOS_NAMESPACE: ""
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PASSWORD: change-this-rabbit-password
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USERNAME: pork
+      REDIS_DATABASE: "0"
+      REDIS_HOST: redis
+      REDIS_PASSWORD: change-this-redis-password
+      REDIS_PORT: "6379"
+      SALES_SERVICE_URL: http://sales-service:8085
+      SERVICE_PORT: "8081"
+      SERVICES_BLOCKCHAIN_URL: http://blockchain-service:8087
+      SERVICES_BREEDING_URL: http://breeding-service:8082
+      SERVICES_DISTRIBUTION_URL: http://distribution-service:8084
+      SERVICES_SALES_URL: http://sales-service:8085
+      SERVICES_SLAUGHTER_URL: http://slaughter-service:8083
+      SLAUGHTER_SERVICE_URL: http://slaughter-service:8083
+      SPRING_CLOUD_NACOS_CONFIG_SERVER_ADDR: nacos:8848
+      SPRING_PROFILES_ACTIVE: docker
+      TZ: Asia/Shanghai
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl -fsS http://localhost:$${SERVICE_PORT}/actuator/health | grep -q UP
+      timeout: 5s
+      interval: 15s
+      retries: 10
+      start_period: 45s
+    networks:
+      pork-net: null
+    restart: unless-stopped
+  blockchain-service:
+    build:
+      context: E:\pork-traceability\backend
+      dockerfile: Dockerfile
+      args:
+        SERVICE: blockchain-service
+    depends_on:
+      ganache:
+        condition: service_healthy
+        required: true
+      mysql:
+        condition: service_healthy
+        required: true
+      nacos:
+        condition: service_started
+        required: true
+      rabbitmq:
+        condition: service_healthy
+        required: true
+      redis:
+        condition: service_healthy
+        required: true
+    environment:
+      BLOCKCHAIN_SERVICE_URL: http://blockchain-service:8087
+      BLOCKCHAIN_TYPE: local
+      BREEDING_SERVICE_URL: http://breeding-service:8082
+      DB_PASSWORD: "123456"
+      DB_URL: jdbc:mysql://mysql:3306/db_common?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      DB_USERNAME: pork_user
+      DISTRIBUTION_SERVICE_URL: http://distribution-service:8084
+      EVM_CHAIN_ID: "1337"
+      EVM_CONTRACT_ADDRESS: ""
+      EVM_PRIVATE_KEY: 0x4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d
+      EVM_RPC_URL: http://ganache:8545
+      JWT_SECRET: a46c2954591d0245fba4e9a3068e3a8682c2d2ce95ef3521
+      MAIN_CLASS: com.pork.blockchain.BlockchainApplication
+      NACOS_ADDR: nacos:8848
+      NACOS_NAMESPACE: ""
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PASSWORD: change-this-rabbit-password
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USERNAME: pork
+      REDIS_DATABASE: "0"
+      REDIS_HOST: redis
+      REDIS_PASSWORD: change-this-redis-password
+      REDIS_PORT: "6379"
+      SALES_SERVICE_URL: http://sales-service:8085
+      SERVICE_PORT: "8087"
+      SERVICES_BLOCKCHAIN_URL: http://blockchain-service:8087
+      SERVICES_BREEDING_URL: http://breeding-service:8082
+      SERVICES_DISTRIBUTION_URL: http://distribution-service:8084
+      SERVICES_SALES_URL: http://sales-service:8085
+      SERVICES_SLAUGHTER_URL: http://slaughter-service:8083
+      SLAUGHTER_SERVICE_URL: http://slaughter-service:8083
+      SPRING_CLOUD_NACOS_CONFIG_SERVER_ADDR: nacos:8848
+      SPRING_PROFILES_ACTIVE: docker
+      TZ: Asia/Shanghai
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl -fsS http://localhost:$${SERVICE_PORT}/actuator/health | grep -q UP
+      timeout: 5s
+      interval: 15s
+      retries: 10
+      start_period: 45s
+    networks:
+      pork-net: null
+    restart: unless-stopped
+  breeding-service:
+    build:
+      context: E:\pork-traceability\backend
+      dockerfile: Dockerfile
+      args:
+        SERVICE: breeding-service
+    depends_on:
+      mysql:
+        condition: service_healthy
+        required: true
+      nacos:
+        condition: service_started
+        required: true
+      rabbitmq:
+        condition: service_healthy
+        required: true
+      redis:
+        condition: service_healthy
+        required: true
+    environment:
+      BLOCKCHAIN_SERVICE_URL: http://blockchain-service:8087
+      BREEDING_SERVICE_URL: http://breeding-service:8082
+      DB_PASSWORD: "123456"
+      DB_URL: jdbc:mysql://mysql:3306/db_breeding?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      DB_USERNAME: pork_user
+      DISTRIBUTION_SERVICE_URL: http://distribution-service:8084
+      JWT_SECRET: a46c2954591d0245fba4e9a3068e3a8682c2d2ce95ef3521
+      MAIN_CLASS: com.pork.breeding.BreedingApplication
+      NACOS_ADDR: nacos:8848
+      NACOS_NAMESPACE: ""
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PASSWORD: change-this-rabbit-password
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USERNAME: pork
+      REDIS_DATABASE: "0"
+      REDIS_HOST: redis
+      REDIS_PASSWORD: change-this-redis-password
+      REDIS_PORT: "6379"
+      SALES_SERVICE_URL: http://sales-service:8085
+      SERVICE_PORT: "8082"
+      SERVICES_BLOCKCHAIN_URL: http://blockchain-service:8087
+      SERVICES_BREEDING_URL: http://breeding-service:8082
+      SERVICES_DISTRIBUTION_URL: http://distribution-service:8084
+      SERVICES_SALES_URL: http://sales-service:8085
+      SERVICES_SLAUGHTER_URL: http://slaughter-service:8083
+      SLAUGHTER_SERVICE_URL: http://slaughter-service:8083
+      SPRING_CLOUD_NACOS_CONFIG_SERVER_ADDR: nacos:8848
+      SPRING_PROFILES_ACTIVE: docker
+      TZ: Asia/Shanghai
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl -fsS http://localhost:$${SERVICE_PORT}/actuator/health | grep -q UP
+      timeout: 5s
+      interval: 15s
+      retries: 10
+      start_period: 45s
+    networks:
+      pork-net: null
+    restart: unless-stopped
+  distribution-service:
+    build:
+      context: E:\pork-traceability\backend
+      dockerfile: Dockerfile
+      args:
+        SERVICE: distribution-service
+    depends_on:
+      mysql:
+        condition: service_healthy
+        required: true
+      nacos:
+        condition: service_started
+        required: true
+      rabbitmq:
+        condition: service_healthy
+        required: true
+      redis:
+        condition: service_healthy
+        required: true
+    environment:
+      BLOCKCHAIN_SERVICE_URL: http://blockchain-service:8087
+      BREEDING_SERVICE_URL: http://breeding-service:8082
+      DB_PASSWORD: "123456"
+      DB_URL: jdbc:mysql://mysql:3306/db_distribution?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      DB_USERNAME: pork_user
+      DISTRIBUTION_SERVICE_URL: http://distribution-service:8084
+      JWT_SECRET: a46c2954591d0245fba4e9a3068e3a8682c2d2ce95ef3521
+      MAIN_CLASS: com.pork.distribution.DistributionApplication
+      NACOS_ADDR: nacos:8848
+      NACOS_NAMESPACE: ""
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PASSWORD: change-this-rabbit-password
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USERNAME: pork
+      REDIS_DATABASE: "0"
+      REDIS_HOST: redis
+      REDIS_PASSWORD: change-this-redis-password
+      REDIS_PORT: "6379"
+      SALES_SERVICE_URL: http://sales-service:8085
+      SERVICE_PORT: "8084"
+      SERVICES_BLOCKCHAIN_URL: http://blockchain-service:8087
+      SERVICES_BREEDING_URL: http://breeding-service:8082
+      SERVICES_DISTRIBUTION_URL: http://distribution-service:8084
+      SERVICES_SALES_URL: http://sales-service:8085
+      SERVICES_SLAUGHTER_URL: http://slaughter-service:8083
+      SLAUGHTER_SERVICE_URL: http://slaughter-service:8083
+      SPRING_CLOUD_NACOS_CONFIG_SERVER_ADDR: nacos:8848
+      SPRING_PROFILES_ACTIVE: docker
+      TZ: Asia/Shanghai
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl -fsS http://localhost:$${SERVICE_PORT}/actuator/health | grep -q UP
+      timeout: 5s
+      interval: 15s
+      retries: 10
+      start_period: 45s
+    networks:
+      pork-net: null
+    restart: unless-stopped
+  file-service:
+    build:
+      context: E:\pork-traceability\backend
+      dockerfile: Dockerfile
+      args:
+        SERVICE: file-service
+    depends_on:
+      mysql:
+        condition: service_healthy
+        required: true
+      nacos:
+        condition: service_started
+        required: true
+      redis:
+        condition: service_healthy
+        required: true
+    environment:
+      BLOCKCHAIN_SERVICE_URL: http://blockchain-service:8087
+      BREEDING_SERVICE_URL: http://breeding-service:8082
+      DB_PASSWORD: "123456"
+      DB_URL: jdbc:mysql://mysql:3306/db_common?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      DB_USERNAME: pork_user
+      DISTRIBUTION_SERVICE_URL: http://distribution-service:8084
+      FILE_STORAGE_ROOT: /app/data/trace-files
+      JWT_SECRET: a46c2954591d0245fba4e9a3068e3a8682c2d2ce95ef3521
+      MAIN_CLASS: com.pork.file.FileApplication
+      NACOS_ADDR: nacos:8848
+      NACOS_NAMESPACE: ""
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PASSWORD: change-this-rabbit-password
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USERNAME: pork
+      REDIS_DATABASE: "0"
+      REDIS_HOST: redis
+      REDIS_PASSWORD: change-this-redis-password
+      REDIS_PORT: "6379"
+      SALES_SERVICE_URL: http://sales-service:8085
+      SERVICE_PORT: "8088"
+      SERVICES_BLOCKCHAIN_URL: http://blockchain-service:8087
+      SERVICES_BREEDING_URL: http://breeding-service:8082
+      SERVICES_DISTRIBUTION_URL: http://distribution-service:8084
+      SERVICES_SALES_URL: http://sales-service:8085
+      SERVICES_SLAUGHTER_URL: http://slaughter-service:8083
+      SLAUGHTER_SERVICE_URL: http://slaughter-service:8083
+      SPRING_CLOUD_NACOS_CONFIG_SERVER_ADDR: nacos:8848
+      SPRING_PROFILES_ACTIVE: docker
+      TZ: Asia/Shanghai
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl -fsS http://localhost:$${SERVICE_PORT}/actuator/health | grep -q UP
+      timeout: 5s
+      interval: 15s
+      retries: 10
+      start_period: 45s
+    networks:
+      pork-net: null
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: E:\pork-traceability\backend\data\trace-files
+        target: /app/data/trace-files
+        bind: {}
+  ganache:
+    command:
+      - --chain.chainId
+      - "1337"
+      - --wallet.deterministic
+      - --miner.blockTime
+      - "2"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - bash -c '(echo > /dev/tcp/localhost/8545) 2>/dev/null || exit 1'
+      timeout: 5s
+      interval: 10s
+      retries: 12
+    image: trufflesuite/ganache:v7.9.2
+    networks:
+      pork-net: null
+    ports:
+      - mode: ingress
+        target: 8545
+        published: "8545"
+        protocol: tcp
+    restart: unless-stopped
+  gateway-service:
+    build:
+      context: E:\pork-traceability\backend
+      dockerfile: Dockerfile
+      args:
+        SERVICE: gateway-service
+    depends_on:
+      mysql:
+        condition: service_healthy
+        required: true
+      nacos:
+        condition: service_started
+        required: true
+      redis:
+        condition: service_healthy
+        required: true
+    environment:
+      BLOCKCHAIN_SERVICE_URL: http://blockchain-service:8087
+      BREEDING_SERVICE_URL: http://breeding-service:8082
+      DB_PASSWORD: "123456"
+      DB_USERNAME: pork_user
+      DISTRIBUTION_SERVICE_URL: http://distribution-service:8084
+      JWT_SECRET: a46c2954591d0245fba4e9a3068e3a8682c2d2ce95ef3521
+      MAIN_CLASS: com.pork.gateway.GatewayApplication
+      NACOS_ADDR: nacos:8848
+      NACOS_NAMESPACE: ""
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PASSWORD: change-this-rabbit-password
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USERNAME: pork
+      REDIS_DATABASE: "0"
+      REDIS_HOST: redis
+      REDIS_PASSWORD: change-this-redis-password
+      REDIS_PORT: "6379"
+      SALES_SERVICE_URL: http://sales-service:8085
+      SERVICE_PORT: "8080"
+      SERVICES_BLOCKCHAIN_URL: http://blockchain-service:8087
+      SERVICES_BREEDING_URL: http://breeding-service:8082
+      SERVICES_DISTRIBUTION_URL: http://distribution-service:8084
+      SERVICES_SALES_URL: http://sales-service:8085
+      SERVICES_SLAUGHTER_URL: http://slaughter-service:8083
+      SLAUGHTER_SERVICE_URL: http://slaughter-service:8083
+      SPRING_CLOUD_NACOS_CONFIG_SERVER_ADDR: nacos:8848
+      SPRING_PROFILES_ACTIVE: docker
+      TZ: Asia/Shanghai
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl -fsS http://localhost:$${SERVICE_PORT}/actuator/health | grep -q UP
+      timeout: 5s
+      interval: 15s
+      retries: 10
+      start_period: 45s
+    networks:
+      pork-net: null
+    ports:
+      - mode: ingress
+        target: 8080
+        published: "8080"
+        protocol: tcp
+    restart: unless-stopped
+  ingest-service:
+    build:
+      context: E:\pork-traceability\backend
+      dockerfile: Dockerfile
+      args:
+        SERVICE: ingest-service
+    depends_on:
+      mysql:
+        condition: service_healthy
+        required: true
+      nacos:
+        condition: service_started
+        required: true
+      redis:
+        condition: service_healthy
+        required: true
+    environment:
+      BLOCKCHAIN_SERVICE_URL: http://blockchain-service:8087
+      BREEDING_SERVICE_URL: http://breeding-service:8082
+      DB_PASSWORD: "123456"
+      DB_URL: jdbc:mysql://mysql:3306/db_ingest?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      DB_USERNAME: pork_user
+      DISTRIBUTION_SERVICE_URL: http://distribution-service:8084
+      INGEST_TEMP_INTERVAL: "60"
+      INGEST_TEMP_MAX: "0.0"
+      INGEST_TEMP_MIN: "-18.0"
+      JWT_SECRET: a46c2954591d0245fba4e9a3068e3a8682c2d2ce95ef3521
+      MAIN_CLASS: com.pork.ingest.IngestApplication
+      NACOS_ADDR: nacos:8848
+      NACOS_NAMESPACE: ""
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PASSWORD: change-this-rabbit-password
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USERNAME: pork
+      REDIS_DATABASE: "0"
+      REDIS_HOST: redis
+      REDIS_PASSWORD: change-this-redis-password
+      REDIS_PORT: "6379"
+      SALES_SERVICE_URL: http://sales-service:8085
+      SERVICE_PORT: "8089"
+      SERVICES_BLOCKCHAIN_URL: http://blockchain-service:8087
+      SERVICES_BREEDING_URL: http://breeding-service:8082
+      SERVICES_DISTRIBUTION_URL: http://distribution-service:8084
+      SERVICES_SALES_URL: http://sales-service:8085
+      SERVICES_SLAUGHTER_URL: http://slaughter-service:8083
+      SLAUGHTER_SERVICE_URL: http://slaughter-service:8083
+      SPRING_CLOUD_NACOS_CONFIG_SERVER_ADDR: nacos:8848
+      SPRING_PROFILES_ACTIVE: docker
+      TZ: Asia/Shanghai
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl -fsS http://localhost:$${SERVICE_PORT}/actuator/health | grep -q UP
+      timeout: 5s
+      interval: 15s
+      retries: 10
+      start_period: 45s
+    networks:
+      pork-net: null
+    restart: unless-stopped
+  mysql:
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: change-this-root-password
+      TZ: Asia/Shanghai
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - mysqladmin ping -h localhost -p$${MYSQL_ROOT_PASSWORD} --silent
+      timeout: 5s
+      interval: 10s
+      retries: 15
+    image: mysql:8.4
+    networks:
+      pork-net: null
+    ports:
+      - mode: ingress
+        target: 3306
+        published: "3307"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: mysql-data
+        target: /var/lib/mysql
+        volume: {}
+      - type: bind
+        source: E:\pork-traceability\backend\init-sql
+        target: /docker-entrypoint-initdb.d
+        read_only: true
+        bind: {}
+  nacos:
+    environment:
+      MODE: standalone
+      NACOS_AUTH_ENABLE: "false"
+    image: nacos/nacos-server:v2.4.3
+    networks:
+      pork-net: null
+    ports:
+      - mode: ingress
+        target: 8848
+        published: "8848"
+        protocol: tcp
+      - mode: ingress
+        target: 9848
+        published: "9848"
+        protocol: tcp
+    restart: unless-stopped
+  nginx:
+    depends_on:
+      gateway-service:
+        condition: service_healthy
+        required: true
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - -q
+        - -O
+        - '-'
+        - http://localhost/health
+      timeout: 5s
+      interval: 15s
+      retries: 5
+    image: nginx:1.27-alpine
+    networks:
+      pork-net: null
+    ports:
+      - mode: ingress
+        target: 80
+        published: "80"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: E:\pork-traceability\backend\nginx.conf
+        target: /etc/nginx/nginx.conf
+        read_only: true
+        bind: {}
+  rabbitmq:
+    environment:
+      RABBITMQ_DEFAULT_PASS: change-this-rabbit-password
+      RABBITMQ_DEFAULT_USER: pork
+    healthcheck:
+      test:
+        - CMD
+        - rabbitmq-diagnostics
+        - -q
+        - ping
+      timeout: 5s
+      interval: 10s
+      retries: 15
+    image: rabbitmq:3.13-management-alpine
+    networks:
+      pork-net: null
+    ports:
+      - mode: ingress
+        target: 5672
+        published: "5672"
+        protocol: tcp
+      - mode: ingress
+        target: 15672
+        published: "15672"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: rabbitmq-data
+        target: /var/lib/rabbitmq
+        volume: {}
+  redis:
+    command:
+      - redis-server
+      - --appendonly
+      - 'yes'
+      - --requirepass
+      - change-this-redis-password
+    healthcheck:
+      test:
+        - CMD
+        - redis-cli
+        - -a
+        - change-this-redis-password
+        - ping
+      timeout: 5s
+      interval: 10s
+      retries: 10
+    image: redis:7.4-alpine
+    networks:
+      pork-net: null
+    ports:
+      - mode: ingress
+        target: 6379
+        published: "6379"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: redis-data
+        target: /data
+        volume: {}
+  sales-service:
+    build:
+      context: E:\pork-traceability\backend
+      dockerfile: Dockerfile
+      args:
+        SERVICE: sales-service
+    depends_on:
+      mysql:
+        condition: service_healthy
+        required: true
+      nacos:
+        condition: service_started
+        required: true
+      rabbitmq:
+        condition: service_healthy
+        required: true
+      redis:
+        condition: service_healthy
+        required: true
+    environment:
+      BLOCKCHAIN_SERVICE_URL: http://blockchain-service:8087
+      BREEDING_SERVICE_URL: http://breeding-service:8082
+      DB_PASSWORD: "123456"
+      DB_URL: jdbc:mysql://mysql:3306/db_sales?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      DB_USERNAME: pork_user
+      DISTRIBUTION_SERVICE_URL: http://distribution-service:8084
+      JWT_SECRET: a46c2954591d0245fba4e9a3068e3a8682c2d2ce95ef3521
+      MAIN_CLASS: com.pork.sales.SalesApplication
+      NACOS_ADDR: nacos:8848
+      NACOS_NAMESPACE: ""
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PASSWORD: change-this-rabbit-password
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USERNAME: pork
+      REDIS_DATABASE: "0"
+      REDIS_HOST: redis
+      REDIS_PASSWORD: change-this-redis-password
+      REDIS_PORT: "6379"
+      SALES_SERVICE_URL: http://sales-service:8085
+      SERVICE_PORT: "8085"
+      SERVICES_BLOCKCHAIN_URL: http://blockchain-service:8087
+      SERVICES_BREEDING_URL: http://breeding-service:8082
+      SERVICES_DISTRIBUTION_URL: http://distribution-service:8084
+      SERVICES_SALES_URL: http://sales-service:8085
+      SERVICES_SLAUGHTER_URL: http://slaughter-service:8083
+      SLAUGHTER_SERVICE_URL: http://slaughter-service:8083
+      SPRING_CLOUD_NACOS_CONFIG_SERVER_ADDR: nacos:8848
+      SPRING_PROFILES_ACTIVE: docker
+      TZ: Asia/Shanghai
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl -fsS http://localhost:$${SERVICE_PORT}/actuator/health | grep -q UP
+      timeout: 5s
+      interval: 15s
+      retries: 10
+      start_period: 45s
+    networks:
+      pork-net: null
+    restart: unless-stopped
+  slaughter-service:
+    build:
+      context: E:\pork-traceability\backend
+      dockerfile: Dockerfile
+      args:
+        SERVICE: slaughter-service
+    depends_on:
+      mysql:
+        condition: service_healthy
+        required: true
+      nacos:
+        condition: service_started
+        required: true
+      rabbitmq:
+        condition: service_healthy
+        required: true
+      redis:
+        condition: service_healthy
+        required: true
+    environment:
+      BLOCKCHAIN_SERVICE_URL: http://blockchain-service:8087
+      BREEDING_SERVICE_URL: http://breeding-service:8082
+      DB_PASSWORD: "123456"
+      DB_URL: jdbc:mysql://mysql:3306/db_slaughter?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      DB_USERNAME: pork_user
+      DISTRIBUTION_SERVICE_URL: http://distribution-service:8084
+      JWT_SECRET: a46c2954591d0245fba4e9a3068e3a8682c2d2ce95ef3521
+      MAIN_CLASS: com.pork.slaughter.SlaughterApplication
+      NACOS_ADDR: nacos:8848
+      NACOS_NAMESPACE: ""
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PASSWORD: change-this-rabbit-password
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USERNAME: pork
+      REDIS_DATABASE: "0"
+      REDIS_HOST: redis
+      REDIS_PASSWORD: change-this-redis-password
+      REDIS_PORT: "6379"
+      SALES_SERVICE_URL: http://sales-service:8085
+      SERVICE_PORT: "8083"
+      SERVICES_BLOCKCHAIN_URL: http://blockchain-service:8087
+      SERVICES_BREEDING_URL: http://breeding-service:8082
+      SERVICES_DISTRIBUTION_URL: http://distribution-service:8084
+      SERVICES_SALES_URL: http://sales-service:8085
+      SERVICES_SLAUGHTER_URL: http://slaughter-service:8083
+      SLAUGHTER_SERVICE_URL: http://slaughter-service:8083
+      SLAUGHTERHOUSE_NAME: 榛樿瀹氱偣灞犲鍦?      SPRING_CLOUD_NACOS_CONFIG_SERVER_ADDR: nacos:8848
+      SPRING_PROFILES_ACTIVE: docker
+      TZ: Asia/Shanghai
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl -fsS http://localhost:$${SERVICE_PORT}/actuator/health | grep -q UP
+      timeout: 5s
+      interval: 15s
+      retries: 10
+      start_period: 45s
+    networks:
+      pork-net: null
+    restart: unless-stopped
+  trace-service:
+    build:
+      context: E:\pork-traceability\backend
+      dockerfile: Dockerfile
+      args:
+        SERVICE: trace-service
+    depends_on:
+      mysql:
+        condition: service_healthy
+        required: true
+      nacos:
+        condition: service_started
+        required: true
+      redis:
+        condition: service_healthy
+        required: true
+    environment:
+      BLOCKCHAIN_SERVICE_URL: http://blockchain-service:8087
+      BREEDING_SERVICE_URL: http://breeding-service:8082
+      DB_PASSWORD: "123456"
+      DB_URL: jdbc:mysql://mysql:3306/db_common?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      DB_USERNAME: pork_user
+      DISTRIBUTION_SERVICE_URL: http://distribution-service:8084
+      JWT_SECRET: a46c2954591d0245fba4e9a3068e3a8682c2d2ce95ef3521
+      MAIN_CLASS: com.pork.trace.TraceServiceApplication
+      NACOS_ADDR: nacos:8848
+      NACOS_NAMESPACE: ""
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PASSWORD: change-this-rabbit-password
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USERNAME: pork
+      REDIS_DATABASE: "0"
+      REDIS_HOST: redis
+      REDIS_PASSWORD: change-this-redis-password
+      REDIS_PORT: "6379"
+      SALES_SERVICE_URL: http://sales-service:8085
+      SERVICE_PORT: "8086"
+      SERVICES_BLOCKCHAIN_URL: http://blockchain-service:8087
+      SERVICES_BREEDING_URL: http://breeding-service:8082
+      SERVICES_DISTRIBUTION_URL: http://distribution-service:8084
+      SERVICES_SALES_URL: http://sales-service:8085
+      SERVICES_SLAUGHTER_URL: http://slaughter-service:8083
+      SLAUGHTER_SERVICE_URL: http://slaughter-service:8083
+      SPRING_CLOUD_NACOS_CONFIG_SERVER_ADDR: nacos:8848
+      SPRING_PROFILES_ACTIVE: docker
+      TZ: Asia/Shanghai
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl -fsS http://localhost:$${SERVICE_PORT}/actuator/health | grep -q UP
+      timeout: 5s
+      interval: 15s
+      retries: 10
+      start_period: 45s
+    networks:
+      pork-net: null
+    restart: unless-stopped
+networks:
+  pork-net:
+    name: pork-traceability_pork-net
+    driver: bridge
+volumes:
+  mysql-data:
+    name: pork-traceability_mysql-data
+  rabbitmq-data:
+    name: pork-traceability_rabbitmq-data
+  redis-data:
+    name: pork-traceability_redis-data
+x-app-defaults:
+  depends_on:
+    mysql:
+      condition: service_healthy
+    nacos:
+      condition: service_started
+    redis:
+      condition: service_healthy
+  healthcheck:
+    interval: 15s
+    retries: 10
+    start_period: 45s
+    test:
+      - CMD-SHELL
+      - curl -fsS http://localhost:$${SERVICE_PORT}/actuator/health | grep -q UP
+    timeout: 5s
+  networks:
+    - pork-net
+  restart: unless-stopped
+x-app-environment:
+  BLOCKCHAIN_SERVICE_URL: http://blockchain-service:8087
+  BREEDING_SERVICE_URL: http://breeding-service:8082
+  DB_PASSWORD: "123456"
+  DB_USERNAME: pork_user
+  DISTRIBUTION_SERVICE_URL: http://distribution-service:8084
+  JWT_SECRET: a46c2954591d0245fba4e9a3068e3a8682c2d2ce95ef3521
+  NACOS_ADDR: nacos:8848
+  NACOS_NAMESPACE: ""
+  RABBITMQ_HOST: rabbitmq
+  RABBITMQ_PASSWORD: change-this-rabbit-password
+  RABBITMQ_PORT: 5672
+  RABBITMQ_USERNAME: pork
+  REDIS_DATABASE: "0"
+  REDIS_HOST: redis
+  REDIS_PASSWORD: change-this-redis-password
+  REDIS_PORT: 6379
+  SALES_SERVICE_URL: http://sales-service:8085
+  SERVICES_BLOCKCHAIN_URL: http://blockchain-service:8087
+  SERVICES_BREEDING_URL: http://breeding-service:8082
+  SERVICES_DISTRIBUTION_URL: http://distribution-service:8084
+  SERVICES_SALES_URL: http://sales-service:8085
+  SERVICES_SLAUGHTER_URL: http://slaughter-service:8083
+  SLAUGHTER_SERVICE_URL: http://slaughter-service:8083
+  SPRING_CLOUD_NACOS_CONFIG_SERVER_ADDR: nacos:8848
+  SPRING_PROFILES_ACTIVE: docker
+  TZ: Asia/Shanghai
+exit=0

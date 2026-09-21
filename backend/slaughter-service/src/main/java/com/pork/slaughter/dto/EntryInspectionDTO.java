@@ -42,6 +42,11 @@ public class EntryInspectionDTO {
     // 前端传来的文件ID列表，后端转为JSON字符串存储
     private String fileIds;
 
+    // --- 自动录入（设备通道）来源标记 ---
+    private String source;
+    private String sourceRef;
+    private String rawPayload;
+
     // --- 查询条件：到厂日期区间 YYYY-MM-DD ---
     private String startDate;
     private String endDate;

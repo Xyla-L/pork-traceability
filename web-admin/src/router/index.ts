@@ -184,6 +184,18 @@ const routes: RouteRecordRaw[] = [
         },
       },
 
+      // ========== 设备接入（B 档自动化录入）==========
+      {
+        path: 'ingest/monitor',
+        name: 'IngestMonitor',
+        component: () => import('@/views/ingest/IngestMonitor.vue'),
+        meta: {
+          title: '设备接入',
+          icon: 'Connection',
+          roles: ['SUPERVISOR', 'ADMIN'],
+        },
+      },
+
       // ========== 应急追溯 ==========
       {
         path: 'trace/search',

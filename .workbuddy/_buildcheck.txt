@@ -1,0 +1,7 @@
+﻿=== 前端构建 ===
+    + FullyQualifiedErrorId : NativeCommandError
+[32m鉁?built in 23.29s[39m
+exit=0
+
+=== ingest 编译 ===
+exit=0

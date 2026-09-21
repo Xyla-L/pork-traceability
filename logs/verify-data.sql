@@ -1,0 +1,3 @@
+SELECT 'tr16' AS k, ct.transport_no, ct.status, (SELECT COUNT(*) FROM db_distribution.store_receipt sr WHERE sr.transport_id=ct.id) AS receipts FROM db_distribution.cold_chain_transport ct WHERE ct.transport_no='TR-TEST-0016';
+SELECT 'dirty_receipts' AS k, COUNT(*) AS cnt FROM db_distribution.store_receipt sr JOIN db_distribution.cold_chain_transport ct ON ct.id=sr.transport_id WHERE ct.status IN (1,2) AND ct.transport_no LIKE 'TR-TEST-%';
+SELECT 'sellable' AS k, product_qr_code, status, is_activated, expire_date FROM db_sales.retail_sale WHERE product_qr_code IN ('QR-PORK-TEST-0005','QR-PORK-TEST-0009','QR-PORK-TEST-0012');

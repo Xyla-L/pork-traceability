@@ -201,6 +201,21 @@ services:
       SERVICE_PORT: 8086
       DB_URL: jdbc:mysql://mysql:3306/db_common?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
 
+  # 设备/第三方系统接入层：设备只认这一个入口，校验通过后再调业务服务写库
+  ingest-service:
+    <<: *app-defaults
+    build:
+      context: .
+      args: { SERVICE: ingest-service }
+    environment:
+      <<: *app-environment
+      MAIN_CLASS: com.pork.ingest.IngestApplication
+      SERVICE_PORT: 8089
+      DB_URL: jdbc:mysql://mysql:3306/db_ingest?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      INGEST_TEMP_MIN: ${INGEST_TEMP_MIN:--18.0}
+      INGEST_TEMP_MAX: ${INGEST_TEMP_MAX:-0.0}
+      INGEST_TEMP_INTERVAL: ${INGEST_TEMP_INTERVAL:-60}
+
   ganache:
     image: trufflesuite/ganache:v7.9.2
     restart: unless-stopped
@@ -254,13 +269,18 @@ services:
   nginx:
     image: nginx:1.27-alpine
     restart: unless-stopped
-    volumes: ["./nginx.conf:/etc/nginx/nginx.conf:ro"]
+    volumes:
+      - "./nginx.conf:/etc/nginx/nginx.conf:ro"
+      # 管理端构建产物：80 端口直接打开 web-admin，无需再跑 Vite dev server
+      - "../web-admin/dist:/usr/share/nginx/html/admin:ro"
     ports: ["80:80"]
     networks: [pork-net]
     depends_on:
       gateway-service: { condition: service_healthy }
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost/health"]
+      # 必须用 127.0.0.1：容器内 localhost 会先解析到 ::1，而 nginx.conf 只 listen 了 IPv4 的 80，
+      # 用 localhost 探测会一直 Connection refused，nginx 永远停在 unhealthy。
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1/health"]
       interval: 15s
       timeout: 5s
       retries: 5

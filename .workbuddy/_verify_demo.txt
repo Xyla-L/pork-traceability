@@ -1,0 +1,16 @@
+﻿登录: OK
+设备台账: 10 台
+返回字段: id, deviceNo, deviceName, channel, channelLabel, location, status, statusLabel, lastSeenTime, remark, createTime
+含 secretKey/deviceKey 字段? ✅ 无泄露
+
+运输中运单: TR-TEST-0008
+温度演示上报回执: status=2 已入账 accepted=true
+  message: 已入账
+  目标: temperature_log #48
+
+待发车运单: TR-TEST-0010
+签收演示上报回执: status=3 已拒绝 accepted=false
+  message: 运单 TR-TEST-0010 已签收，重复签收已拒绝
+  目标: store_receipt #null
+
+幂等: 首次 duplicate=false status=已入账；重推 duplicate=true status=已入账

@@ -1,0 +1,20 @@
+﻿docker : mysql: [Warning] Using a password on the command line interface can be
+ insecure.
+所在位置 行:445 字符: 86
++ ... y-mysql-1"; docker exec $c sh -c "mysql -uroot -pchange-this-root-pas ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (mysql: [Warning...an be insecure. 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+=== 11-device-ingest ===
+docker : mysql: [Warning] Using a password on the command line interface can be
+ insecure.
+所在位置 行:445 字符: 301
++ ... oding utf8; docker exec $c sh -c "mysql -uroot -pchange-this-root-pas ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (mysql: [Warning...an be insecure. 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+exit=0

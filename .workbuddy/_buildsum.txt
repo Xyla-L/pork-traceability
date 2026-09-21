@@ -1,0 +1,33 @@
+﻿    + FullyQualifiedErrorId : NativeCommandError
+#23 247.4 [INFO] BUILD SUCCESS
+#24 257.9 [ERROR] COMPILATION ERROR : 
+#24 257.9 [ERROR] constructor DistributionDeviceIngestService(com.pork.distribution.mapper.ColdChainTransportMapper,com.pork.distribution.mapper.TemperatureLogMapper,com.pork.distribution.mapper.StoreReceiptMapper,com.pork.mq.ChainEventPublisher,java.math.BigDecimal,java.math.BigDecimal) is already defined in class com.pork.distribution.service.DistributionDeviceIngestService
+#24 257.9 [ERROR] /workspace/distribution-service/src/main/java/com/pork/distribution/service/DistributionDeviceIngestService.java:[35,1] constructor DistributionDeviceIngestService(com.pork.distribution.mapper.ColdChainTransportMapper,com.pork.distribution.mapper.TemperatureLogMapper,com.pork.distribution.mapper.StoreReceiptMapper,com.pork.mq.ChainEventPublisher,java.math.BigDecimal,java.math.BigDecimal) is already defined in class com.pork.distribution.service.DistributionDeviceIngestService
+#24 257.9 [INFO] 2 errors 
+#24 257.9 [INFO] BUILD FAILURE
+#24 257.9 [ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.11.0:compile (default-compile) on project distribution-service: Compilation failure: Compilation failure: 
+#24 257.9 [ERROR] constructor DistributionDeviceIngestService(com.pork.distribution.mapper.ColdChainTransportMapper,com.pork.distribution.mapper.TemperatureLogMapper,com.pork.distribution.mapper.StoreReceiptMapper,com.pork.mq.ChainEventPublisher,java.math.BigDecimal,java.math.BigDecimal) is already defined in class com.pork.distribution.service.DistributionDeviceIngestService
+#24 257.9 [ERROR] /workspace/distribution-service/src/main/java/com/pork/distribution/service/DistributionDeviceIngestService.java:[35,1] constructor DistributionDeviceIngestService(com.pork.distribution.mapper.ColdChainTransportMapper,com.pork.distribution.mapper.TemperatureLogMapper,com.pork.distribution.mapper.StoreReceiptMapper,com.pork.mq.ChainEventPublisher,java.math.BigDecimal,java.math.BigDecimal) is already defined in class com.pork.distribution.service.DistributionDeviceIngestService
+#24 257.9 [ERROR] -> [Help 1]
+#24 257.9 [ERROR] 
+#24 257.9 [ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+#24 257.9 [ERROR] Re-run Maven using the -X switch to enable full debug logging.
+#24 257.9 [ERROR] 
+#24 257.9 [ERROR] For more information about the errors and possible solutions, please read the following articles:
+#24 257.9 [ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+#24 257.9 [ERROR] 
+#24 257.9 [ERROR] After correcting the problems, you can resume the build with the command
+#24 257.9 [ERROR]   mvn <args> -rf :distribution-service
+#24 ERROR: process "/bin/sh -c mvn -B -pl \"${SERVICE}\" -am install -DskipTests     && mvn -B -pl \"${SERVICE}\" dependency:copy-dependencies -DoutputDirectory=/runtime-libs" did not complete successfully: exit code: 1
+#27 251.3 [INFO] BUILD SUCCESS
+257.9 [ERROR] -> [Help 1]
+257.9 [ERROR] 
+257.9 [ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+257.9 [ERROR] Re-run Maven using the -X switch to enable full debug logging.
+257.9 [ERROR] 
+257.9 [ERROR] For more information about the errors and possible solutions, please read the following articles:
+257.9 [ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+257.9 [ERROR] 
+257.9 [ERROR] After correcting the problems, you can resume the build with the command
+257.9 [ERROR]   mvn <args> -rf :distribution-service
+exit=1

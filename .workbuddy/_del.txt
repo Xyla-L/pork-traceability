@@ -1,0 +1,11 @@
+﻿_chk2.txt : FAILED
+_chk4.txt : FAILED
+_chk5.txt : FAILED
+_chk6.txt : FAILED
+_chk7.txt : FAILED
+_chk8.txt : FAILED
+_chk9.txt : FAILED
+tmp-ls.txt : FAILED
+_inventory.txt : not present
+_chk.txt : not present
+_chk3.txt : not present

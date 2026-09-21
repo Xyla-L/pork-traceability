@@ -1,0 +1,31 @@
+﻿MAVEN_HOME=
+JAVA_HOME=D:\Java
+--- java ---
+java.exe : java version "17.0.14" 2025-01-21 LTS
+所在位置 行:445 字符: 116
++ ... :JAVA_HOME; $o += "--- java ---"; $o += (& java -version 2>&1 | Out-S ...
++                                              ~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (java version "17.0.14" 2025-01-21 
+    LTS:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Java(TM) SE Runtime Environment (build 17.0.14+8-LTS-191)
+Java HotSpot(TM) 64-Bit Server VM (build 17.0.14+8-LTS-191, mixed mode, sharing
+)
+--- mvn ---
+--- docker ps ---
+pork-traceability-breeding-service-1 | Up 50 minutes (healthy)
+pork-traceability-trace-service-1 | Up 50 minutes (healthy)
+pork-traceability-slaughter-service-1 | Up 50 minutes (healthy)
+pork-traceability-distribution-service-1 | Up 50 minutes (healthy)
+pork-traceability-sales-service-1 | Up 50 minutes (healthy)
+pork-traceability-auth-service-1 | Up 50 minutes (healthy)
+pork-traceability-file-service-1 | Up 50 minutes (healthy)
+pork-traceability-blockchain-service-1 | Up 50 minutes (healthy)
+pork-traceability-gateway-service-1 | Up 49 minutes (healthy)
+pork-traceability-nginx-1 | Up 51 minutes (unhealthy)
+pork-traceability-mysql-1 | Up 51 minutes (healthy)
+pork-traceability-rabbitmq-1 | Up 51 minutes (healthy)
+pork-traceability-redis-1 | Up 51 minutes (healthy)
+pork-traceability-ganache-1 | Up 51 minutes (healthy)
+pork-traceability-nacos-1 | Up 51 minutes

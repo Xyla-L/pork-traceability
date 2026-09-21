@@ -14,6 +14,13 @@
       <el-table-column prop="weight" label="重量(kg)" min-width="100" align="center" />
       <el-table-column prop="quarantineCert" label="检疫证明" min-width="140" show-overflow-tooltip />
       <el-table-column prop="inspector" label="查验员" min-width="100" align="center" />
+      <el-table-column prop="source" label="数据来源" min-width="120" align="center">
+        <template #default="{ row }">
+          <el-tooltip :content="row.source === 'DEVICE' ? `设备采集：${row.sourceRef || '--'}` : '人工录入'" placement="top">
+            <el-tag :type="sourceTag(row.source)" size="small" effect="plain">{{ sourceLabel(row.source) }}</el-tag>
+          </el-tooltip>
+        </template>
+      </el-table-column>
       <el-table-column prop="status" label="状态" min-width="100" align="center">
         <template #default="{ row }">
           <el-tag :type="entryStatusTag(row.status)" size="small">{{ entryStatusLabel(row.status) }}</el-tag>
@@ -53,6 +60,7 @@
 
 <script setup>
 import { ref } from 'vue'
+import { sourceLabel, sourceTag } from '@/api/modules/ingest'
 
 defineProps({
   data: {
@@ -86,4 +94,5 @@ const passFailLabel = (v) => ({ 1: '通过', 0: '异常' }[v] ?? '--')
 .entry-table {
   width: 100%;
 }
+.source-ref { color: #909399; font-size: 12px; }
 </style>

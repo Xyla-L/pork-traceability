@@ -1,0 +1,18 @@
+﻿docker : mysql: [Warning] Using a password on the command line interface can be
+ insecure.
+所在位置 行:445 字符: 59
++ ... data.sql" | docker exec -i pork-traceability-mysql-1 mysql -uroot -pc ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (mysql: [Warning...an be insecure. 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+k	transport_no	status	receipts
+tr16	TR-TEST-0016	3	0
+k	cnt
+dirty_receipts	0
+k	product_qr_code	status	is_activated	expire_date
+sellable	QR-PORK-TEST-0005	1	1	2026-09-24
+sellable	QR-PORK-TEST-0009	1	1	2026-09-22
+sellable	QR-PORK-TEST-0012	1	1	2026-09-26
+

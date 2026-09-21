@@ -50,6 +50,11 @@ public class RactopamineTestDTO {
     private String reportUrl;
     private String remark;
 
+    // --- 自动录入（设备通道）来源标记 ---
+    private String source;
+    private String sourceRef;
+    private String rawPayload;
+
     // --- 查询条件：检测日期区间 YYYY-MM-DD ---
     private String startDate;
     private String endDate;

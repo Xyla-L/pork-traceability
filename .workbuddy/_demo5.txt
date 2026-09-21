@@ -1,0 +1,34 @@
+﻿s
+--- split_batch cols ---
+COLUMN_NAME
+id
+batch_no
+parent_batch_id
+split_level
+product_name
+weight_kg
+package_count
+package_type
+split_time
+workshop
+workshop_temp
+operator
+file_ids
+note
+content_hash
+create_time
+s
+--- transport status dist ---
+status	c
+1	5
+2	1
+3	1
+4	18
+s
+--- retail status dist ---
+status	is_activated	c
+2	1	32
+3	1	1
+4	1	5
+s
+--- receipt source dist ---

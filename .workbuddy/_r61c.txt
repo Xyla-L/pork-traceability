@@ -1,0 +1,18 @@
+﻿2026-09-21T17:24:26.111+08:00 ERROR 1 --- [slaughter-service] [nio-8083-exec-2] c.p.web.handler.GlobalExceptionHandler   : 绯荤粺鏈煡寮傚父
+org.springframework.dao.DataIntegrityViolationException: 
+### Error updating database.  Cause: java.sql.SQLException: Field 'batch_no' doesn't have a default value
+### The error may exist in com/pork/slaughter/mapper/RactopamineTestMapper.java (best guess)
+### The error may involve com.pork.slaughter.mapper.RactopamineTestMapper.insert-Inline
+### The error occurred while setting parameters
+### SQL: INSERT INTO ractopamine_test  ( pig_id, test_no,  ear_tag_no, sample_no, test_type, test_time, test_method, test_target, sample_part, result, status,  operator, source, source_ref, raw_payload,    create_time )  VALUES (  ?, ?,  ?, ?, ?, ?, ?, ?, ?, ?, ?,  ?, ?, ?, ?,    ?  )
+### Cause: java.sql.SQLException: Field 'batch_no' doesn't have a default value
+	at org.springframework.jdbc.support.SQLErrorCodeSQLExceptionTranslator.doTranslate(SQLErrorCodeSQLExceptionTranslator.java:258) ~[spring-jdbc-6.1.6.jar:6.1.6]
+	at org.springframework.jdbc.support.AbstractFallbackSQLExceptionTranslator.translate(AbstractFallbackSQLExceptionTranslator.java:107) ~[spring-jdbc-6.1.6.jar:6.1.6]
+	at org.mybatis.spring.MyBatisExceptionTranslator.translateExceptionIfPossible(MyBatisExceptionTranslator.java:93) ~[mybatis-spring-3.0.4.jar:3.0.4]
+	at com.pork.slaughter.service.SlaughterDeviceIngestService.ingestRactopamine(SlaughterDeviceIngestService.java:127) ~[app.jar:1.0-SNAPSHOT]
+	at com.pork.slaughter.service.SlaughterDeviceIngestService$$SpringCGLIB$$0.ingestRactopamine(<generated>) ~[app.jar:1.0-SNAPSHOT]
+	at com.pork.slaughter.controller.SlaughterDeviceIngestController.ractopamine(SlaughterDeviceIngestController.java:37) ~[app.jar:1.0-SNAPSHOT]
+	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:93) ~[tomcat-embed-core-10.1.20.jar:10.1.20]
+Caused by: java.sql.SQLException: Field 'batch_no' doesn't have a default value
+	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:130) ~[mysql-connector-j-8.0.33.jar:8.0.33]
+	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:122) ~[mysql-connector-j-8.0.33.jar:8.0.33]

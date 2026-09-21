@@ -1,0 +1,44 @@
+﻿--- split_batch cols ---
+mysql: [Warning] Using a password on the command line interface can be insecure.
+id
+batch_no
+parent_batch_id
+split_level
+product_name
+weight_kg
+package_count
+package_type
+split_time
+workshop
+workshop_temp
+operator
+file_ids
+note
+content_hash
+create_time
+--- split_batch rows ---
+mysql: [Warning] Using a password on the command line interface can be insecure.
+id	batch_no	parent_batch_id	split_level	product_name	weight_kg	package_count	package_type	split_time	workshop	workshop_temp	operator	file_ids	note	content_hash	create_time
+24	SP20260918243893	23	1	???	10.0	5	NULL	2026-09-18 11:47:46	????A?	NULL	NULL	NULL		f30b5f36aca11159ba26a789c495a5134f15e8499dad234dd57b73ccf6f8dd3a	2026-09-18 11:47:46
+23	SP20260918170247	22	1	???	10.0	5	NULL	2026-09-18 10:50:25	????A?	NULL	NULL	NULL		322e9e1212d6168313657aca86841083c9a85cae92fd295d97188e36db301e7b	2026-09-18 10:50:25
+22	SP20260918244095	21	1	????	10.0	5	NULL	2026-09-18 10:09:55	????A?	NULL	NULL	NULL		a4f80012a4be6b2ebd8cff5adac0a64896549b2fd8fec32e2cacd310bc1f27f2	2026-09-18 10:09:55
+21	SP20260918692191	20	1	????	10.0	5	NULL	2026-09-18 02:45:05	????A?	NULL	NULL	NULL		9c5eaf44e295f929b94e3c63a28c91a3c7eb7736f44ada4b9e6b1e3030346279	2026-09-18 02:45:05
+--- cold_chain_transport cols ---
+mysql: [Warning] Using a password on the command line interface can be insecure.
+id
+transport_no
+split_batch_id
+vehicle_no
+vehicle_type
+refrigeration
+driver_name
+driver_phone
+origin
+destination
+planned_depart
+planned_arrive
+depart_time
+arrive_time
+status
+content_hash
+create_time

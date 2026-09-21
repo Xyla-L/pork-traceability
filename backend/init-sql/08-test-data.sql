@@ -298,6 +298,7 @@ INSERT INTO cold_chain_transport (transport_no, split_batch_id, vehicle_no, vehi
 ('TR-TEST-0012', @sp5, '京B-TEST12', '冷藏车', '机械制冷', '吴师傅', '13800000021', '示范分割车间', '安康生鲜门店', DATE_ADD(NOW(), INTERVAL 3 DAY), DATE_ADD(NOW(), INTERVAL 4 DAY), NULL, NULL, 1),
 ('TR-TEST-0013', @sp6, '京B-TEST13', '冷藏车', '机械制冷', '周司机', '13800000020', '示范分割车间', '丰禾生鲜门店', DATE_ADD(NOW(), INTERVAL 4 DAY), DATE_ADD(NOW(), INTERVAL 5 DAY), NULL, NULL, 1),
 ('TR-TEST-0014', @sp7, '京B-TEST14', '冷藏车', '机械制冷', '吴师傅', '13800000021', '示范分割车间', '宏图生鲜门店', DATE_ADD(NOW(), INTERVAL 5 DAY), DATE_ADD(NOW(), INTERVAL 6 DAY), NULL, NULL, 1),
+('TR-TEST-0016', @sp2, '京B-TEST16', '冷藏车', '机械制冷', '吴师傅', '13800000021', '示范分割车间', '绿康生鲜门店', DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 4 HOUR), DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 4 HOUR), 3),
 ('TR-TEST-0015', @sp1, '京B-TEST15', '冷藏车', '液氮制冷', '周司机', '13800000020', '示范分割车间', '安心生鲜门店', DATE_SUB(NOW(), INTERVAL 7 DAY), DATE_SUB(NOW(), INTERVAL 6 DAY), DATE_SUB(NOW(), INTERVAL 7 DAY), DATE_SUB(NOW(), INTERVAL 6 DAY), 4)
 ON DUPLICATE KEY UPDATE status=VALUES(status);
 SET @tr1 := (SELECT id FROM cold_chain_transport WHERE transport_no='TR-TEST-0001');
@@ -314,6 +315,7 @@ SET @tr11 := (SELECT id FROM cold_chain_transport WHERE transport_no='TR-TEST-00
 SET @tr12 := (SELECT id FROM cold_chain_transport WHERE transport_no='TR-TEST-0012');
 SET @tr13 := (SELECT id FROM cold_chain_transport WHERE transport_no='TR-TEST-0013');
 SET @tr14 := (SELECT id FROM cold_chain_transport WHERE transport_no='TR-TEST-0014');
+SET @tr16 := (SELECT id FROM cold_chain_transport WHERE transport_no='TR-TEST-0016');
 SET @tr15 := (SELECT id FROM cold_chain_transport WHERE transport_no='TR-TEST-0015');
 
 -- 温度记录：已有1条，新增15条
@@ -335,7 +337,9 @@ INSERT INTO temperature_log (transport_id, record_time, temperature, temp_range_
 (@tr15, DATE_SUB(NOW(), INTERVAL 6 DAY), 8.0, -18.0, 0.0, 1, '设备自动', 'DEVICE')
 ON DUPLICATE KEY UPDATE temperature=VALUES(temperature);
 
--- 门店签收：已有1条，新增15条
+-- 门店签收：只给已到达/已签收的运单配签收单。
+-- 注意：这里刻意不签 TR-TEST-0016（已到达）——它就是「设备接入监控」页
+-- 签收通道演示的目标运单，签了它 POS/签收演示就会撞重复签收。
 INSERT INTO store_receipt (transport_id, store_id, store_name, receipt_time, receiver, receiver_phone, qty_check, temp_check, temp_value, package_intact, receipt_photo, e_signature, content_hash) VALUES
 (@tr1, 1001, '安心生鲜门店', DATE_SUB(NOW(), INTERVAL 13 DAY), '孙店长', '13800000030', 1, 1, -3.0, 1, JSON_ARRAY(), 'TEST-RECEIVER-SIG-001', SHA2(CONCAT('TR-TEST-0001', '1001'), 256)),
 (@tr2, 1002, '顺鑫生鲜门店', DATE_SUB(NOW(), INTERVAL 11 DAY), '周店长', '13800000031', 1, 0, 2.5, 1, JSON_ARRAY(), 'TEST-RECEIVER-SIG-002', SHA2(CONCAT('TR-TEST-0002', '1002'), 256)),
@@ -344,14 +348,7 @@ INSERT INTO store_receipt (transport_id, store_id, store_name, receipt_time, rec
 (@tr5, 1005, '永发生鲜门店', DATE_SUB(NOW(), INTERVAL 5 DAY), '赵店长', '13800000034', 1, 1, -4.5, 1, JSON_ARRAY(), 'TEST-RECEIVER-SIG-005', SHA2(CONCAT('TR-TEST-0005', '1005'), 256)),
 (@tr6, 1006, '昌盛生鲜门店', DATE_SUB(NOW(), INTERVAL 3 DAY), '孙店长', '13800000035', 1, 1, -2.5, 1, JSON_ARRAY(), 'TEST-RECEIVER-SIG-006', SHA2(CONCAT('TR-TEST-0006', '1006'), 256)),
 (@tr7, 1007, '兴农生鲜门店', DATE_SUB(NOW(), INTERVAL 1 DAY), '周店长', '13800000036', 1, 1, -1.0, 1, JSON_ARRAY(), 'TEST-RECEIVER-SIG-007', SHA2(CONCAT('TR-TEST-0007', '1007'), 256)),
-(@tr15, 1001, '安心生鲜门店', DATE_SUB(NOW(), INTERVAL 6 DAY), '孙店长', '13800000030', 0, 0, 8.0, 0, JSON_ARRAY(), 'TEST-RECEIVER-SIG-015', SHA2(CONCAT('TR-TEST-0015', '1001'), 256)),
-(@tr8, 1008, '惠农生鲜门店', DATE_SUB(NOW(), INTERVAL 12 DAY), '吴店长', '13800000037', 1, 1, -3.5, 1, JSON_ARRAY(), 'TEST-RECEIVER-SIG-008', SHA2(CONCAT('TR-TEST-0008', '1008'), 256)),
-(@tr9, 1009, '福田生鲜门店', DATE_SUB(NOW(), INTERVAL 10 DAY), '郑店长', '13800000038', 1, 0, 1.5, 1, JSON_ARRAY(), 'TEST-RECEIVER-SIG-009', SHA2(CONCAT('TR-TEST-0009', '1009'), 256)),
-(@tr10, 1010, '大众生鲜门店', DATE_SUB(NOW(), INTERVAL 8 DAY), '王店长', '13800000039', 1, 1, -5.0, 1, JSON_ARRAY(), 'TEST-RECEIVER-SIG-010', SHA2(CONCAT('TR-TEST-0010', '1010'), 256)),
-(@tr11, 1011, '利农生鲜门店', DATE_SUB(NOW(), INTERVAL 6 DAY), '冯店长', '13800000040', 1, 1, -6.0, 1, JSON_ARRAY(), 'TEST-RECEIVER-SIG-011', SHA2(CONCAT('TR-TEST-0011', '1011'), 256)),
-(@tr12, 1012, '安康生鲜门店', DATE_SUB(NOW(), INTERVAL 4 DAY), '蒋店长', '13800000041', 1, 1, -4.5, 1, JSON_ARRAY(), 'TEST-RECEIVER-SIG-012', SHA2(CONCAT('TR-TEST-0012', '1012'), 256)),
-(@tr13, 1013, '丰禾生鲜门店', DATE_SUB(NOW(), INTERVAL 2 DAY), '韩店长', '13800000042', 1, 1, -2.5, 1, JSON_ARRAY(), 'TEST-RECEIVER-SIG-013', SHA2(CONCAT('TR-TEST-0013', '1013'), 256)),
-(@tr14, 1014, '宏图生鲜门店', NOW(), '杨店长', '13800000043', 1, 1, -1.0, 1, JSON_ARRAY(), 'TEST-RECEIVER-SIG-014', SHA2(CONCAT('TR-TEST-0014', '1014'), 256))
+(@tr15, 1001, '安心生鲜门店', DATE_SUB(NOW(), INTERVAL 6 DAY), '孙店长', '13800000030', 0, 0, 8.0, 0, JSON_ARRAY(), 'TEST-RECEIVER-SIG-015', SHA2(CONCAT('TR-TEST-0015', '1001'), 256))
 ON DUPLICATE KEY UPDATE content_hash=VALUES(content_hash);
 
 -- ========== db_sales ==========
@@ -441,8 +438,11 @@ ON DUPLICATE KEY UPDATE status=VALUES(status);
 -- 1) 激活所有未激活产品
 UPDATE retail_sale SET is_activated=1, activate_time=DATE_SUB(NOW(), INTERVAL 2 DAY), shelf_time=DATE_SUB(NOW(), INTERVAL 2 DAY) WHERE is_activated=0;
 
--- 2) 销售所有在售产品(status=1)
-UPDATE retail_sale SET status=2, sell_time=DATE_SUB(NOW(), INTERVAL 1 DAY), sell_price=ROUND(20 + RAND() * 20, 2), sell_weight_kg=ROUND(0.3 + RAND() * 0.4, 2) WHERE status=1;
+-- 2) 销售在售产品(status=1)。
+--    刻意保留 3 个在库可售（QR-PORK-TEST-0005/0009/0012），它们是「设备接入监控」页
+--    销售通道（POS 扫码）演示的目标商品码——全部卖光演示就无码可扫。
+UPDATE retail_sale SET status=2, sell_time=DATE_SUB(NOW(), INTERVAL 1 DAY), sell_price=ROUND(20 + RAND() * 20, 2), sell_weight_kg=ROUND(0.3 + RAND() * 0.4, 2)
+WHERE status=1 AND product_qr_code NOT IN ('QR-PORK-TEST-0005', 'QR-PORK-TEST-0009', 'QR-PORK-TEST-0012');
 
 -- 3) 为所有已售(status=2)和已过期(status=3)记录设置 block_hash（模拟区块链上链回写）
 UPDATE retail_sale SET block_hash=SHA2(CONCAT(product_qr_code, ':', id), 256) WHERE status IN (2, 3) AND block_hash IS NULL;

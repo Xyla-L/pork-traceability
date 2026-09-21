@@ -36,7 +36,10 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
     private static final List<String> PUBLIC_PATHS = List.of(
             "/api/v1/auth/login", "/api/v1/auth/register", "/api/v1/auth/refresh", "/api/v1/consumer/",
             "/actuator/health", "/doc.html", "/v3/api-docs", "/swagger-ui",
-            "/api/v1/trace/search", "/api/v1/file/upload", "/api/v1/file/"
+            "/api/v1/trace/search", "/api/v1/file/upload", "/api/v1/file/",
+            // 设备上报不走 JWT：用设备级密钥 X-Device-Key 鉴权，只放行设备入口，
+            // /api/v1/ingest/staging、/api/v1/ingest/devices 是管理端接口，仍须登录
+            "/api/v1/ingest/device/"
     );
 
     private final ReactiveStringRedisTemplate redis;

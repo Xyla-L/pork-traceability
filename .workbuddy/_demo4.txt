@@ -1,0 +1,10 @@
+﻿s
+--- db_distribution tables ---
+Tables_in_db_distribution
+carcass_batch
+cold_chain_transport
+split_batch
+store_receipt
+temperature_log
+s
+--- split_batch ---

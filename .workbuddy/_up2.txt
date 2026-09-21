@@ -1,0 +1,48 @@
+﻿docker :  Container pork-traceability-mysql-1 Running 
+所在位置 行:445 字符: 95
++ ... ddy\_up2.txt"; docker compose up -d ingest-service nginx 2>&1 | Out-F ...
++                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ( Container pork...ysql-1 Running  
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ Container pork-traceability-redis-1 Running 
+ Container pork-traceability-gateway-service-1 Running 
+ Container pork-traceability-nacos-1 Running 
+ Container pork-traceability-ingest-service-1 Recreate 
+ Container pork-traceability-nginx-1 Recreate 
+ Container pork-traceability-nginx-1 Recreated 
+ Container pork-traceability-ingest-service-1 Recreated 
+ Container pork-traceability-mysql-1 Waiting 
+ Container pork-traceability-redis-1 Waiting 
+ Container pork-traceability-mysql-1 Waiting 
+ Container pork-traceability-redis-1 Waiting 
+ Container pork-traceability-redis-1 Healthy 
+ Container pork-traceability-mysql-1 Healthy 
+ Container pork-traceability-redis-1 Healthy 
+ Container pork-traceability-ingest-service-1 Starting 
+ Container pork-traceability-mysql-1 Healthy 
+ Container pork-traceability-gateway-service-1 Waiting 
+ Container pork-traceability-ingest-service-1 Started 
+ Container pork-traceability-gateway-service-1 Healthy 
+ Container pork-traceability-nginx-1 Starting 
+ Container pork-traceability-nginx-1 Started 
+=== ps ===
+pork-traceability-auth-service-1	Up 2 hours (healthy)
+pork-traceability-blockchain-service-1	Up 2 hours (healthy)
+pork-traceability-breeding-service-1	Up 10 minutes (healthy)
+pork-traceability-distribution-service-1	Up 10 minutes (healthy)
+pork-traceability-file-service-1	Up 2 hours (healthy)
+pork-traceability-ganache-1	Up 2 hours (healthy)
+pork-traceability-gateway-service-1	Up 10 minutes (healthy)
+pork-traceability-ingest-service-1	Up 51 seconds (healthy)
+pork-traceability-mysql-1	Up 2 hours (healthy)
+pork-traceability-nacos-1	Up 2 hours
+pork-traceability-nginx-1	Up 51 seconds (healthy)
+pork-traceability-rabbitmq-1	Up 2 hours (healthy)
+pork-traceability-redis-1	Up 2 hours (healthy)
+pork-traceability-sales-service-1	Up 10 minutes (healthy)
+pork-traceability-slaughter-service-1	Up 10 minutes (healthy)
+pork-traceability-trace-service-1	Up 2 hours (healthy)
+=== ingest health ===
+{"status":"UP"}

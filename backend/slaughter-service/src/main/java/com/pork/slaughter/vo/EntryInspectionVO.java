@@ -21,6 +21,10 @@ public class EntryInspectionVO {
     private String abnormalNote;
     private Integer status;
     private String inspector;
+    /** 数据来源 MANUAL/DEVICE/API/IMPORT，前端据此区分人工录入与设备自动采集 */
+    private String source;
+    /** 来源设备号/单据号，来源为 DEVICE 时展示 */
+    private String sourceRef;
     private String remark;
     private String fileIds; // 实际开发中这里通常是 List<String> 或 List<FileVO>
     private LocalDateTime createTime;

@@ -1,0 +1,10 @@
+SELECT '--- transports ---' AS s;
+SELECT id, transport_no, status FROM db_distribution.cold_chain_transport ORDER BY id DESC LIMIT 6;
+SELECT '--- sellable qr ---' AS s;
+SELECT id, product_qr_code, is_activated, status FROM db_sales.retail_sale WHERE status=1 ORDER BY id DESC LIMIT 3;
+SELECT '--- stores ---' AS s;
+SELECT id, store_name FROM db_distribution.store LIMIT 5;
+SELECT '--- recent batch_no ---' AS s;
+SELECT DISTINCT batch_no FROM db_slaughter.entry_inspection ORDER BY batch_no DESC LIMIT 5;
+SELECT '--- cert ok pigs ---' AS s;
+SELECT c.cert_no, p.ear_tag_no, c.valid_until FROM db_breeding.quarantine_certificate c JOIN db_breeding.pig_individual p ON p.id=c.pig_id ORDER BY c.valid_until DESC LIMIT 5;

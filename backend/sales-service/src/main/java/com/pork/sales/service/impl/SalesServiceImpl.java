@@ -197,7 +197,7 @@ public class SalesServiceImpl implements SalesService {
         return new SaleRecordVO(row.getId(), row.getSplitBatchId(), row.getProductQrCode(), row.getStoreId(), row.getStoreName(),
                 row.getShelfTime(), row.getSellTime(), row.getSellPrice(), row.getSellWeightKg(),
                 row.getIsActivated(), row.getActivateTime(), row.getStatus(), row.getExpireDate(), row.getCreateTime(),
-                productName, batchNo, row.getBlockHash());
+                productName, batchNo, row.getBlockHash(), row.getSource(), row.getSourceRef());
     }
 
     private Map<String, Object> splitInfo(Long splitBatchId, Map<Long, Map<String, Object>> cache) {

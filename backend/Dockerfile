@@ -9,10 +9,12 @@ COPY breeding-service ./breeding-service
 COPY slaughter-service ./slaughter-service
 COPY distribution-service ./distribution-service
 COPY sales-service ./sales-service
+COPY ingest-service ./ingest-service
 COPY trace-service ./trace-service
 COPY blockchain-service ./blockchain-service
 COPY file-service ./file-service
-RUN mvn -B -pl "${SERVICE}" -am install -DskipTests \
+RUN --mount=type=cache,target=/root/.m2,sharing=locked \
+    mvn -B -pl "${SERVICE}" -am install -DskipTests \
     && mvn -B -pl "${SERVICE}" dependency:copy-dependencies -DoutputDirectory=/runtime-libs
 
 FROM eclipse-temurin:17-jre-jammy

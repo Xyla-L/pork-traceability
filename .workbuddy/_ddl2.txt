@@ -1,0 +1,18 @@
+﻿ingest_device
+ingest_staging
+10
+store_receipt	raw_payload
+store_receipt	source
+store_receipt	source_ref
+temperature_log	raw_payload
+temperature_log	source
+temperature_log	source_ref
+retail_sale	raw_payload
+retail_sale	source
+retail_sale	source_ref
+entry_inspection	raw_payload
+entry_inspection	source
+entry_inspection	source_ref
+ractopamine_test	raw_payload
+ractopamine_test	source
+ractopamine_test	source_ref

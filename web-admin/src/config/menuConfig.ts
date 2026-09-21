@@ -133,6 +133,14 @@ export const menuConfig: MenuItem[] = [
     ],
   },
 
+  // ========== 设备接入（B 档自动化录入）==========
+  {
+    path: '/admin/ingest/monitor',
+    title: '设备接入',
+    icon: 'Connection',
+    roles: ['SUPERVISOR', 'ADMIN'],
+  },
+
   // ========== 应急追溯 ==========
   {
     path: '/admin/trace',

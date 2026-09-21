@@ -1,0 +1,8 @@
+﻿--- pig ear tags ---
+mysql: [Warning] Using a password on the command line interface can be insecure.
+ERROR 1054 (42S22) at line 1: Unknown column 'batch_no' in 'field list'
+--- quarantine cert cols ---
+mysql: [Warning] Using a password on the command line interface can be insecure.
+--- quarantine certs ---
+mysql: [Warning] Using a password on the command line interface can be insecure.
+ERROR 1146 (42S02) at line 1: Table 'db_breeding.quarantine_cert' doesn't exist

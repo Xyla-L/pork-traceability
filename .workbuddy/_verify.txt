@@ -1,0 +1,35 @@
+﻿status	cnt
+2	6
+3	6
+4	2
+channel	device_no	status	target_table	target_id
+RACTOPAMINE	READER-001	3	ractopamine_test	NULL
+TEMPERATURE	TEMP-001	4	temperature_log	NULL
+TEMPERATURE	TEMP-001	2	temperature_log	35
+TEMPERATURE	TEMP-001	2	temperature_log	34
+TEMPERATURE	TEMP-001	3	temperature_log	NULL
+TEMPERATURE	TEMP-001	3	temperature_log	NULL
+TEMPERATURE	TEMP-001	2	temperature_log	33
+RACTOPAMINE	READER-001	3	ractopamine_test	NULL
+TEMPERATURE	TEMP-001	4	temperature_log	NULL
+TEMPERATURE	TEMP-001	2	temperature_log	32
+TEMPERATURE	TEMP-001	2	temperature_log	31
+TEMPERATURE	TEMP-001	3	temperature_log	NULL
+id	source	source_ref
+35	DEVICE	TEMP-001
+34	DEVICE	TEMP-001
+33	DEVICE	TEMP-001
+32	DEVICE	TEMP-001
+31	DEVICE	TEMP-001
+id	source	source_ref
+24	MANUAL	NULL
+23	MANUAL	NULL
+22	MANUAL	NULL
+21	MANUAL	NULL
+20	MANUAL	NULL
+id	source	source_ref
+34	MANUAL	NULL
+33	MANUAL	NULL
+32	MANUAL	NULL
+31	MANUAL	NULL
+30	MANUAL	NULL

@@ -1,0 +1,11 @@
+﻿docker : mysql: [Warning] Using a password on the command line interface can be
+ insecure.
+所在位置 行:445 字符: 66
++ ... data.sql" | docker exec -i pork-traceability-mysql-1 mysql -uroot -pc ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (mysql: [Warning...an be insecure. 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ERROR 1146 (42S02) at line 1: Table 'db_slaughter.carcass_batch' doesn't exist
+

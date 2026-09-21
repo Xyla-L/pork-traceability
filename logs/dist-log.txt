@@ -1,0 +1,15 @@
+﻿
+> 2026-09-21T20:12:23.328+08:00 ERROR 1 --- [distribution-service] [nio-8084-ex
+ec-3] c.p.web.handler.GlobalExceptionHandler   : 绯荤粺鏈煡寮傚父
+  
+> org.springframework.web.servlet.resource.NoResourceFoundException: No static 
+resource distribution/carcasses.
+  	at org.springframework.web.servlet.resource.ResourceHttpRequestHandler.handl
+eRequest(ResourceHttpRequestHandler.java:585) ~[spring-webmvc-6.1.6.jar:6.1.6]
+  	at org.springframework.web.servlet.mvc.HttpRequestHandlerAdapter.handle(Http
+RequestHandlerAdapter.java:52) ~[spring-webmvc-6.1.6.jar:6.1.6]
+  	at org.springframework.web.servlet.DispatcherServlet.doDispatch(DispatcherSe
+rvlet.java:1089) ~[spring-webmvc-6.1.6.jar:6.1.6]
+
+
+

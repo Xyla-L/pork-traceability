@@ -1,0 +1,8 @@
+﻿=== 1) menuConfig.ts 经 Vite 转换后是否含 ingest ===
+ERR: 无法连接到远程服务器
+
+=== 2) IngestMonitor.vue 能否被 Vite 编译 ===
+ERR: 无法连接到远程服务器
+
+=== 3) 首页 HTML ===
+ERR: 无法连接到远程服务器

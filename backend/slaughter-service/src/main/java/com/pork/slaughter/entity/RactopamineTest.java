@@ -25,6 +25,12 @@ public class RactopamineTest {
     private Integer status;
     private String detectionLimit;
     private String operator;
+    /** 数据来源 MANUAL=人工录入 DEVICE=设备自动采集 API=第三方推送 IMPORT=批量导入 */
+    private String source;
+    /** 来源设备号/第三方单据号 */
+    private String sourceRef;
+    /** 设备原始报文留档 */
+    private String rawPayload;
     private String fileIds;
     private String reportUrl;
     private String remark;

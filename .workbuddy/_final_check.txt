@@ -1,0 +1,9 @@
+﻿HTTP 200  len=131492
+含「模拟设备上报」: False
+含 demoReport: True
+含 fillSample: True
+
+=== 前端构建 ===
+    + FullyQualifiedErrorId : NativeCommandError
+[32m鉁?built in 22.28s[39m
+exit=0

@@ -1,0 +1,353 @@
+﻿docker :  Image pork-traceability-ingest-service Building 
+所在位置 行:445 字符: 46
++ ... aceability\backend"; docker compose build ingest-service 2>&1 | Out-F ...
++                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ( Image pork-tra...rvice Building :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+#1 [internal] load local bake definitions
+#1 reading from stdin 626B 0.0s done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 1.35kB done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/maven:3.9.9-eclipse-temurin-17
+#3 DONE 0.5s
+
+#4 [internal] load metadata for docker.io/library/eclipse-temurin:17-jre-jammy
+#4 DONE 2.5s
+
+#5 [internal] load .dockerignore
+#5 transferring context: 92B done
+#5 DONE 0.0s
+
+#6 [stage-1 1/6] FROM docker.io/library/eclipse-temurin:17-jre-jammy@sha256:e85989f3e4d136b3d7dde921e157fddb9c7016805a225c1ec483326b825b3ca5
+#6 resolve docker.io/library/eclipse-temurin:17-jre-jammy@sha256:e85989f3e4d136b3d7dde921e157fddb9c7016805a225c1ec483326b825b3ca5 0.0s done
+#6 DONE 0.0s
+
+#7 [builder  1/15] FROM docker.io/library/maven:3.9.9-eclipse-temurin-17@sha256:f58d59b6273e785ac0a4477f6e9b5ba1d7731c75b906c0f7b34076f1851318cc
+#7 resolve docker.io/library/maven:3.9.9-eclipse-temurin-17@sha256:f58d59b6273e785ac0a4477f6e9b5ba1d7731c75b906c0f7b34076f1851318cc 0.0s done
+#7 DONE 0.1s
+
+#8 [internal] load build context
+#8 transferring context: 65.98kB 0.1s done
+#8 DONE 0.1s
+
+#9 [builder  2/15] WORKDIR /workspace
+#9 CACHED
+
+#10 [builder  4/15] COPY common ./common
+#10 CACHED
+
+#11 [builder  3/15] COPY pom.xml ./
+#11 CACHED
+
+#12 [builder  5/15] COPY gateway-service ./gateway-service
+#12 CACHED
+
+#13 [builder  8/15] COPY slaughter-service ./slaughter-service
+#13 CACHED
+
+#14 [builder  6/15] COPY auth-service ./auth-service
+#14 CACHED
+
+#15 [builder  7/15] COPY breeding-service ./breeding-service
+#15 CACHED
+
+#16 [builder  9/15] COPY distribution-service ./distribution-service
+#16 CACHED
+
+#17 [builder 10/15] COPY sales-service ./sales-service
+#17 CACHED
+
+#18 [builder 11/15] COPY ingest-service ./ingest-service
+#18 DONE 0.1s
+
+#19 [builder 12/15] COPY trace-service ./trace-service
+#19 DONE 0.1s
+
+#20 [builder 13/15] COPY blockchain-service ./blockchain-service
+#20 DONE 0.1s
+
+#21 [builder 14/15] COPY file-service ./file-service
+#21 DONE 0.1s
+
+#22 [builder 15/15] RUN --mount=type=cache,target=/root/.m2,sharing=locked     mvn -B -pl "ingest-service" -am install -DskipTests     && mvn -B -pl "ingest-service" dependency:copy-dependencies -DoutputDirectory=/runtime-libs
+#22 1.477 [INFO] Scanning for projects...
+#22 1.980 [INFO] ------------------------------------------------------------------------
+#22 1.980 [INFO] Reactor Build Order:
+#22 1.980 [INFO] 
+#22 1.981 [INFO] pork-traceability-backend                                          [pom]
+#22 1.981 [INFO] common-core                                                        [jar]
+#22 1.982 [INFO] common-web                                                         [jar]
+#22 1.982 [INFO] ingest-service                                                     [jar]
+#22 1.993 [INFO] 
+#22 1.993 [INFO] --------------------------< com.pork:backend >--------------------------
+#22 1.993 [INFO] Building pork-traceability-backend 1.0-SNAPSHOT                    [1/4]
+#22 1.993 [INFO]   from pom.xml
+#22 1.993 [INFO] --------------------------------[ pom ]---------------------------------
+#22 2.062 [INFO] 
+#22 2.062 [INFO] --- spring-boot:3.2.5:repackage (repackage) @ backend ---
+#22 2.439 [INFO] 
+#22 2.439 [INFO] --- install:3.1.1:install (default-install) @ backend ---
+#22 2.470 [INFO] Installing /workspace/pom.xml to /root/.m2/repository/com/pork/backend/1.0-SNAPSHOT/backend-1.0-SNAPSHOT.pom
+#22 2.486 [INFO] 
+#22 2.486 [INFO] ------------------------< com.pork:common-core >------------------------
+#22 2.486 [INFO] Building common-core 1.0-SNAPSHOT                                  [2/4]
+#22 2.486 [INFO]   from common/common-core/pom.xml
+#22 2.486 [INFO] --------------------------------[ jar ]---------------------------------
+#22 2.572 [INFO] 
+#22 2.572 [INFO] --- resources:3.3.1:resources (default-resources) @ common-core ---
+#22 2.646 [INFO] skip non existing resourceDirectory /workspace/common/common-core/src/main/resources
+#22 2.646 [INFO] skip non existing resourceDirectory /workspace/common/common-core/src/main/resources
+#22 2.646 [INFO] 
+#22 2.647 [INFO] --- compiler:3.11.0:compile (default-compile) @ common-core ---
+#22 2.785 [INFO] Changes detected - recompiling the module! :source
+#22 2.788 [INFO] Compiling 9 source files with javac [debug release 17] to target/classes
+#22 4.154 [INFO] 
+#22 4.154 [INFO] --- resources:3.3.1:testResources (default-testResources) @ common-core ---
+#22 4.159 [INFO] skip non existing resourceDirectory /workspace/common/common-core/src/test/resources
+#22 4.159 [INFO] 
+#22 4.159 [INFO] --- compiler:3.11.0:testCompile (default-testCompile) @ common-core ---
+#22 4.164 [INFO] No sources to compile
+#22 4.164 [INFO] 
+#22 4.164 [INFO] --- surefire:3.1.2:test (default-test) @ common-core ---
+#22 4.349 [INFO] Tests are skipped.
+#22 4.349 [INFO] 
+#22 4.349 [INFO] --- jar:3.3.0:jar (default-jar) @ common-core ---
+#22 4.495 [INFO] Building jar: /workspace/common/common-core/target/common-core-1.0-SNAPSHOT.jar
+#22 4.540 [INFO] 
+#22 4.540 [INFO] --- spring-boot:3.2.5:repackage (repackage) @ common-core ---
+#22 4.542 [INFO] 
+#22 4.542 [INFO] --- install:3.1.1:install (default-install) @ common-core ---
+#22 4.544 [INFO] Installing /workspace/common/common-core/pom.xml to /root/.m2/repository/com/pork/common-core/1.0-SNAPSHOT/common-core-1.0-SNAPSHOT.pom
+#22 4.547 [INFO] Installing /workspace/common/common-core/target/common-core-1.0-SNAPSHOT.jar to /root/.m2/repository/com/pork/common-core/1.0-SNAPSHOT/common-core-1.0-SNAPSHOT.jar
+#22 4.552 [INFO] 
+#22 4.552 [INFO] ------------------------< com.pork:common-web >-------------------------
+#22 4.552 [INFO] Building common-web 1.0-SNAPSHOT                                   [3/4]
+#22 4.552 [INFO]   from common/common-web/pom.xml
+#22 4.553 [INFO] --------------------------------[ jar ]---------------------------------
+#22 4.713 [INFO] 
+#22 4.713 [INFO] --- resources:3.3.1:resources (default-resources) @ common-web ---
+#22 4.721 [INFO] Copying 0 resource from src/main/resources to target/classes
+#22 4.721 [INFO] Copying 1 resource from src/main/resources to target/classes
+#22 4.725 [INFO] 
+#22 4.725 [INFO] --- compiler:3.11.0:compile (default-compile) @ common-web ---
+#22 4.730 [INFO] Changes detected - recompiling the module! :dependency
+#22 4.731 [INFO] Compiling 8 source files with javac [debug release 17] to target/classes
+#22 5.262 [INFO] 
+#22 5.262 [INFO] --- resources:3.3.1:testResources (default-testResources) @ common-web ---
+#22 5.265 [INFO] skip non existing resourceDirectory /workspace/common/common-web/src/test/resources
+#22 5.265 [INFO] 
+#22 5.265 [INFO] --- compiler:3.11.0:testCompile (default-testCompile) @ common-web ---
+#22 5.267 [INFO] No sources to compile
+#22 5.267 [INFO] 
+#22 5.267 [INFO] --- surefire:3.1.2:test (default-test) @ common-web ---
+#22 5.270 [INFO] Tests are skipped.
+#22 5.270 [INFO] 
+#22 5.271 [INFO] --- jar:3.3.0:jar (default-jar) @ common-web ---
+#22 5.277 [INFO] Building jar: /workspace/common/common-web/target/common-web-1.0-SNAPSHOT.jar
+#22 5.286 [INFO] 
+#22 5.286 [INFO] --- spring-boot:3.2.5:repackage (repackage) @ common-web ---
+#22 5.287 [INFO] 
+#22 5.287 [INFO] --- install:3.1.1:install (default-install) @ common-web ---
+#22 5.289 [INFO] Installing /workspace/common/common-web/pom.xml to /root/.m2/repository/com/pork/common-web/1.0-SNAPSHOT/common-web-1.0-SNAPSHOT.pom
+#22 5.290 [INFO] Installing /workspace/common/common-web/target/common-web-1.0-SNAPSHOT.jar to /root/.m2/repository/com/pork/common-web/1.0-SNAPSHOT/common-web-1.0-SNAPSHOT.jar
+#22 5.294 [INFO] 
+#22 5.294 [INFO] ----------------------< com.pork:ingest-service >-----------------------
+#22 5.294 [INFO] Building ingest-service 1.0-SNAPSHOT                               [4/4]
+#22 5.294 [INFO]   from ingest-service/pom.xml
+#22 5.294 [INFO] --------------------------------[ jar ]---------------------------------
+#22 5.549 [INFO] 
+#22 5.549 [INFO] --- resources:3.3.1:resources (default-resources) @ ingest-service ---
+#22 5.551 [INFO] Copying 1 resource from src/main/resources to target/classes
+#22 5.568 [INFO] Copying 0 resource from src/main/resources to target/classes
+#22 5.568 [INFO] 
+#22 5.568 [INFO] --- compiler:3.11.0:compile (default-compile) @ ingest-service ---
+#22 5.577 [INFO] Changes detected - recompiling the module! :dependency
+#22 5.577 [INFO] Compiling 27 source files with javac [debug release 17] to target/classes
+#22 7.590 [INFO] 
+#22 7.590 [INFO] --- resources:3.3.1:testResources (default-testResources) @ ingest-service ---
+#22 7.594 [INFO] skip non existing resourceDirectory /workspace/ingest-service/src/test/resources
+#22 7.594 [INFO] 
+#22 7.594 [INFO] --- compiler:3.11.0:testCompile (default-testCompile) @ ingest-service ---
+#22 7.597 [INFO] No sources to compile
+#22 7.597 [INFO] 
+#22 7.597 [INFO] --- surefire:3.1.2:test (default-test) @ ingest-service ---
+#22 7.601 [INFO] Tests are skipped.
+#22 7.601 [INFO] 
+#22 7.601 [INFO] --- jar:3.3.0:jar (default-jar) @ ingest-service ---
+#22 7.616 [INFO] Building jar: /workspace/ingest-service/target/ingest-service-1.0-SNAPSHOT.jar
+#22 7.647 [INFO] 
+#22 7.647 [INFO] --- spring-boot:3.2.5:repackage (repackage) @ ingest-service ---
+#22 7.650 [INFO] 
+#22 7.650 [INFO] --- install:3.1.1:install (default-install) @ ingest-service ---
+#22 7.651 [INFO] Installing /workspace/ingest-service/pom.xml to /root/.m2/repository/com/pork/ingest-service/1.0-SNAPSHOT/ingest-service-1.0-SNAPSHOT.pom
+#22 7.654 [INFO] Installing /workspace/ingest-service/target/ingest-service-1.0-SNAPSHOT.jar to /root/.m2/repository/com/pork/ingest-service/1.0-SNAPSHOT/ingest-service-1.0-SNAPSHOT.jar
+#22 7.663 [INFO] ------------------------------------------------------------------------
+#22 7.663 [INFO] Reactor Summary for pork-traceability-backend 1.0-SNAPSHOT:
+#22 7.663 [INFO] 
+#22 7.663 [INFO] pork-traceability-backend .......................... SUCCESS [  0.493 s]
+#22 7.663 [INFO] common-core ........................................ SUCCESS [  2.066 s]
+#22 7.663 [INFO] common-web ......................................... SUCCESS [  0.741 s]
+#22 7.663 [INFO] ingest-service ..................................... SUCCESS [  2.369 s]
+#22 7.663 [INFO] ------------------------------------------------------------------------
+#22 7.663 [INFO] BUILD SUCCESS
+#22 7.663 [INFO] ------------------------------------------------------------------------
+#22 7.664 [INFO] Total time:  6.208 s
+#22 7.664 [INFO] Finished at: 2026-09-21T09:54:00Z
+#22 7.664 [INFO] ------------------------------------------------------------------------
+#22 8.901 [INFO] Scanning for projects...
+#22 9.506 [INFO] 
+#22 9.506 [INFO] ----------------------< com.pork:ingest-service >-----------------------
+#22 9.506 [INFO] Building ingest-service 1.0-SNAPSHOT
+#22 9.506 [INFO]   from pom.xml
+#22 9.506 [INFO] --------------------------------[ jar ]---------------------------------
+#22 9.956 [INFO] 
+#22 9.956 [INFO] --- dependency:3.6.1:copy-dependencies (default-cli) @ ingest-service ---
+#22 10.60 [INFO] Copying spring-boot-starter-web-3.2.5.jar to /runtime-libs/spring-boot-starter-web-3.2.5.jar
+#22 10.61 [INFO] Copying spring-boot-starter-3.2.5.jar to /runtime-libs/spring-boot-starter-3.2.5.jar
+#22 10.61 [INFO] Copying spring-boot-3.2.5.jar to /runtime-libs/spring-boot-3.2.5.jar
+#22 10.61 [INFO] Copying spring-boot-starter-logging-3.2.5.jar to /runtime-libs/spring-boot-starter-logging-3.2.5.jar
+#22 10.61 [INFO] Copying logback-classic-1.4.14.jar to /runtime-libs/logback-classic-1.4.14.jar
+#22 10.61 [INFO] Copying logback-core-1.4.14.jar to /runtime-libs/logback-core-1.4.14.jar
+#22 10.61 [INFO] Copying log4j-to-slf4j-2.21.1.jar to /runtime-libs/log4j-to-slf4j-2.21.1.jar
+#22 10.61 [INFO] Copying log4j-api-2.21.1.jar to /runtime-libs/log4j-api-2.21.1.jar
+#22 10.62 [INFO] Copying jul-to-slf4j-2.0.13.jar to /runtime-libs/jul-to-slf4j-2.0.13.jar
+#22 10.62 [INFO] Copying spring-core-6.1.6.jar to /runtime-libs/spring-core-6.1.6.jar
+#22 10.62 [INFO] Copying spring-jcl-6.1.6.jar to /runtime-libs/spring-jcl-6.1.6.jar
+#22 10.62 [INFO] Copying snakeyaml-2.2.jar to /runtime-libs/snakeyaml-2.2.jar
+#22 10.62 [INFO] Copying spring-boot-starter-json-3.2.5.jar to /runtime-libs/spring-boot-starter-json-3.2.5.jar
+#22 10.62 [INFO] Copying jackson-databind-2.15.4.jar to /runtime-libs/jackson-databind-2.15.4.jar
+#22 10.62 [INFO] Copying jackson-annotations-2.15.4.jar to /runtime-libs/jackson-annotations-2.15.4.jar
+#22 10.62 [INFO] Copying jackson-datatype-jdk8-2.15.4.jar to /runtime-libs/jackson-datatype-jdk8-2.15.4.jar
+#22 10.62 [INFO] Copying jackson-datatype-jsr310-2.15.4.jar to /runtime-libs/jackson-datatype-jsr310-2.15.4.jar
+#22 10.62 [INFO] Copying jackson-module-parameter-names-2.15.4.jar to /runtime-libs/jackson-module-parameter-names-2.15.4.jar
+#22 10.62 [INFO] Copying spring-boot-starter-tomcat-3.2.5.jar to /runtime-libs/spring-boot-starter-tomcat-3.2.5.jar
+#22 10.62 [INFO] Copying tomcat-embed-core-10.1.20.jar to /runtime-libs/tomcat-embed-core-10.1.20.jar
+#22 10.63 [INFO] Copying tomcat-embed-el-10.1.20.jar to /runtime-libs/tomcat-embed-el-10.1.20.jar
+#22 10.63 [INFO] Copying tomcat-embed-websocket-10.1.20.jar to /runtime-libs/tomcat-embed-websocket-10.1.20.jar
+#22 10.63 [INFO] Copying spring-web-6.1.6.jar to /runtime-libs/spring-web-6.1.6.jar
+#22 10.63 [INFO] Copying spring-beans-6.1.6.jar to /runtime-libs/spring-beans-6.1.6.jar
+#22 10.63 [INFO] Copying spring-webmvc-6.1.6.jar to /runtime-libs/spring-webmvc-6.1.6.jar
+#22 10.63 [INFO] Copying spring-aop-6.1.6.jar to /runtime-libs/spring-aop-6.1.6.jar
+#22 10.63 [INFO] Copying spring-context-6.1.6.jar to /runtime-libs/spring-context-6.1.6.jar
+#22 10.63 [INFO] Copying spring-expression-6.1.6.jar to /runtime-libs/spring-expression-6.1.6.jar
+#22 10.64 [INFO] Copying spring-boot-starter-actuator-3.2.5.jar to /runtime-libs/spring-boot-starter-actuator-3.2.5.jar
+#22 10.64 [INFO] Copying spring-boot-actuator-autoconfigure-3.2.5.jar to /runtime-libs/spring-boot-actuator-autoconfigure-3.2.5.jar
+#22 10.64 [INFO] Copying spring-boot-actuator-3.2.5.jar to /runtime-libs/spring-boot-actuator-3.2.5.jar
+#22 10.64 [INFO] Copying micrometer-observation-1.12.5.jar to /runtime-libs/micrometer-observation-1.12.5.jar
+#22 10.64 [INFO] Copying micrometer-commons-1.12.5.jar to /runtime-libs/micrometer-commons-1.12.5.jar
+#22 10.64 [INFO] Copying micrometer-jakarta9-1.12.5.jar to /runtime-libs/micrometer-jakarta9-1.12.5.jar
+#22 10.64 [INFO] Copying micrometer-core-1.12.5.jar to /runtime-libs/micrometer-core-1.12.5.jar
+#22 10.64 [INFO] Copying HdrHistogram-2.1.12.jar to /runtime-libs/HdrHistogram-2.1.12.jar
+#22 10.64 [INFO] Copying LatencyUtils-2.0.3.jar to /runtime-libs/LatencyUtils-2.0.3.jar
+#22 10.64 [INFO] Copying spring-cloud-starter-alibaba-nacos-discovery-2023.0.1.0.jar to /runtime-libs/spring-cloud-starter-alibaba-nacos-discovery-2023.0.1.0.jar
+#22 10.64 [INFO] Copying spring-cloud-alibaba-commons-2023.0.1.0.jar to /runtime-libs/spring-cloud-alibaba-commons-2023.0.1.0.jar
+#22 10.64 [INFO] Copying nacos-client-2.3.2.jar to /runtime-libs/nacos-client-2.3.2.jar
+#22 10.65 [INFO] Copying nacos-auth-plugin-2.3.2.jar to /runtime-libs/nacos-auth-plugin-2.3.2.jar
+#22 10.65 [INFO] Copying nacos-encryption-plugin-2.3.2.jar to /runtime-libs/nacos-encryption-plugin-2.3.2.jar
+#22 10.65 [INFO] Copying commons-codec-1.16.1.jar to /runtime-libs/commons-codec-1.16.1.jar
+#22 10.65 [INFO] Copying jackson-core-2.15.4.jar to /runtime-libs/jackson-core-2.15.4.jar
+#22 10.65 [INFO] Copying httpasyncclient-4.1.5.jar to /runtime-libs/httpasyncclient-4.1.5.jar
+#22 10.65 [INFO] Copying httpcore-nio-4.4.16.jar to /runtime-libs/httpcore-nio-4.4.16.jar
+#22 10.66 [INFO] Copying httpclient-4.5.13.jar to /runtime-libs/httpclient-4.5.13.jar
+#22 10.66 [INFO] Copying httpcore-4.4.16.jar to /runtime-libs/httpcore-4.4.16.jar
+#22 10.66 [INFO] Copying simpleclient-0.16.0.jar to /runtime-libs/simpleclient-0.16.0.jar
+#22 10.66 [INFO] Copying simpleclient_tracer_otel-0.16.0.jar to /runtime-libs/simpleclient_tracer_otel-0.16.0.jar
+#22 10.66 [INFO] Copying simpleclient_tracer_common-0.16.0.jar to /runtime-libs/simpleclient_tracer_common-0.16.0.jar
+#22 10.66 [INFO] Copying simpleclient_tracer_otel_agent-0.16.0.jar to /runtime-libs/simpleclient_tracer_otel_agent-0.16.0.jar
+#22 10.66 [INFO] Copying spring-context-support-1.0.11.jar to /runtime-libs/spring-context-support-1.0.11.jar
+#22 10.66 [INFO] Copying spring-cloud-commons-4.1.2.jar to /runtime-libs/spring-cloud-commons-4.1.2.jar
+#22 10.66 [INFO] Copying spring-security-crypto-6.2.4.jar to /runtime-libs/spring-security-crypto-6.2.4.jar
+#22 10.66 [INFO] Copying spring-cloud-context-4.1.2.jar to /runtime-libs/spring-cloud-context-4.1.2.jar
+#22 10.66 [INFO] Copying spring-cloud-starter-alibaba-nacos-config-2023.0.1.0.jar to /runtime-libs/spring-cloud-starter-alibaba-nacos-config-2023.0.1.0.jar
+#22 10.66 [INFO] Copying slf4j-api-2.0.13.jar to /runtime-libs/slf4j-api-2.0.13.jar
+#22 10.66 [INFO] Copying jakarta.annotation-api-2.1.1.jar to /runtime-libs/jakarta.annotation-api-2.1.1.jar
+#22 10.66 [INFO] Copying mysql-connector-j-8.0.33.jar to /runtime-libs/mysql-connector-j-8.0.33.jar
+#22 10.67 [INFO] Copying protobuf-java-3.21.9.jar to /runtime-libs/protobuf-java-3.21.9.jar
+#22 10.67 [INFO] Copying druid-spring-boot-3-starter-1.2.22.jar to /runtime-libs/druid-spring-boot-3-starter-1.2.22.jar
+#22 10.67 [INFO] Copying druid-1.2.22.jar to /runtime-libs/druid-1.2.22.jar
+#22 10.68 [INFO] Copying spring-boot-autoconfigure-3.2.5.jar to /runtime-libs/spring-boot-autoconfigure-3.2.5.jar
+#22 10.68 [INFO] Copying mybatis-plus-spring-boot3-starter-3.5.9.jar to /runtime-libs/mybatis-plus-spring-boot3-starter-3.5.9.jar
+#22 10.68 [INFO] Copying mybatis-plus-3.5.9.jar to /runtime-libs/mybatis-plus-3.5.9.jar
+#22 10.68 [INFO] Copying mybatis-plus-core-3.5.9.jar to /runtime-libs/mybatis-plus-core-3.5.9.jar
+#22 10.68 [INFO] Copying mybatis-plus-annotation-3.5.9.jar to /runtime-libs/mybatis-plus-annotation-3.5.9.jar
+#22 10.68 [INFO] Copying mybatis-plus-spring-3.5.9.jar to /runtime-libs/mybatis-plus-spring-3.5.9.jar
+#22 10.68 [INFO] Copying mybatis-3.5.16.jar to /runtime-libs/mybatis-3.5.16.jar
+#22 10.68 [INFO] Copying mybatis-spring-3.0.4.jar to /runtime-libs/mybatis-spring-3.0.4.jar
+#22 10.68 [INFO] Copying mybatis-plus-spring-boot-autoconfigure-3.5.9.jar to /runtime-libs/mybatis-plus-spring-boot-autoconfigure-3.5.9.jar
+#22 10.69 [INFO] Copying spring-boot-starter-jdbc-3.2.5.jar to /runtime-libs/spring-boot-starter-jdbc-3.2.5.jar
+#22 10.69 [INFO] Copying HikariCP-5.0.1.jar to /runtime-libs/HikariCP-5.0.1.jar
+#22 10.69 [INFO] Copying spring-jdbc-6.1.6.jar to /runtime-libs/spring-jdbc-6.1.6.jar
+#22 10.69 [INFO] Copying spring-tx-6.1.6.jar to /runtime-libs/spring-tx-6.1.6.jar
+#22 10.69 [INFO] Copying common-core-1.0-SNAPSHOT.jar to /runtime-libs/common-core-1.0-SNAPSHOT.jar
+#22 10.69 [INFO] Copying hutool-all-5.8.27.jar to /runtime-libs/hutool-all-5.8.27.jar
+#22 10.69 [INFO] Copying fastjson2-2.0.43.jar to /runtime-libs/fastjson2-2.0.43.jar
+#22 10.69 [INFO] Copying jakarta.validation-api-3.0.2.jar to /runtime-libs/jakarta.validation-api-3.0.2.jar
+#22 10.69 [INFO] Copying mybatis-plus-extension-3.5.9.jar to /runtime-libs/mybatis-plus-extension-3.5.9.jar
+#22 10.69 [INFO] Copying common-web-1.0-SNAPSHOT.jar to /runtime-libs/common-web-1.0-SNAPSHOT.jar
+#22 10.69 [INFO] Copying mybatis-plus-jsqlparser-3.5.9.jar to /runtime-libs/mybatis-plus-jsqlparser-3.5.9.jar
+#22 10.69 [INFO] Copying jsqlparser-5.0.jar to /runtime-libs/jsqlparser-5.0.jar
+#22 10.70 [INFO] Copying mybatis-plus-jsqlparser-common-3.5.9.jar to /runtime-libs/mybatis-plus-jsqlparser-common-3.5.9.jar
+#22 10.70 [INFO] Copying spring-boot-starter-validation-3.2.5.jar to /runtime-libs/spring-boot-starter-validation-3.2.5.jar
+#22 10.70 [INFO] Copying hibernate-validator-8.0.1.Final.jar to /runtime-libs/hibernate-validator-8.0.1.Final.jar
+#22 10.70 [INFO] Copying jboss-logging-3.5.3.Final.jar to /runtime-libs/jboss-logging-3.5.3.Final.jar
+#22 10.70 [INFO] Copying classmate-1.6.0.jar to /runtime-libs/classmate-1.6.0.jar
+#22 10.70 [INFO] Copying lombok-1.18.32.jar to /runtime-libs/lombok-1.18.32.jar
+#22 10.70 [INFO] Copying knife4j-openapi3-jakarta-spring-boot-starter-4.4.0.jar to /runtime-libs/knife4j-openapi3-jakarta-spring-boot-starter-4.4.0.jar
+#22 10.70 [INFO] Copying knife4j-core-4.4.0.jar to /runtime-libs/knife4j-core-4.4.0.jar
+#22 10.70 [INFO] Copying knife4j-openapi3-ui-4.4.0.jar to /runtime-libs/knife4j-openapi3-ui-4.4.0.jar
+#22 10.71 [INFO] Copying springdoc-openapi-starter-webmvc-ui-2.3.0.jar to /runtime-libs/springdoc-openapi-starter-webmvc-ui-2.3.0.jar
+#22 10.71 [INFO] Copying springdoc-openapi-starter-webmvc-api-2.3.0.jar to /runtime-libs/springdoc-openapi-starter-webmvc-api-2.3.0.jar
+#22 10.71 [INFO] Copying springdoc-openapi-starter-common-2.3.0.jar to /runtime-libs/springdoc-openapi-starter-common-2.3.0.jar
+#22 10.71 [INFO] Copying swagger-core-jakarta-2.2.19.jar to /runtime-libs/swagger-core-jakarta-2.2.19.jar
+#22 10.71 [INFO] Copying commons-lang3-3.13.0.jar to /runtime-libs/commons-lang3-3.13.0.jar
+#22 10.71 [INFO] Copying swagger-annotations-jakarta-2.2.19.jar to /runtime-libs/swagger-annotations-jakarta-2.2.19.jar
+#22 10.71 [INFO] Copying swagger-models-jakarta-2.2.19.jar to /runtime-libs/swagger-models-jakarta-2.2.19.jar
+#22 10.71 [INFO] Copying jakarta.xml.bind-api-4.0.2.jar to /runtime-libs/jakarta.xml.bind-api-4.0.2.jar
+#22 10.71 [INFO] Copying jakarta.activation-api-2.1.3.jar to /runtime-libs/jakarta.activation-api-2.1.3.jar
+#22 10.71 [INFO] Copying jackson-dataformat-yaml-2.15.4.jar to /runtime-libs/jackson-dataformat-yaml-2.15.4.jar
+#22 10.71 [INFO] Copying swagger-ui-5.10.3.jar to /runtime-libs/swagger-ui-5.10.3.jar
+#22 10.72 [INFO] ------------------------------------------------------------------------
+#22 10.72 [INFO] BUILD SUCCESS
+#22 10.72 [INFO] ------------------------------------------------------------------------
+#22 10.72 [INFO] Total time:  1.838 s
+#22 10.72 [INFO] Finished at: 2026-09-21T09:54:03Z
+#22 10.72 [INFO] ------------------------------------------------------------------------
+#22 DONE 10.9s
+
+#23 [stage-1 2/6] RUN apt-get update && apt-get install -y --no-install-recommends curl     && rm -rf /var/lib/apt/lists/*
+#23 CACHED
+
+#24 [stage-1 3/6] WORKDIR /app
+#24 CACHED
+
+#25 [stage-1 4/6] COPY --from=builder /workspace/ingest-service/target/ingest-service-*.jar /app/app.jar
+#25 DONE 0.1s
+
+#26 [stage-1 5/6] COPY --from=builder /runtime-libs /app/lib
+#26 DONE 0.1s
+
+#27 [stage-1 6/6] RUN groupadd --system app && useradd --system --gid app --home /app app     && mkdir -p /app/data && chown -R app:app /app
+#27 DONE 0.9s
+
+#28 exporting to image
+#28 exporting layers
+#28 exporting layers 1.6s done
+#28 exporting manifest sha256:ea2b0a71488a5d64c183091ee08b4311adab76e8cd4e91f16b9d515312e57149 0.0s done
+#28 exporting config sha256:74197e22c8d3426d2374f7b6cd178fc1f7fb69762738dae26b6f15e0bf5eb9e9 0.0s done
+#28 exporting attestation manifest sha256:8384f65e419faebed6c23aa8b0d01eaa14ebd6a9a93241187d1550fbef67dac8 0.0s done
+#28 exporting manifest list sha256:2e6f7c542a0adb813940e79bced45964cacedb2121dab729e435c482c7339806 0.0s done
+#28 naming to docker.io/library/pork-traceability-ingest-service:latest
+#28 naming to docker.io/library/pork-traceability-ingest-service:latest done
+#28 unpacking to docker.io/library/pork-traceability-ingest-service:latest
+#28 unpacking to docker.io/library/pork-traceability-ingest-service:latest 0.8s done
+#28 DONE 2.5s
+
+#29 resolving provenance for metadata file
+#29 DONE 0.0s
+ Image pork-traceability-ingest-service Built 
+exit=0

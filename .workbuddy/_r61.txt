@@ -1,0 +1,12 @@
+﻿*************************** 1. row ***************************
+       id: 42
+device_no: READER-001
+   status: 3
+error_msg: ??????
+  payload: {"result": 1, "earTagNo": "ET-TEST-0012", "sampleNo": "S-ACC-1789982665915", "samplePart": "??", "testMethod": "????????", "testTarget": "????"}
+*************************** 2. row ***************************
+       id: 41
+device_no: READER-001
+   status: 3
+error_msg: ?????????(result)?????棗?????????
+  payload: {"earTagNo": "ET-TEST-0001", "sampleNo": "S-1789982665756"}

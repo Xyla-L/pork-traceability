@@ -1,0 +1,18 @@
+﻿mysql: [Warning] Using a password on the command line interface can be insecure.
+id	transport_no	status
+10	TR-TEST-0009	3
+mysql: [Warning] Using a password on the command line interface can be insecure.
+id	transport_id	store_name	receiver	source	transport_no
+23	23	??????	???	MANUAL	TR20260918403942
+22	22	??????	???	MANUAL	TR20260918484678
+21	21	??????	???	MANUAL	TR20260918499959
+20	20	??????	???	MANUAL	TR20260918779000
+19	19	??????	???	MANUAL	TR20260917810714
+mysql: [Warning] Using a password on the command line interface can be insecure.
+id	transport_no	status
+23	TR20260918403942	4
+22	TR20260918484678	4
+21	TR20260918499959	4
+20	TR20260918779000	4
+19	TR20260917810714	4
+18	TR20260917774090	4

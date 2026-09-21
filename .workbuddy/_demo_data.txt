@@ -1,0 +1,14 @@
+﻿COLUMN_NAME
+id
+ear_tag_no
+farm_id
+breed
+birth_date
+gender
+pen_no
+source
+status
+deleted
+content_hash
+create_time
+update_time

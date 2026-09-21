@@ -43,6 +43,10 @@
         <el-descriptions-item label="检测方法">{{ currentView.testMethod || '--' }}</el-descriptions-item>
         <el-descriptions-item label="检测时间">{{ currentView.testTime }}</el-descriptions-item>
         <el-descriptions-item label="检测员">{{ currentView.operator }}</el-descriptions-item>
+        <el-descriptions-item label="数据来源">
+          <el-tag :type="sourceTag(currentView.source)" size="small" effect="plain">{{ sourceLabel(currentView.source) }}</el-tag>
+          <span v-if="currentView.sourceRef" class="source-ref">（{{ currentView.sourceRef }}）</span>
+        </el-descriptions-item>
         <el-descriptions-item label="检测结果">
           <el-tag :type="ractoResultTag(currentView.result)" size="small">{{ ractoResultLabel(currentView.result) }}</el-tag>
         </el-descriptions-item>
@@ -57,6 +61,7 @@
 
 <script setup>
 import { ref } from 'vue'
+import { sourceLabel, sourceTag } from '@/api/modules/ingest'
 
 defineProps({
   data: {
@@ -91,4 +96,5 @@ const ractoStatusTag = (s) => ({ 0: 'info', 1: 'warning', 2: 'success' }[s] ?? '
 .racto-table {
   width: 100%;
 }
+.source-ref { color: #909399; font-size: 12px; }
 </style>

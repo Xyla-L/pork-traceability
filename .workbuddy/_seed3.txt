@@ -1,0 +1,22 @@
+﻿--- db_breeding tables ---
+mysql: [Warning] Using a password on the command line interface can be insecure.
+farm
+pig_individual
+quarantine_certificate
+slaughter_apply
+vaccine_record
+--- pig_individual cols ---
+mysql: [Warning] Using a password on the command line interface can be insecure.
+id
+ear_tag_no
+farm_id
+breed
+birth_date
+gender
+pen_no
+source
+status
+deleted
+content_hash
+create_time
+update_time

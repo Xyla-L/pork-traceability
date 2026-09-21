@@ -1,0 +1,43 @@
+server:
+  port: ${SERVICE_PORT:8089}
+spring:
+  application:
+    name: ingest-service
+  config:
+    import: optional:nacos:${spring.application.name}.yaml
+  cloud:
+    nacos:
+      discovery:
+        server-addr: ${NACOS_ADDR:127.0.0.1:8848}
+        namespace: ${NACOS_NAMESPACE:}
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${DB_URL:jdbc:mysql://localhost:3306/db_ingest?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:123456}
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    banner: false
+
+# 下游业务服务地址（接入层不写业务库，只做转发，业务规则留在各自服务）
+services:
+  breeding-url: ${SERVICES_BREEDING_URL:http://localhost:8082}
+  slaughter-url: ${SERVICES_SLAUGHTER_URL:http://localhost:8083}
+  distribution-url: ${SERVICES_DISTRIBUTION_URL:http://localhost:8084}
+  sales-url: ${SERVICES_SALES_URL:http://localhost:8085}
+
+ingest:
+  temperature:
+    # 冷链允许区间，超出即标记 is_abnormal=1（异常值永不降采样）
+    range-min: ${INGEST_TEMP_MIN:-18.0}
+    range-max: ${INGEST_TEMP_MAX:0.0}
+    # 非异常值的最小入账间隔（秒）：车载探头 30 秒一条，全量入库会把温度表撑爆
+    min-interval-seconds: ${INGEST_TEMP_INTERVAL:60}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

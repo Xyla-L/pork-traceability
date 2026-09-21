@@ -1,0 +1,25 @@
+﻿=== dist 是否存在 ===
+存在，最后修改：09/21/2026 16:51:17
+
+=== dist 里有没有 ingest 相关 chunk ===
+assets\ingest-DB-Aoudq.js   09/21/2026 16:51:17
+assets\IngestMonitor-Dij1quHG.css   09/21/2026 16:51:17
+assets\IngestMonitor-RnZDubYL.js   09/21/2026 16:51:17
+
+=== dist 文件总数 / 最新文件时间 ===
+count=98
+auth-CZNrC_JX.js   09/21/2026 16:51:18
+request-DH2qs6_1.js   09/21/2026 16:51:18
+index-D1Hw0Qd8.js   09/21/2026 16:51:18
+index.html   09/21/2026 16:51:18
+notification-b_JLfWpZ.js   09/21/2026 16:51:18
+
+=== 源码最新修改时间 ===
+types\auto-imports.d.ts   09/21/2026 17:46:27
+types\components.d.ts   09/21/2026 16:50:55
+views\sales\SaleRecords.vue   09/21/2026 16:48:29
+views\distribution\TransportMonitor.vue   09/21/2026 16:48:15
+views\distribution\StoreReceipt.vue   09/21/2026 16:48:00
+views\slaughter\EntryTable.vue   09/21/2026 16:47:45
+views\slaughter\RactoTable.vue   09/21/2026 16:47:40
+config\menuConfig.ts   09/21/2026 16:47:31

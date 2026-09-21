@@ -1,0 +1,31 @@
+﻿=== 1) menuConfig.ts 经 Vite 转换后是否含 ingest ===
+HTTP 200  len=17925
+path: "/admin/ingest/monitor",
+
+=== 2) IngestMonitor.vue 能否被 Vite 编译 ===
+HTTP 200  len=79499
+import { CHANNEL_LABELS, INGEST_STATUS_TAGS, ingestApi } from "/src/api/modules/ingest.ts";
+const res = await ingestApi.pageStaging({
+const res = await ingestApi.pageStaging({ ...base, status });
+devices.value = await ingestApi.listDevices() || [];
+const res = await ingestApi.approveStaging(row.id, { remark: value });
+await ingestApi.rejectStaging(row.id, { remark: value });
+
+=== 3) 首页 HTML ===
+HTTP 200
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <script type="module" src="/@vite/client"></script>
+
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>çªèäº§åè´¨éå®å¨æº¯æºç³»ç»</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
+

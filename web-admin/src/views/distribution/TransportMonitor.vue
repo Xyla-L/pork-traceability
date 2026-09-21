@@ -183,7 +183,14 @@
               <el-tag :type="row.isAbnormal ? 'danger' : 'success'" size="small">{{ row.isAbnormal ? '异常' : '正常' }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="recorder" label="记录人" min-width="160" align="center" />
+          <el-table-column prop="recorder" label="记录人" min-width="140" align="center" />
+          <el-table-column prop="source" label="数据来源" width="120" align="center">
+            <template #default="{ row }">
+              <el-tooltip :content="row.source === 'DEVICE' ? `探头自动采集：${row.sourceRef || '--'}` : '人工打卡'" placement="top">
+                <el-tag :type="sourceTag(row.source)" size="small" effect="plain">{{ sourceLabel(row.source) }}</el-tag>
+              </el-tooltip>
+            </template>
+          </el-table-column>
         </el-table>
       </el-card>
 
@@ -318,6 +325,7 @@ import * as echarts from 'echarts'
 import type { FormInstance } from 'element-plus'
 import type { EpTagType } from '@/types/common'
 import { distributionApi } from '@/api/modules/distribution'
+import { sourceLabel, sourceTag } from '@/api/modules/ingest'
 import request from '@/utils/request'
 
 // ==================== 运单列表 ====================

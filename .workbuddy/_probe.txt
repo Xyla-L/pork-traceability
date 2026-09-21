@@ -1,0 +1,14 @@
+﻿[pork-traceability-slaughter-service-1] SERVICE_PORT=8083
+health=200
+{"status":"UP"}
+[pork-traceability-ingest-service-1] SERVICE_PORT=8089
+health=200
+{"code":5000,"message":"绯荤粺鍐呴儴寮傚父","data":null,"traceId":"a7d9334b0176413f8759b1a0dc885c5b","timestamp":1789981926317}
+[pork-traceability-gateway-service-1] SERVICE_PORT=8080
+health=200
+{"status":"UP"}
+=== gateway direct :8080 ===
+200
+=== nginx :80 -> gateway ===
+WGET-FAIL
+wget: can't connect to remote host: Connection refused

@@ -1,0 +1,5 @@
+﻿=== 5173 进程的命令行 ===
+"node"   "E:\pork-traceability\web-admin\node_modules\.bin\\..\vite\bin\vite.js" 
+
+=== 12256 进程的命令行 ===
+"D:\Nodejs\node.exe" D:\Nodejs/node_modules/npm/bin/npm-cli.js run dev

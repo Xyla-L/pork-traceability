@@ -1,0 +1,12 @@
+﻿=== ps in container ===
+PID   USER     TIME  COMMAND
+    1 root      0:00 nginx: master process nginx -g daemon off;
+   22 nginx     0:00 nginx: worker process
+ 2310 root      0:00 ps aux
+=== listen directives ===
+6:        listen 80;
+9:        location /api/v1/ {
+22:        location = /health {
+=== host ports for nginx ===
+80/tcp -> 0.0.0.0:80
+80/tcp -> [::]:80

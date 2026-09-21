@@ -1,0 +1,250 @@
+﻿
+  
+> agent-browser - fast browser automation CLI for AI agents
+  
+> Usage: agent-browser <command> [args] [options]
+  
+  Start here (for AI agents):
+>   agent-browser skills get core --full
+  
+    guessing commands from flag docs alone. Specialized skills cover Electron
+>   apps, Slack, exploratory testing, and cloud browser providers.
+  
+    eval <js>                  Run JavaScript
+>   connect <port|url>         Connect to browser via CDP
+>   close [--all]              Close browser (--all closes every session)
+  
+  
+> Get Info:  agent-browser get <what> [selector]
+    text, html, value, attr <name>, title, url, count, box, styles, cdp-url
+  
+> Check State:  agent-browser is <what> <selector>
+    visible, enabled, checked
+  
+> Find Elements:  agent-browser find <locator> <value> <action> [text]
+    role, text, label, placeholder, alt, title, testid, first, last, nth
+  
+> Mouse:  agent-browser mouse <action> [args]
+    move <x> <y>, down [btn], up [btn], wheel <dy> [dx]
+  
+> Browser Settings:  agent-browser set <setting> [value]
+    viewport <w> <h>, device <name>, geo <lat> <lng>
+  
+> Network:  agent-browser network <action>
+    route <url> [--abort|--body <json>] [--resource-type <csv>]
+  Setup:
+>   install                    Install browser binaries
+    install --with-deps        Also install system dependencies (Linux)
+                               or a directory path for a persistent custom prof
+ile
+>                              (or AGENT_BROWSER_PROFILE env)
+    --session-name <name>      Auto-save/restore cookies and localStorage by na
+me
+>                              (or AGENT_BROWSER_SESSION_NAME env)
+    --state <path>             Load saved auth state (cookies + storage) from J
+SON file
+>                              (or AGENT_BROWSER_STATE env)
+    --auto-connect             Connect to a running Chrome to reuse its auth st
+ate
+>                              Tip: agent-browser --auto-connect state save ./a
+uth.json
+    --headers <json>           HTTP headers scoped to URL's origin (e.g., Autho
+rization bearer token)
+  Options:
+>   --session <name>           Isolated session (or AGENT_BROWSER_SESSION env)
+>   --executable-path <path>   Custom browser executable (or AGENT_BROWSER_EXEC
+UTABLE_PATH)
+>   --extension <path>         Load browser extensions (repeatable)
+    --init-script <path>       Register a page init script before the first nav
+igation (repeatable)
+>                              (or AGENT_BROWSER_INIT_SCRIPTS env, comma-separa
+ted)
+    --enable <feature>         Built-in init scripts: react-devtools (repeatabl
+e or comma-separated)
+>                              (or AGENT_BROWSER_ENABLE env)
+>   --args <args>              Browser launch args, comma or newline separated 
+(or AGENT_BROWSER_ARGS)
+                               e.g., --args "--no-sandbox,--disable-blink-featu
+res=AutomationControlled"
+>   --user-agent <ua>          Custom User-Agent (or AGENT_BROWSER_USER_AGENT)
+>   --proxy <server>           Proxy server URL (or AGENT_BROWSER_PROXY, HTTP_P
+ROXY, HTTPS_PROXY, ALL_PROXY)
+                               Supports authenticated proxies: --proxy "http://
+user:pass@127.0.0.1:7890"
+>   --proxy-bypass <hosts>     Bypass proxy for these hosts (or AGENT_BROWSER_P
+ROXY_BYPASS, NO_PROXY)
+                               e.g., --proxy-bypass "localhost,*.internal.com"
+    --ignore-https-errors      Ignore HTTPS certificate errors
+>   --allow-file-access        Allow file:// URLs to access local files (Chromi
+um only)
+>   -p, --provider <name>      Browser provider: ios, browserbase, kernel, brow
+seruse, browserless, agentcore
+    --device <name>            iOS device name (e.g., "iPhone 15 Pro")
+    --annotate                 Annotated screenshot with numbered labels and le
+gend
+>   --screenshot-dir <path>    Default screenshot output directory (or AGENT_BR
+OWSER_SCREENSHOT_DIR)
+>   --screenshot-quality <n>   JPEG quality 0-100; ignored for PNG (or AGENT_BR
+OWSER_SCREENSHOT_QUALITY)
+>   --screenshot-format <fmt>  Screenshot format: png, jpeg (or AGENT_BROWSER_S
+CREENSHOT_FORMAT)
+>   --headed                   Show browser window (not headless) (or AGENT_BRO
+WSER_HEADED env)
+    --cdp <port>               Connect via CDP (Chrome DevTools Protocol)
+>   --color-scheme <scheme>    Color scheme: dark, light, no-preference (or AGE
+NT_BROWSER_COLOR_SCHEME)
+>   --download-path <path>     Default download directory (or AGENT_BROWSER_DOW
+NLOAD_PATH)
+>   --content-boundaries       Wrap page output in boundary markers (or AGENT_B
+ROWSER_CONTENT_BOUNDARIES)
+>   --max-output <chars>       Truncate page output to N chars (or AGENT_BROWSE
+R_MAX_OUTPUT)
+>   --allowed-domains <list>   Restrict navigation domains (or AGENT_BROWSER_AL
+LOWED_DOMAINS)
+>   --action-policy <path>     Action policy JSON file (or AGENT_BROWSER_ACTION
+_POLICY)
+>   --confirm-actions <list>   Categories requiring confirmation (or AGENT_BROW
+SER_CONFIRM_ACTIONS)
+>   --confirm-interactive      Interactive confirmation prompts; auto-denies if
+ stdin is not a TTY (or AGENT_BROWSER_CONFIRM_INTERACTIVE)
+>   --engine <name>            Browser engine: chrome (default), lightpanda (or
+ AGENT_BROWSER_ENGINE)
+>   --no-auto-dialog           Disable automatic dismissal of alert/beforeunloa
+d dialogs (or AGENT_BROWSER_NO_AUTO_DIALOG)
+    --model <name>             AI model for chat (or AI_GATEWAY_MODEL env)
+    -q, --quiet                Show only AI text responses (hide tool calls)
+>   --config <path>            Use a custom config file (or AGENT_BROWSER_CONFI
+G env)
+    --debug                    Debug output
+  Configuration:
+>   agent-browser looks for agent-browser.json in these locations (lowest to hi
+ghest priority):
+>     1. ~/.agent-browser/config.json      User-level defaults
+>     2. ./agent-browser.json              Project-level overrides
+      3. Environment variables             Override config file values
+    Use --config <path> to load a specific config file instead of the defaults.
+>   If --config points to a missing or invalid file, agent-browser exits with a
+n error.
+  
+  
+>   Example agent-browser.json:
+>     {"headed": true, "proxy": "http://localhost:8080", "profile": "./browser-
+data"}
+  
+  Environment:
+>   AGENT_BROWSER_CONFIG           Path to config file (or use --config)
+>   AGENT_BROWSER_SESSION          Session name (default: "default")
+>   AGENT_BROWSER_SESSION_NAME     Auto-save/restore state persistence name
+>   AGENT_BROWSER_ENCRYPTION_KEY   64-char hex key for AES-256-GCM state encryp
+tion
+>   AGENT_BROWSER_STATE_EXPIRE_DAYS Auto-delete states older than N days (defau
+lt: 30)
+>   AGENT_BROWSER_EXECUTABLE_PATH  Custom browser executable path
+>   AGENT_BROWSER_EXTENSIONS       Comma-separated browser extension paths
+>   AGENT_BROWSER_INIT_SCRIPTS     Comma-separated paths to page init scripts
+>   AGENT_BROWSER_ENABLE           Comma-separated built-in init script feature
+s (e.g. react-devtools)
+>   AGENT_BROWSER_HEADED           Show browser window (not headless)
+>   AGENT_BROWSER_JSON             JSON output
+>   AGENT_BROWSER_ANNOTATE         Annotated screenshot with numbered labels an
+d legend
+>   AGENT_BROWSER_DEBUG            Debug output
+>   AGENT_BROWSER_IGNORE_HTTPS_ERRORS Ignore HTTPS certificate errors
+>   AGENT_BROWSER_PROVIDER         Browser provider (ios, browserbase, kernel, 
+browseruse, browserless, agentcore)
+>   AGENT_BROWSER_AUTO_CONNECT     Auto-discover and connect to running Chrome
+>   AGENT_BROWSER_ALLOW_FILE_ACCESS Allow file:// URLs to access local files
+>   AGENT_BROWSER_COLOR_SCHEME     Color scheme preference (dark, light, no-pre
+ference)
+>   AGENT_BROWSER_DOWNLOAD_PATH    Default download directory for browser downl
+oads
+>   AGENT_BROWSER_DEFAULT_TIMEOUT  Default action timeout in ms (default: 25000
+)
+>   AGENT_BROWSER_SESSION_NAME     Auto-save/load state persistence name
+>   AGENT_BROWSER_STATE_EXPIRE_DAYS Auto-delete saved states older than N days 
+(default: 30)
+>   AGENT_BROWSER_ENCRYPTION_KEY   64-char hex key for AES-256-GCM session encr
+yption
+>   AGENT_BROWSER_STREAM_PORT      Override WebSocket streaming port (default: 
+OS-assigned)
+>   AGENT_BROWSER_IDLE_TIMEOUT_MS  Auto-shutdown daemon after N ms of inactivit
+y (disabled by default)
+>   AGENT_BROWSER_IOS_DEVICE       Default iOS device name
+>   AGENT_BROWSER_IOS_UDID         Default iOS device UDID
+>   AGENT_BROWSER_CONTENT_BOUNDARIES Wrap page output in boundary markers
+>   AGENT_BROWSER_MAX_OUTPUT       Max characters for page output
+>   AGENT_BROWSER_ALLOWED_DOMAINS  Comma-separated allowed domain patterns
+>   AGENT_BROWSER_ACTION_POLICY    Path to action policy JSON file
+>   AGENT_BROWSER_CONFIRM_ACTIONS  Action categories requiring confirmation
+>   AGENT_BROWSER_CONFIRM_INTERACTIVE Enable interactive confirmation prompts
+>   AGENT_BROWSER_NO_AUTO_DIALOG   Disable automatic dismissal of alert/beforeu
+nload dialogs
+>   AGENT_BROWSER_ENGINE           Browser engine: chrome (default), lightpanda
+>   HTTP_PROXY / HTTPS_PROXY       Standard proxy env vars (fallback if AGENT_B
+ROWSER_PROXY not set)
+    ALL_PROXY                      SOCKS proxy (fallback for proxy)
+    NO_PROXY                       Bypass proxy for hosts (fallback for proxy-b
+ypass)
+>   AGENT_BROWSER_SCREENSHOT_DIR   Default screenshot output directory
+>   AGENT_BROWSER_SCREENSHOT_QUALITY JPEG quality 0-100
+>   AGENT_BROWSER_SCREENSHOT_FORMAT Screenshot format: png, jpeg
+    AI_GATEWAY_URL                 Vercel AI Gateway base URL (default: https:/
+/ai-gateway.vercel.sh)
+  Install:
+>   npm install -g agent-browser           # npm
+>   brew install agent-browser             # Homebrew
+>   cargo install agent-browser            # Cargo
+>   agent-browser install                  # Download Chrome (first time)
+  
+  Examples:
+>   agent-browser open example.com
+>   agent-browser snapshot -i              # Interactive elements only
+>   agent-browser click @e2                # Click by ref from snapshot
+>   agent-browser fill @e3 "test@example.com"
+>   agent-browser find role button click --name Submit
+>   agent-browser get text @e1
+>   agent-browser screenshot --full
+>   agent-browser screenshot --annotate    # Labeled screenshot for vision mode
+ls
+>   agent-browser wait 2000               # Wait for slow pages to settle
+>   agent-browser --cdp 9222 snapshot      # Connect via CDP port
+>   agent-browser --auto-connect snapshot  # Auto-discover running Chrome
+>   agent-browser stream enable            # Start runtime streaming on an auto
+-selected port
+>   agent-browser stream status            # Inspect runtime streaming state
+>   agent-browser --color-scheme dark open example.com  # Dark mode
+>   agent-browser --profile Default open gmail.com        # Reuse Chrome login 
+state
+>   agent-browser --profile ~/.myapp open example.com    # Persistent custom pr
+ofile
+>   agent-browser profiles                               # List available Chrom
+e profiles
+>   agent-browser --session-name myapp open example.com  # Auto-save/restore st
+ate
+>   agent-browser chat "open google.com and search for cats"  # AI chat (single
+-shot)
+>   agent-browser chat                                        # AI chat (intera
+ctive REPL)
+>   agent-browser -q chat "summarize this page"               # Quiet mode (tex
+t only)
+  
+  Command Chaining:
+>   Chain commands with && in a single shell call (browser persists via daemon)
+:
+  
+>   agent-browser open example.com && agent-browser snapshot -i
+>   agent-browser fill @e1 "user@example.com" && agent-browser fill @e2 "pass" 
+&& agent-browser click @e3
+>   agent-browser open example.com && agent-browser screenshot
+  
+  iOS Simulator (requires Xcode and Appium):
+>   agent-browser -p ios open example.com                    # Use default iPho
+ne
+>   agent-browser -p ios --device "iPhone 15 Pro" open url   # Specific device
+>   agent-browser -p ios device list                         # List simulators
+>   agent-browser -p ios swipe up                            # Swipe gesture
+>   agent-browser -p ios tap @e1                             # Touch element
+  
+
+
+

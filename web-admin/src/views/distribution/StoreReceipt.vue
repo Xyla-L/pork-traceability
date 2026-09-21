@@ -82,6 +82,13 @@
           <el-table-column prop="transportNo" label="关联运单" width="160" />
           <el-table-column prop="storeName" label="签收门店" min-width="150" />
           <el-table-column prop="receiver" label="签收人" width="100" align="center" />
+          <el-table-column prop="source" label="数据来源" width="120" align="center">
+            <template #default="{ row }">
+              <el-tooltip :content="row.source === 'DEVICE' ? `PDA/探头自动采集：${row.sourceRef || '--'}` : '人工录入'" placement="top">
+                <el-tag :type="sourceTag(row.source)" size="small" effect="plain">{{ sourceLabel(row.source) }}</el-tag>
+              </el-tooltip>
+            </template>
+          </el-table-column>
           <el-table-column prop="receiptTime" label="签收时间" width="170" align="center" />
           <el-table-column prop="qtyCheck" label="数量核验" width="100" align="center">
             <template #default="{ row }">
@@ -222,6 +229,7 @@ import { Search, Refresh } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import BlockchainVerifyBadge from '@/components/common/BlockchainVerifyBadge.vue'
 import { distributionApi } from '@/api/modules/distribution'
+import { sourceLabel, sourceTag } from '@/api/modules/ingest'
 import { useAuthStore } from '@/stores/auth'
 import request from '@/utils/request'
 

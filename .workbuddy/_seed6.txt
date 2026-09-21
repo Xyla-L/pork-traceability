@@ -1,0 +1,4 @@
+﻿mysql: [Warning] Using a password on the command line interface can be insecure.
+today	max_valid
+2026-09-21	2026-09-19
+mysql: [Warning] Using a password on the command line interface can be insecure.

@@ -1,0 +1,30 @@
+﻿docker : mysql: [Warning] Using a password on the command line interface can be
+ insecure.
+所在位置 行:445 字符: 51
++ ... y\_db.txt"; docker exec pork-traceability-mysql-1 mysql -uroot -pchan ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (mysql: [Warning...an be insecure. 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+db_breeding
+db_common
+db_distribution
+db_sales
+db_slaughter
+information_schema
+mysql
+performance_schema
+sys
+--- root/123456 ---
+docker : mysql: [Warning] Using a password on the command line interface can be
+ insecure.
+所在位置 行:445 字符: 253
++ ... oding utf8; docker exec pork-traceability-mysql-1 mysql -uroot -p1234 ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (mysql: [Warning...an be insecure. 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ERROR 1045 (28000): Access denied for user 'root'@'localhost' (using password: 
+YES)

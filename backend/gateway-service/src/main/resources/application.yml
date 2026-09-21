@@ -55,6 +55,12 @@ spring:
           predicates:
             - Path=/api/v1/file/**
           filters: *strip-api-prefix
+        # 设备/第三方系统自动录入统一入口：设备只认这一层，换协议/加设备型号只改接入服务
+        - id: ingest-route
+          uri: lb://ingest-service
+          predicates:
+            - Path=/api/v1/ingest/**
+          filters: *strip-api-prefix
       globalcors:
         cors-configurations:
           '[/**]':

@@ -1,0 +1,10 @@
+﻿mysql: [Warning] Using a password on the command line interface can be insecure.
+*************************** 1. row ***************************
+          id: 24
+     channel: RECEIPT
+   device_no: PDA-001
+      status: 3
+target_table: store_receipt
+   target_id: NULL
+   error_msg: ?? TR-TEST-0009 ???????????
+     payload: {"qtyCheck": 1, "receiver": "??", "storeName": "????", "tempCheck": 1, "tempValue": -2.5, "transportNo": "TR-TEST-0009", "packageIntact": 1, "receiverPhone": "13800000000"}

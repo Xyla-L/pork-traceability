@@ -3,6 +3,7 @@ CREATE DATABASE IF NOT EXISTS db_breeding CHARACTER SET utf8mb4 COLLATE utf8mb4_
 CREATE DATABASE IF NOT EXISTS db_slaughter CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 CREATE DATABASE IF NOT EXISTS db_distribution CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 CREATE DATABASE IF NOT EXISTS db_sales CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+CREATE DATABASE IF NOT EXISTS db_ingest CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 
 CREATE USER IF NOT EXISTS 'pork_user'@'%' IDENTIFIED BY '123456';
 GRANT ALL PRIVILEGES ON db_common.* TO 'pork_user'@'%';
@@ -10,4 +11,5 @@ GRANT ALL PRIVILEGES ON db_breeding.* TO 'pork_user'@'%';
 GRANT ALL PRIVILEGES ON db_slaughter.* TO 'pork_user'@'%';
 GRANT ALL PRIVILEGES ON db_distribution.* TO 'pork_user'@'%';
 GRANT ALL PRIVILEGES ON db_sales.* TO 'pork_user'@'%';
+GRANT ALL PRIVILEGES ON db_ingest.* TO 'pork_user'@'%';
 FLUSH PRIVILEGES;

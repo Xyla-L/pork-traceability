@@ -1,0 +1,21 @@
+﻿mysql: [Warning] Using a password on the command line interface can be insecure.
+Tables_in_db_ingest
+ingest_device
+ingest_staging
+--- device rows ---
+mysql: [Warning] Using a password on the command line interface can be insecure.
+device_no	channel	status
+TEMP-001	TEMPERATURE	1
+TEMP-002	TEMPERATURE	1
+TEMP-003	TEMPERATURE	1
+GATE-001	ENTRY	1
+RFID-001	ENTRY	1
+CERT-001	ENTRY	1
+READER-001	RACTOPAMINE	1
+POS-001	SALE	1
+PDA-001	RECEIPT	1
+SHELF-001	RECEIPT	1
+--- staging count ---
+mysql: [Warning] Using a password on the command line interface can be insecure.
+COUNT(*)
+0

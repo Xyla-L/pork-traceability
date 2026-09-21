@@ -32,6 +32,7 @@
         <module>slaughter-service</module>
         <module>distribution-service</module>
         <module>sales-service</module>
+        <module>ingest-service</module>
         <module>trace-service</module>
         <module>blockchain-service</module>
         <module>file-service</module>

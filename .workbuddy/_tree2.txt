@@ -1,0 +1,19 @@
+﻿=== gateway-service files ===
+src\main\java\com\pork\gateway\GatewayApplication.java
+src\main\java\com\pork\gateway\filter\AuthGlobalFilter.java
+src\main\resources\application.yml
+=== common-security files ===
+src\main\java\com\pork\security\config\RedisConfig.java
+src\main\java\com\pork\security\util\JwtUtil.java
+src\main\java\com\pork\security\util\SM3Util.java
+src\main\resources\META-INF\spring\org.springframework.boot.autoconfigure.AutoConfiguration.imports
+=== common-web files ===
+src\main\java\com\pork\web\CommonWebAutoConfiguration.java
+src\main\java\com\pork\web\config\JacksonConfig.java
+src\main\java\com\pork\web\config\MybatisPlusConfig.java
+src\main\java\com\pork\web\config\TimezoneConfig.java
+src\main\java\com\pork\web\config\WebMvcConfig.java
+src\main\java\com\pork\web\filter\TraceIdFilter.java
+src\main\java\com\pork\web\handler\GlobalExceptionHandler.java
+src\main\java\com\pork\web\interceptor\OperationAuditInterceptor.java
+src\main\resources\META-INF\spring\org.springframework.boot.autoconfigure.AutoConfiguration.imports

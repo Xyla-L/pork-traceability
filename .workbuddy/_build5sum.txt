@@ -1,0 +1,5 @@
+﻿=== build5 ===
+    + FullyQualifiedErrorId : NativeCommandError
+#28 naming to docker.io/library/pork-traceability-ingest-service:latest
+#28 naming to docker.io/library/pork-traceability-ingest-service:latest done
+exit=0

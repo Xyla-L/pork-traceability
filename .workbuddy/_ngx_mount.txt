@@ -1,0 +1,11 @@
+﻿=== nginx 容器的挂载与镜像 ===
+E:\pork-traceability\backend\nginx.conf -> /etc/nginx/nginx.conf (ro)
+
+=== 容器内 /usr/share/nginx/html 内容 ===
+total 16
+drwxr-xr-x    2 root     root          4096 Apr 16  2025 .
+drwxr-xr-x    3 root     root          4096 Apr 16  2025 ..
+-rw-r--r--    1 root     root           497 Apr 16  2025 50x.html
+-rw-r--r--    1 root     root           615 Apr 16  2025 index.html
+=== 容器内 admin 目录 ===
+ls: /usr/share/nginx/html/admin/: No such file or directory

@@ -1,0 +1,68 @@
+﻿docker :  Container pork-traceability-nacos-1 Running 
+所在位置 行:445 字符: 46
++ ... y\backend"; docker compose up -d ingest-service slaughter-service dis ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ( Container pork...acos-1 Running  
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ Container pork-traceability-rabbitmq-1 Running 
+ Container pork-traceability-redis-1 Running 
+ Container pork-traceability-mysql-1 Running 
+ Container pork-traceability-breeding-service-1 Recreate 
+ Container pork-traceability-ingest-service-1 Creating 
+ Container pork-traceability-sales-service-1 Recreate 
+ Container pork-traceability-distribution-service-1 Recreate 
+ Container pork-traceability-slaughter-service-1 Recreate 
+ Container pork-traceability-gateway-service-1 Recreate 
+ Container pork-traceability-ingest-service-1 Created 
+ Container pork-traceability-distribution-service-1 Recreated 
+ Container pork-traceability-sales-service-1 Recreated 
+ Container pork-traceability-breeding-service-1 Recreated 
+ Container pork-traceability-slaughter-service-1 Recreated 
+ Container pork-traceability-gateway-service-1 Recreated 
+ Container pork-traceability-redis-1 Waiting 
+ Container pork-traceability-rabbitmq-1 Waiting 
+ Container pork-traceability-mysql-1 Waiting 
+ Container pork-traceability-redis-1 Waiting 
+ Container pork-traceability-mysql-1 Waiting 
+ Container pork-traceability-mysql-1 Waiting 
+ Container pork-traceability-redis-1 Waiting 
+ Container pork-traceability-rabbitmq-1 Waiting 
+ Container pork-traceability-mysql-1 Waiting 
+ Container pork-traceability-redis-1 Waiting 
+ Container pork-traceability-rabbitmq-1 Waiting 
+ Container pork-traceability-mysql-1 Waiting 
+ Container pork-traceability-redis-1 Waiting 
+ Container pork-traceability-rabbitmq-1 Waiting 
+ Container pork-traceability-mysql-1 Waiting 
+ Container pork-traceability-redis-1 Waiting 
+ Container pork-traceability-mysql-1 Healthy 
+ Container pork-traceability-rabbitmq-1 Healthy 
+ Container pork-traceability-redis-1 Healthy 
+ Container pork-traceability-mysql-1 Healthy 
+ Container pork-traceability-redis-1 Healthy 
+ Container pork-traceability-ingest-service-1 Starting 
+ Container pork-traceability-redis-1 Healthy 
+ Container pork-traceability-rabbitmq-1 Healthy 
+ Container pork-traceability-slaughter-service-1 Starting 
+ Container pork-traceability-mysql-1 Healthy 
+ Container pork-traceability-redis-1 Healthy 
+ Container pork-traceability-mysql-1 Healthy 
+ Container pork-traceability-redis-1 Healthy 
+ Container pork-traceability-gateway-service-1 Starting 
+ Container pork-traceability-rabbitmq-1 Healthy 
+ Container pork-traceability-mysql-1 Healthy 
+ Container pork-traceability-mysql-1 Healthy 
+ Container pork-traceability-breeding-service-1 Starting 
+ Container pork-traceability-rabbitmq-1 Healthy 
+ Container pork-traceability-distribution-service-1 Starting 
+ Container pork-traceability-redis-1 Healthy 
+ Container pork-traceability-sales-service-1 Starting 
+ Container pork-traceability-ingest-service-1 Started 
+ Container pork-traceability-slaughter-service-1 Started 
+ Container pork-traceability-gateway-service-1 Started 
+ Container pork-traceability-breeding-service-1 Started 
+ Container pork-traceability-distribution-service-1 Started 
+ Container pork-traceability-sales-service-1 Started 
+exit=0

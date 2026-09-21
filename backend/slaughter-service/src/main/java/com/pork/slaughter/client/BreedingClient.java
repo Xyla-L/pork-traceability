@@ -51,6 +51,31 @@ public class BreedingClient {
         }
     }
 
+    /**
+     * 产地检疫证核验（设备通道用）：确认证存在、未过期、且证上登记的耳标与闸口扫描的一致。
+     * 远程异常时按「核验不通过」返回，由调用方决定拦下还是转人工，不向上抛异常。
+     */
+    public CertVerify verifyCert(String certNo, String earTagNo) {
+        if (certNo == null || certNo.isBlank()) return new CertVerify(false, "未提供检疫证号");
+        try {
+            String uri = breedingUrl + "/breeding/internal/quarantine-certs/verify?certNo={certNo}";
+            if (earTagNo != null && !earTagNo.isBlank()) uri += "&earTagNo={earTagNo}";
+            Map<String, Object> envelope = earTagNo == null || earTagNo.isBlank()
+                    ? restClient.get().uri(uri, certNo).retrieve()
+                        .body(new ParameterizedTypeReference<Map<String, Object>>() { })
+                    : restClient.get().uri(uri, certNo, earTagNo).retrieve()
+                        .body(new ParameterizedTypeReference<Map<String, Object>>() { });
+            if (envelope == null || !(envelope.get("data") instanceof Map<?, ?> data)) {
+                return new CertVerify(false, "检疫证核验服务返回异常");
+            }
+            boolean valid = Boolean.TRUE.equals(data.get("valid"));
+            return new CertVerify(valid, value(data.get("reason")));
+        } catch (RestClientException e) {
+            log.warn("检疫证核验调用失败 certNo={}", certNo, e);
+            return new CertVerify(false, "检疫证核验服务不可用");
+        }
+    }
+
     private Long number(Object value) {
         if (value instanceof Number number) return number.longValue();
         if (value != null) return Long.valueOf(value.toString());
@@ -60,4 +85,6 @@ public class BreedingClient {
     private String value(Object value) { return value == null ? null : value.toString(); }
 
     public record PigIdentity(Long id, String earTagNo, String farmName) { }
+
+    public record CertVerify(boolean valid, String reason) { }
 }

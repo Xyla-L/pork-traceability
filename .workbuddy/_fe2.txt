@@ -1,0 +1,4 @@
+﻿components\layout\AdminLayout.vue
+components\layout\BreadcrumbNav.vue
+components\layout\SidebarMenu.vue
+components\layout\TopBar.vue

@@ -1,0 +1,26 @@
+﻿--- pigs ---
+mysql: [Warning] Using a password on the command line interface can be insecure.
+id	ear_tag_no	farm_id	status
+24	ET-TEST-0021	2	3
+23	ET-TEST-0020	5	3
+22	ET-TEST-0019	8	3
+21	ET-TEST-0018	6	3
+20	ET-TEST-0017	2	3
+19	ET-TEST-0016	2	3
+--- cert cols ---
+mysql: [Warning] Using a password on the command line interface can be insecure.
+id
+pig_id
+cert_no
+issue_org
+issue_time
+valid_until
+inspector
+cert_type
+file_id
+ca_signature
+content_hash
+create_time
+--- certs ---
+mysql: [Warning] Using a password on the command line interface can be insecure.
+ERROR 1054 (42S22) at line 1: Unknown column 'ear_tag_no' in 'field list'

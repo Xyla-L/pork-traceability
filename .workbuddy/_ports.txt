@@ -1,0 +1,23 @@
+﻿=== 宿主监听端口（5173/4173/8080/80 等）===
+
+LocalAddress LocalPort OwningProcess
+------------ --------- -------------
+::1                 80         12844
+::                  80         15500
+::1               5173         17892
+::1               8080         12844
+::                8080         15500
+
+
+
+=== 相关进程 ===
+
+   Id ProcessName StartTime          Path                                      
+   -- ----------- ---------          ----                                      
+12256 node        2026/9/21 17:46:12 D:\Nodejs\node.exe                        
+12672 node        2026/9/21 15:49:08 C:\Users\17875\.workbuddy\binaries\node...
+17892 node        2026/9/21 17:46:25 D:\Nodejs\node.exe                        
+29820 node        2026/9/21 15:49:08 C:\Users\17875\.workbuddy\binaries\node...
+
+
+

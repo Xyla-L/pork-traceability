@@ -1,0 +1,20 @@
+﻿[1] TEMPERATURE / TEMP-001
+  运单: TR-TEST-0008
+  → status=2 已入账 accepted=true
+    已入账（temperature_log #50）
+
+[2] ENTRY / RFID-001
+  耳标: ET-TEST-0021
+  → status=1 待人工处理 accepted=false
+    未提供产地检疫证号，需人工核验纸质证明后补录
+
+[3] RACTOPAMINE / READER-001
+  → status=2 已入账 accepted=true
+    已入账（ractopamine_test #24）
+
+[4] SALE / POS-001
+  商品码: (无)
+
+[5] RECEIPT / PDA-001
+  待发车 4 条，其中未签收 0 条
+  ⚠ 没有「待发车且未签收」的运单，签收通道需要先新建一条运单

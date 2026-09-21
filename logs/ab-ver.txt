@@ -1,0 +1,2 @@
+﻿C:\Users\17875\.workbuddy\binaries\node\versions\22.22.2-3\node_modules
+

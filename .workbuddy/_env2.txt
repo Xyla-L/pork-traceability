@@ -1,0 +1,4 @@
+﻿JAVA_HOME=D:\Java
+MAVEN_HOME=
+mvn-path=NOT-FOUND
+java-path=D:\Java\bin\java.exe
