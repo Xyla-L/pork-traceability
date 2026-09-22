@@ -1,0 +1,19 @@
+SELECT 'breeding.farm_name' AS col, SUM(HEX(farm_name) LIKE '%C3A5%' OR HEX(farm_name) LIKE '%C3A8%' OR HEX(farm_name) LIKE '%C3A9%') AS bad, COUNT(*) AS total FROM db_breeding.farm
+UNION ALL SELECT 'sys_user.real_name', SUM(HEX(real_name) LIKE '%C3A5%' OR HEX(real_name) LIKE '%C3A8%' OR HEX(real_name) LIKE '%C3A9%'), COUNT(*) FROM db_common.sys_user
+UNION ALL SELECT 'sys_org.name', SUM(HEX(name) LIKE '%C3A5%' OR HEX(name) LIKE '%C3A8%' OR HEX(name) LIKE '%C3A9%'), COUNT(*) FROM db_common.sys_org
+UNION ALL SELECT 'sys_role.role_name', SUM(HEX(role_name) LIKE '%C3A5%' OR HEX(role_name) LIKE '%C3A8%' OR HEX(role_name) LIKE '%C3A9%'), COUNT(*) FROM db_common.sys_role
+UNION ALL SELECT 'notification.title', SUM(HEX(title) LIKE '%C3A5%' OR HEX(title) LIKE '%C3A8%' OR HEX(title) LIKE '%C3A9%'), COUNT(*) FROM db_common.user_notification
+UNION ALL SELECT 'slaughterhouse.name', SUM(HEX(name) LIKE '%C3A5%' OR HEX(name) LIKE '%C3A8%' OR HEX(name) LIKE '%C3A9%'), COUNT(*) FROM db_slaughter.slaughterhouse
+UNION ALL SELECT 'entry_inspection.source_farm', SUM(HEX(source_farm) LIKE '%C3A5%' OR HEX(source_farm) LIKE '%C3A8%' OR HEX(source_farm) LIKE '%C3A9%'), COUNT(*) FROM db_slaughter.entry_inspection
+UNION ALL SELECT 'carcass_stamp.stamp_type', SUM(HEX(stamp_type) LIKE '%C3A5%' OR HEX(stamp_type) LIKE '%C3A8%' OR HEX(stamp_type) LIKE '%C3A9%'), COUNT(*) FROM db_slaughter.carcass_stamp
+UNION ALL SELECT 'ractopamine.sample_part', SUM(HEX(sample_part) LIKE '%C3A5%' OR HEX(sample_part) LIKE '%C3A8%' OR HEX(sample_part) LIKE '%C3A9%'), COUNT(*) FROM db_slaughter.ractopamine_test
+UNION ALL SELECT 'transport.driver_name', SUM(HEX(driver_name) LIKE '%C3A5%' OR HEX(driver_name) LIKE '%C3A8%' OR HEX(driver_name) LIKE '%C3A9%'), COUNT(*) FROM db_distribution.cold_chain_transport
+UNION ALL SELECT 'split_batch.product_name', SUM(HEX(product_name) LIKE '%C3A5%' OR HEX(product_name) LIKE '%C3A8%' OR HEX(product_name) LIKE '%C3A9%'), COUNT(*) FROM db_distribution.split_batch
+UNION ALL SELECT 'carcass_batch.slaughterhouse', SUM(HEX(slaughterhouse) LIKE '%C3A5%' OR HEX(slaughterhouse) LIKE '%C3A8%' OR HEX(slaughterhouse) LIKE '%C3A9%'), COUNT(*) FROM db_distribution.carcass_batch
+UNION ALL SELECT 'store_receipt.store_name', SUM(HEX(store_name) LIKE '%C3A5%' OR HEX(store_name) LIKE '%C3A8%' OR HEX(store_name) LIKE '%C3A9%'), COUNT(*) FROM db_distribution.store_receipt
+UNION ALL SELECT 'store_receipt.receiver', SUM(HEX(receiver) LIKE '%C3A5%' OR HEX(receiver) LIKE '%C3A8%' OR HEX(receiver) LIKE '%C3A9%'), COUNT(*) FROM db_distribution.store_receipt
+UNION ALL SELECT 'retail_sale.store_name', SUM(HEX(store_name) LIKE '%C3A5%' OR HEX(store_name) LIKE '%C3A8%' OR HEX(store_name) LIKE '%C3A9%'), COUNT(*) FROM db_sales.retail_sale
+UNION ALL SELECT 'temperature_log.recorder', SUM(HEX(recorder) LIKE '%C3A5%' OR HEX(recorder) LIKE '%C3A8%' OR HEX(recorder) LIKE '%C3A9%'), COUNT(*) FROM db_distribution.temperature_log
+UNION ALL SELECT 'ingest_device.device_name', SUM(HEX(device_name) LIKE '%C3A5%' OR HEX(device_name) LIKE '%C3A8%' OR HEX(device_name) LIKE '%C3A9%'), COUNT(*) FROM db_ingest.ingest_device
+UNION ALL SELECT 'ingest_device.location', SUM(HEX(location) LIKE '%C3A5%' OR HEX(location) LIKE '%C3A8%' OR HEX(location) LIKE '%C3A9%'), COUNT(*) FROM db_ingest.ingest_device
+UNION ALL SELECT 'ingest_device.remark', SUM(HEX(remark) LIKE '%C3A5%' OR HEX(remark) LIKE '%C3A8%' OR HEX(remark) LIKE '%C3A9%'), COUNT(*) FROM db_ingest.ingest_device;

@@ -253,6 +253,7 @@ import { CHANNEL_LABELS, INGEST_STATUS_TAGS, ingestApi } from '@/api/modules/ing
 import { distributionApi } from '@/api/modules/distribution'
 import { pigApi } from '@/api/modules/breeding'
 import { salesApi } from '@/api/modules/sales'
+import { slaughterApi } from '@/api/modules/slaughter'
 
 const activeTab = ref('staging')
 const filterForm = reactive<{ channel: string; status: number | undefined; deviceNo: string }>({
@@ -424,12 +425,52 @@ const DEMO_FIELDS: Record<string, DemoField[]> = {
     { key: 'sellWeightKg', label: '重量(kg)', type: 'number' },
   ],
   RECEIPT: [
-    { key: 'transportNo', label: '运输单号', required: true, placeholder: '需是「待发车」的运单' },
+    { key: 'transportNo', label: '运输单号', required: true, placeholder: '需是「已到达」的运单' },
     { key: 'storeName', label: '门店名称', required: true, placeholder: '如 示范一店' },
     { key: 'receiver', label: '签收人', placeholder: '留空会记为设备，签收需实名时请填写' },
     { key: 'tempValue', label: '到货温度(℃)', type: 'number' },
     { key: 'qtyCheck', label: '数量核对', type: 'select', options: [{ label: '一致', value: 1 }, { label: '不一致', value: 0 }] },
     { key: 'packageIntact', label: '包装完好', type: 'select', options: [{ label: '完好', value: 1 }, { label: '破损', value: 0 }] },
+  ],
+  TAG: [
+    { key: 'earTagNo', label: '耳标号', required: true, placeholder: '新耳标号，已存在的会返回既有档案' },
+    { key: 'farmName', label: '养殖场名称', required: true, placeholder: '需是已登记的养殖场' },
+    { key: 'breed', label: '品种', placeholder: '如 三元杂' },
+    { key: 'gender', label: '性别', type: 'select', options: [{ label: '公', value: 1 }, { label: '母', value: 2 }] },
+    { key: 'penNo', label: '圈舍编号', placeholder: '如 1号舍-03' },
+    { key: 'origin', label: '来源', placeholder: '自繁 或 外购-供应商名' },
+  ],
+  VACCINE: [
+    { key: 'earTagNo', label: '耳标号', required: true, placeholder: '需在生猪档案中存在' },
+    { key: 'vaccineName', label: '疫苗名称', required: true, placeholder: '如 猪瘟兔化弱毒疫苗' },
+    { key: 'vaccineBatchNo', label: '疫苗批号', required: true, placeholder: '缺批号会被拒绝入库' },
+    { key: 'dosage', label: '剂量', placeholder: '如 2ml' },
+    { key: 'injectSite', label: '注射部位', placeholder: '如 耳后颈部' },
+    { key: 'operator', label: '操作员', placeholder: '留空记为设备' },
+  ],
+  INSPECTION: [
+    { key: 'earTagNo', label: '耳标号', required: true, placeholder: '需在生猪档案中存在' },
+    { key: 'batchNo', label: '批次号', required: true },
+    { key: 'inspectType', label: '检验类型', type: 'select', options: [{ label: '宰后检验', value: 2 }, { label: '宰前检验', value: 1 }, { label: '同步检验', value: 3 }] },
+    { key: 'result', label: '检验结论', required: true, type: 'select', options: [{ label: '1 合格', value: 1 }, { label: '0 不合格', value: 0 }], placeholder: '判定权在兽医，终端只录入' },
+    { key: 'veterinary', label: '检验人(兽医)', required: true, placeholder: '机器不得代签' },
+    { key: 'temperature', label: '体温(℃)', type: 'number', placeholder: '宰前检验用，如 38.6' },
+    { key: 'conclusion', label: '结论描述', placeholder: '如 体表/脏器无可见病变' },
+  ],
+  STAMP: [
+    { key: 'earTagNo', label: '耳标号', required: true, placeholder: '需已有结论为「合格」的检验记录' },
+    { key: 'batchNo', label: '批次号', required: true },
+    { key: 'carcassNo', label: '胴体编号', required: true, placeholder: '如 CT-20260922-001' },
+    { key: 'veterinary', label: '授权兽医', required: true, placeholder: '盖章授权必须落具体人' },
+    { key: 'stampType', label: '印章类型', placeholder: '留空默认检疫合格章' },
+  ],
+  SPLIT: [
+    { key: 'parentBatchNo', label: '胴体批次号', required: true, placeholder: '需是已存在的白条批次' },
+    { key: 'productName', label: '产品名称', required: true, placeholder: '如 带皮白条/里脊肉' },
+    { key: 'weightKg', label: '重量(kg)', required: true, type: 'number', placeholder: '称重台读数，如 78.5' },
+    { key: 'packageCount', label: '包装数量', type: 'number' },
+    { key: 'packageType', label: '包装类型', placeholder: '如 真空袋' },
+    { key: 'workshop', label: '车间', placeholder: '如 分割一号线' },
   ],
 }
 
@@ -440,6 +481,11 @@ const CHANNEL_TABLES: Record<string, string> = {
   RACTOPAMINE: 'ractopamine_test',
   SALE: 'retail_sale',
   RECEIPT: 'store_receipt',
+  TAG: 'pig_individual',
+  VACCINE: 'vaccine_record',
+  INSPECTION: 'slaughter_inspection',
+  STAMP: 'carcass_stamp',
+  SPLIT: 'split_batch',
 }
 
 const demoVisible = ref(false)
@@ -609,6 +655,20 @@ async function submitDemo() {
 async function findTransport(status: number) {
   const page = await safeList(() => distributionApi.getTransports({ status, pageNum: 1, pageSize: 1 }))
   return page?.[0] || null
+}
+
+/** 取一头在养生猪填入耳标号，再执行通道专属的默认值填充（免疫/检验共用） */
+async function fillByPig(desc: string, extra: () => void) {
+  const page = await safeList(() => pigApi.list({ pageNum: 1, pageSize: 1, status: 1 }))
+  const pig = page?.[0]
+  const earTag = pig?.earTagNo || pig?.ear_tag_no
+  if (earTag) {
+    demoForm.data.earTagNo = earTag
+    extra()
+    sampleHint.value = `取到${desc}耳标 ${earTag}`
+  } else {
+    sampleHint.value = `没有${desc}档案，请先到「养殖管理 → 生猪档案」用耳标读写器（TAG）建档`
+  }
 }
 
 /** 统一把分页/列表响应的形状差异吃掉，取不到就返回空数组 */

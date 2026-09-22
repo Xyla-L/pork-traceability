@@ -1,0 +1,1 @@
+SELECT device_no, HEX(device_name) AS name_hex, CHAR_LENGTH(device_name) AS chars, LENGTH(device_name) AS bytes FROM db_ingest.ingest_device WHERE channel IN ('TAG','VACCINE','INSPECTION','STAMP','SPLIT') ORDER BY device_no;

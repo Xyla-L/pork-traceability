@@ -13,6 +13,13 @@
       <el-table-column prop="injectTime" label="注射时间" min-width="160" align="center" />
       <el-table-column prop="dosage" label="剂量" min-width="100" align="center" />
       <el-table-column prop="operator" label="操作人" min-width="100" show-overflow-tooltip />
+      <el-table-column prop="source" label="数据来源" min-width="120" align="center">
+        <template #default="{ row }">
+          <el-tooltip :content="row.source === 'DEVICE' ? `设备采集：${row.sourceRef || '--'}` : '人工录入'" placement="top">
+            <el-tag :type="sourceTag(row.source)" size="small" effect="plain">{{ sourceLabel(row.source) }}</el-tag>
+          </el-tooltip>
+        </template>
+      </el-table-column>
       <el-table-column label="操作" width="150" fixed="right" align="center">
         <template #default="{ row }">
           <el-button type="primary" link size="small" @click="handleViewCert(row)">
@@ -64,6 +71,7 @@
 
 <script setup>
 import { ref, reactive } from 'vue'
+import { sourceLabel, sourceTag } from '@/api/modules/ingest'
 import request from '@/utils/request'
 
 defineProps({

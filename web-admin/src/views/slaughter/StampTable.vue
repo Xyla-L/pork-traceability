@@ -18,6 +18,13 @@
           <el-tag :type="stampStatusTag(row.status)" size="small">{{ stampStatusLabel(row.status) }}</el-tag>
         </template>
       </el-table-column>
+      <el-table-column prop="source" label="数据来源" min-width="120" align="center">
+        <template #default="{ row }">
+          <el-tooltip :content="row.source === 'DEVICE' ? `自动盖章机：${row.sourceRef || '--'}` : '人工录入'" placement="top">
+            <el-tag :type="sourceTag(row.source)" size="small" effect="plain">{{ sourceLabel(row.source) }}</el-tag>
+          </el-tooltip>
+        </template>
+      </el-table-column>
       <el-table-column label="操作" width="170" fixed="right" align="center">
         <template #default="{ row }">
           <el-button type="primary" link size="small" @click="handleView(row)">
@@ -50,6 +57,7 @@
 <script setup>
 import { ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { sourceLabel, sourceTag } from '@/api/modules/ingest'
 import request from '@/utils/request'
 import BlockchainVerifyBadge from '@/components/common/BlockchainVerifyBadge.vue'
 

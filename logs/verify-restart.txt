@@ -1,0 +1,17 @@
+﻿/pork-traceability-ingest-service-1|restarts=0|health=healthy|state=running|exit=0
+/pork-traceability-breeding-service-1|restarts=0|health=healthy|state=running|exit=0
+/pork-traceability-blockchain-service-1|restarts=0|health=healthy|state=running|exit=0
+/pork-traceability-trace-service-1|restarts=0|health=healthy|state=running|exit=0
+/pork-traceability-auth-service-1|restarts=0|health=healthy|state=running|exit=0
+/pork-traceability-file-service-1|restarts=0|health=healthy|state=running|exit=0
+/pork-traceability-nginx-1|restarts=0|health=healthy|state=running|exit=0
+/pork-traceability-gateway-service-1|restarts=0|health=healthy|state=running|exit=0
+/pork-traceability-sales-service-1|restarts=0|health=healthy|state=running|exit=0
+/pork-traceability-distribution-service-1|restarts=0|health=healthy|state=running|exit=0
+/pork-traceability-slaughter-service-1|restarts=0|health=healthy|state=running|exit=0
+/pork-traceability-redis-1|restarts=0|health=healthy|state=running|exit=0
+/pork-traceability-rabbitmq-1|restarts=0|health=healthy|state=running|exit=0
+/pork-traceability-nacos-1|restarts=0|health=healthy|state=running|exit=0
+/pork-traceability-mysql-1|restarts=0|health=healthy|state=running|exit=0
+/pork-traceability-ganache-1|restarts=0|health=healthy|state=running|exit=0
+

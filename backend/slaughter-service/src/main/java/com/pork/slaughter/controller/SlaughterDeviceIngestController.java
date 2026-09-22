@@ -36,4 +36,16 @@ public class SlaughterDeviceIngestController {
     public Result<Map<String, Object>> ractopamine(@Valid @RequestBody DeviceIngestRequests.DeviceRactopamine request) {
         return Result.success(ingestService.ingestRactopamine(request));
     }
+
+    /** 屠宰检验：工位终端（兽医判定 + 终端录入） */
+    @PostMapping("/inspection")
+    public Result<Map<String, Object>> inspection(@Valid @RequestBody DeviceIngestRequests.DeviceInspection request) {
+        return Result.success(ingestService.ingestInspection(request));
+    }
+
+    /** 胴体盖章：自动盖章机（硬校验已有合格检验，人工确认也绕不过） */
+    @PostMapping("/stamp")
+    public Result<Map<String, Object>> stamp(@Valid @RequestBody DeviceIngestRequests.DeviceStamp request) {
+        return Result.success(ingestService.ingestStamp(request));
+    }
 }

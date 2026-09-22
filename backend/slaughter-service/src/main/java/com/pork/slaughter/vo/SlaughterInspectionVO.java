@@ -46,6 +46,12 @@ public class SlaughterInspectionVO {
 
     private String contentHash;
 
+    /** 数据来源：MANUAL=人工录入 DEVICE=设备自动采集（工位终端） */
+    private String source;
+
+    /** 来源设备号/单据号 */
+    private String sourceRef;
+
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     private LocalDateTime createTime;
 }

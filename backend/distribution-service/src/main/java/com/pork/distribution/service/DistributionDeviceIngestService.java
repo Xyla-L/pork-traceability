@@ -1,12 +1,17 @@
 package com.pork.distribution.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.pork.core.util.BusinessNoGenerator;
 import com.pork.core.util.HashUtil;
 import com.pork.distribution.dto.DeviceIngestRequests;
+import com.pork.distribution.entity.CarcassBatch;
 import com.pork.distribution.entity.ColdChainTransport;
+import com.pork.distribution.entity.SplitBatch;
 import com.pork.distribution.entity.StoreReceipt;
 import com.pork.distribution.entity.TemperatureLog;
+import com.pork.distribution.mapper.CarcassBatchMapper;
 import com.pork.distribution.mapper.ColdChainTransportMapper;
+import com.pork.distribution.mapper.SplitBatchMapper;
 import com.pork.distribution.mapper.StoreReceiptMapper;
 import com.pork.distribution.mapper.TemperatureLogMapper;
 import com.pork.mq.ChainEventPublisher;
@@ -23,10 +28,10 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * 设备通道写入（冷链温度 / 门店签收）。
+ * 设备通道写入（冷链温度 / 门店签收 / 分割批次）。
  * <p>
  * 与人工入口的差别只在「谁触发」：状态机约束完全一致——
- * 运输中才能记温度、到达后才能签收、一单只能签收一次。
+ * 运输中才能记温度、到达后才能签收、一单只能签收一次、分割批次必须挂在已存在的胴体批次下。
  * 设备绕过这些约束等于给冷链台账开后门，所以这里一律复用同一套判断。
  */
 @Slf4j
@@ -41,6 +46,8 @@ public class DistributionDeviceIngestService {
     private final ColdChainTransportMapper transportMapper;
     private final TemperatureLogMapper temperatureLogMapper;
     private final StoreReceiptMapper receiptMapper;
+    private final CarcassBatchMapper carcassBatchMapper;
+    private final SplitBatchMapper splitBatchMapper;
     private final ChainEventPublisher chainEvents;
     private final BigDecimal defaultRangeMin;
     private final BigDecimal defaultRangeMax;
@@ -48,12 +55,16 @@ public class DistributionDeviceIngestService {
     public DistributionDeviceIngestService(ColdChainTransportMapper transportMapper,
                                            TemperatureLogMapper temperatureLogMapper,
                                            StoreReceiptMapper receiptMapper,
+                                           CarcassBatchMapper carcassBatchMapper,
+                                           SplitBatchMapper splitBatchMapper,
                                            ChainEventPublisher chainEvents,
                                            @Value("${ingest.temperature.range-min:-18.0}") BigDecimal defaultRangeMin,
                                            @Value("${ingest.temperature.range-max:0.0}") BigDecimal defaultRangeMax) {
         this.transportMapper = transportMapper;
         this.temperatureLogMapper = temperatureLogMapper;
         this.receiptMapper = receiptMapper;
+        this.carcassBatchMapper = carcassBatchMapper;
+        this.splitBatchMapper = splitBatchMapper;
         this.chainEvents = chainEvents;
         this.defaultRangeMin = defaultRangeMin;
         this.defaultRangeMax = defaultRangeMax;
@@ -157,8 +168,50 @@ public class DistributionDeviceIngestService {
         return written(entity.getId(), "门店签收已入账");
     }
 
-    private ColdChainTransport resolveTransport(Long transportId, String transportNo) {
-        if (transportId != null) {
+    /**
+     * 分割批次（分割线扫码称重台）：扫白条钩标签自动建批次。
+     * 批次号由系统生成（SP 前缀），设备侧只报「挂在哪个胴体批次下、切出什么、多重」——
+     * 批次号是人手编不出也编不对的东西，让它进设备报文只会制造断链批次。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public Map<String, Object> ingestSplit(DeviceIngestRequests.DeviceSplit request) {
+        CarcassBatch parent = carcassBatchMapper.selectOne(Wrappers.<CarcassBatch>lambdaQuery()
+                .eq(CarcassBatch::getBatchNo, request.getParentBatchNo()).last("LIMIT 1"));
+        if (parent == null) {
+            return manual("胴体批次「" + request.getParentBatchNo() + "」不存在，分割批次必须挂在已存在的胴体批次下");
+        }
+        if (request.getWeightKg() == null || request.getWeightKg().signum() <= 0) {
+            return rejected("称重台未输出有效重量，禁止入库");
+        }
+
+        SplitBatch entity = new SplitBatch();
+        entity.setBatchNo(BusinessNoGenerator.next("SP"));
+        entity.setParentBatchId(parent.getId());
+        entity.setSplitLevel(1);
+        entity.setProductName(request.getProductName());
+        entity.setWeightKg(request.getWeightKg());
+        entity.setPackageCount(request.getPackageCount() == null ? 1 : request.getPackageCount());
+        entity.setPackageType(request.getPackageType());
+        entity.setSplitTime(LocalDateTime.now());
+        entity.setWorkshop(request.getWorkshop());
+        entity.setWorkshopTemp(request.getWorkshopTemp());
+        entity.setOperator(StringUtils.hasText(request.getOperator()) ? request.getOperator() : "设备自动采集");
+        entity.setSource(SOURCE_DEVICE);
+        entity.setSourceRef(request.getSourceRef());
+        entity.setRawPayload(request.getRawPayload());
+        entity.setContentHash(HashUtil.sha256Json(request));
+        entity.setCreateTime(LocalDateTime.now());
+        splitBatchMapper.insert(entity);
+        publish("SPLIT_BATCH", entity.getId(), entity.getBatchNo(), entity.getContentHash(),
+                Map.of("batchNo", entity.getBatchNo()));
+        return written(entity.getId(), "分割批次 " + entity.getBatchNo() + " 已自动创建");
+    }
+
+    private void publish(String type, Long id, String bizNo, String hash, Map<String, Object> payload) {
+        chainEvents.publish(ChainTxMessage.create(type, id, bizNo, hash, payload));
+    }
+
+    private ColdChainTransport resolveTransport(Long transportId, String transportNo) {        if (transportId != null) {
             ColdChainTransport byId = transportMapper.selectById(transportId);
             if (byId != null) return byId;
         }

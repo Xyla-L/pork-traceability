@@ -35,4 +35,10 @@ public class DistributionDeviceIngestController {
     public Result<Map<String, Object>> storeReceipt(@Valid @RequestBody DeviceIngestRequests.DeviceReceipt request) {
         return Result.success(ingestService.ingestReceipt(request));
     }
+
+    /** 分割批次（分割线扫码称重台，扫白条钩标签自动建批次） */
+    @PostMapping("/split")
+    public Result<Map<String, Object>> split(@Valid @RequestBody DeviceIngestRequests.DeviceSplit request) {
+        return Result.success(ingestService.ingestSplit(request));
+    }
 }

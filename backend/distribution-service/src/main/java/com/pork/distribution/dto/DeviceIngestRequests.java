@@ -75,4 +75,27 @@ public final class DeviceIngestRequests {
         private String sourceRef;
         private String rawPayload;
     }
+
+    /** 分割批次：分割线扫码称重台，扫白条钩标签自动建批次（批次号由系统生成，设备不填） */
+    @Data
+    public static class DeviceSplit {
+        @NotBlank(message = "胴体批次号不能为空")
+        private String parentBatchNo;
+
+        @NotBlank(message = "产品名称不能为空")
+        private String productName;
+
+        /** 称重台读数（kg），必须大于 0 */
+        private BigDecimal weightKg;
+
+        private Integer packageCount;
+        private String packageType;
+        private String workshop;
+        private BigDecimal workshopTemp;
+        private String operator;
+
+        private String source;
+        private String sourceRef;
+        private String rawPayload;
+    }
 }

@@ -1,0 +1,11 @@
+﻿docker :  Container pork-traceability-nacos-1 Recreate 
+所在位置 行:445 字符: 46
++ ... ty\backend"; docker compose up -d --force-recreate nacos 2>&1 | Out-S ...
++                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ( Container pork...cos-1 Recreate :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ Container pork-traceability-nacos-1 Recreated 
+ Container pork-traceability-nacos-1 Starting 
+ Container pork-traceability-nacos-1 Started 
+

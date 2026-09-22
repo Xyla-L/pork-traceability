@@ -1,0 +1,17 @@
+﻿/pork-traceability-nginx-1|restarts=0|started=2026-09-22T08:48:44.413911404Z|exit=0
+/pork-traceability-file-service-1|restarts=1|started=2026-09-22T08:49:40.221028998Z|exit=0
+/pork-traceability-auth-service-1|restarts=1|started=2026-09-22T08:49:46.027829482Z|exit=0
+/pork-traceability-breeding-service-1|restarts=1|started=2026-09-22T08:49:46.465167119Z|exit=0
+/pork-traceability-gateway-service-1|restarts=2|started=2026-09-22T08:50:06.738244596Z|exit=0
+/pork-traceability-blockchain-service-1|restarts=1|started=2026-09-22T08:49:47.808821807Z|exit=0
+/pork-traceability-distribution-service-1|restarts=1|started=2026-09-22T08:49:45.620522652Z|exit=0
+/pork-traceability-sales-service-1|restarts=1|started=2026-09-22T08:49:47.223015382Z|exit=0
+/pork-traceability-slaughter-service-1|restarts=1|started=2026-09-22T08:49:45.931557678Z|exit=0
+/pork-traceability-trace-service-1|restarts=1|started=2026-09-22T08:49:42.218147496Z|exit=0
+/pork-traceability-ingest-service-1|restarts=2|started=2026-09-22T08:50:05.700996957Z|exit=0
+/pork-traceability-mysql-1|restarts=0|started=2026-09-22T08:48:44.497491015Z|exit=0
+/pork-traceability-rabbitmq-1|restarts=0|started=2026-09-22T08:48:44.510388127Z|exit=0
+/pork-traceability-redis-1|restarts=0|started=2026-09-22T08:48:44.37185928Z|exit=0
+/pork-traceability-ganache-1|restarts=0|started=2026-09-22T08:48:44.440558867Z|exit=0
+/pork-traceability-nacos-1|restarts=0|started=2026-09-22T08:48:44.501218534Z|exit=0
+

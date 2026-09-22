@@ -14,7 +14,17 @@ public enum IngestChannel {
     /** 门店收银 POS：扫码激活 + 售出 → retail_sale */
     SALE("retail_sale"),
     /** 门店签收 PDA → store_receipt */
-    RECEIPT("store_receipt");
+    RECEIPT("store_receipt"),
+    /** 养殖建档：耳标读写器，佩戴即建档 → pig_individual */
+    TAG("pig_individual"),
+    /** 免疫注射：智能连续注射器（记录剂量/时间/批号） → vaccine_record */
+    VACCINE("vaccine_record"),
+    /** 屠宰检验工位终端：兽医判定 + 终端录入（判定权在人，设备只当"笔"） → slaughter_inspection */
+    INSPECTION("slaughter_inspection"),
+    /** 胴体自动盖章机：检验合格后自动执行盖章动作 → carcass_stamp */
+    STAMP("carcass_stamp"),
+    /** 分割线扫码称重台：扫白条钩标签自动建分割批次 → split_batch */
+    SPLIT("split_batch");
 
     private final String targetTable;
 

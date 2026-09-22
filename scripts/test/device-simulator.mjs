@@ -92,7 +92,12 @@ const help = () => {
   entry   <deviceNo> <deviceKey> <earTagNo> <batchNo> [quarantineCert] [vehicleNo] [weight]
   racto   <deviceNo> <deviceKey> <earTagNo> <sampleNo> <result 1阴性/0阳性> [batchNo]
   sale    <deviceNo> <deviceKey> <qrCode> [sellPrice] [sellWeightKg]
-  receipt <deviceNo> <deviceKey> <transportNo> <storeName> <receiver> [tempValue]`)
+  receipt <deviceNo> <deviceKey> <transportNo> <storeName> <receiver> [tempValue]
+  tag     <deviceNo> <deviceKey> <earTagNo> <farmName> [breed] [penNo]          # 佩戴即建档
+  inject  <deviceNo> <deviceKey> <earTagNo> <vaccineName> <vaccineBatchNo> [dosage]
+  inspect <deviceNo> <deviceKey> <earTagNo> <batchNo> <result 1/0> [veterinary] [inspectType]
+  stamp   <deviceNo> <deviceKey> <earTagNo> <batchNo> <carcassNo> [veterinary]  # 需已有合格检验
+  split   <deviceNo> <deviceKey> <parentBatchNo> <productName> [weightKg]`)
 }
 
 if (isMain) switch (cmd) {
@@ -156,6 +161,53 @@ if (isMain) switch (cmd) {
       transportNo, storeName, receiver,
       tempValue: tempValue ? Number(tempValue) : undefined,
       qtyCheck: 1, tempCheck: 1, packageIntact: 1,
+    })
+    console.log(JSON.stringify(res, null, 2))
+    break
+  }
+  case 'tag': {
+    // 养殖建档：耳标读写器，佩戴即建档
+    const [, key, earTagNo, farmName, breed, penNo] = rest
+    const res = await report(key, 'TAG', bizKey('TAG'), {
+      earTagNo, farmName, breed: breed || '三元杂', penNo: penNo || '1号舍-03', gender: 1, origin: '自繁',
+    })
+    console.log(JSON.stringify(res, null, 2))
+    break
+  }
+  case 'inject': {
+    // 免疫注射：智能连续注射器，疫苗批号必填
+    const [, key, earTagNo, vaccineName, vaccineBatchNo, dosage] = rest
+    const res = await report(key, 'VACCINE', bizKey('INJ'), {
+      earTagNo, vaccineName, vaccineBatchNo, dosage: dosage || '2ml', injectSite: '耳后颈部',
+    })
+    console.log(JSON.stringify(res, null, 2))
+    break
+  }
+  case 'inspect': {
+    // 屠宰检验工位终端：兽医判定 + 终端录入，结论与检验人必填
+    const [, key, earTagNo, batchNo, result, veterinary, inspectType] = rest
+    const res = await report(key, 'INSPECTION', bizKey('INSP'), {
+      earTagNo, batchNo, result: Number(result ?? 1), veterinary: veterinary || '李官方兽医',
+      inspectType: Number(inspectType ?? 2), conclusion: '体表、脏器无可见病变，判合格',
+    })
+    console.log(JSON.stringify(res, null, 2))
+    break
+  }
+  case 'stamp': {
+    // 胴体自动盖章机：硬校验该猪已有合格检验记录
+    const [, key, earTagNo, batchNo, carcassNo, veterinary] = rest
+    const res = await report(key, 'STAMP', bizKey('STMP'), {
+      earTagNo, batchNo, carcassNo, veterinary: veterinary || '李官方兽医',
+    })
+    console.log(JSON.stringify(res, null, 2))
+    break
+  }
+  case 'split': {
+    // 分割线扫码称重台：扫白条钩标签自动建分割批次，批次号系统生成
+    const [, key, parentBatchNo, productName, weightKg] = rest
+    const res = await report(key, 'SPLIT', bizKey('SPLT'), {
+      parentBatchNo, productName, weightKg: Number(weightKg || 78.5),
+      packageCount: 1, packageType: '真空袋', workshop: '分割车间一号线',
     })
     console.log(JSON.stringify(res, null, 2))
     break

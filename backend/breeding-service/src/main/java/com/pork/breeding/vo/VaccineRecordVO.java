@@ -38,6 +38,12 @@ public class VaccineRecordVO {
     @Schema(description = "操作人姓名")
     private String operator;
 
+    @Schema(description = "数据来源：MANUAL=人工录入 DEVICE=设备自动采集")
+    private String source;
+
+    @Schema(description = "来源设备号/单据号")
+    private String sourceRef;
+
     @Schema(description = "文件ID列表")
     private List<String> fileIds;
 

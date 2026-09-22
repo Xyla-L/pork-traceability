@@ -58,6 +58,21 @@ public class CarcassStamp {
     private String remark;
 
     /**
+     * 数据来源：MANUAL=人工录入 DEVICE=设备自动采集（自动盖章机）
+     */
+    private String source;
+
+    /**
+     * 来源设备号/单据号
+     */
+    private String sourceRef;
+
+    /**
+     * 设备原始报文留档
+     */
+    private String rawPayload;
+
+    /**
      * 创建时间
      */
     private LocalDateTime createTime;

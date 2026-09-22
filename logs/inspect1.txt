@@ -1,0 +1,4 @@
+﻿/pork-traceability-gateway-service-1 restarts=2 started=2026-09-22T08:50:06.738244596Z finished=2026-09-22T08:50:05.846716392Z
+/pork-traceability-auth-service-1 restarts=1 started=2026-09-22T08:49:46.027829482Z finished=2026-09-22T08:49:45.564876624Z
+/pork-traceability-nacos-1 restarts=0 started=2026-09-22T08:48:44.501218534Z finished=2026-09-22T08:48:42.422913967Z
+

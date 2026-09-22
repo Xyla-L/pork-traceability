@@ -1,0 +1,73 @@
+﻿docker :  Container pork-traceability-distribution-service-1 Stopping 
+所在位置 行:445 字符: 46
++ ... tion "E:\pork-traceability\backend"; docker compose down 2>&1 | Out-S ...
++                                          ~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ( Container pork...ice-1 Stopping :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ Container pork-traceability-trace-service-1 Stopping 
+ Container pork-traceability-file-service-1 Stopping 
+ Container pork-traceability-auth-service-1 Stopping 
+ Container pork-traceability-blockchain-service-1 Stopping 
+ Container pork-traceability-nginx-1 Stopping 
+ Container pork-traceability-ingest-service-1 Stopping 
+ Container pork-traceability-slaughter-service-1 Stopping 
+ Container pork-traceability-breeding-service-1 Stopping 
+ Container pork-traceability-sales-service-1 Stopping 
+ Container pork-traceability-nginx-1 Stopped 
+ Container pork-traceability-nginx-1 Removing 
+ Container pork-traceability-nginx-1 Removed 
+ Container pork-traceability-gateway-service-1 Stopping 
+ Container pork-traceability-ingest-service-1 Stopped 
+ Container pork-traceability-ingest-service-1 Removing 
+ Container pork-traceability-ingest-service-1 Removed 
+ Container pork-traceability-trace-service-1 Stopped 
+ Container pork-traceability-trace-service-1 Removing 
+ Container pork-traceability-trace-service-1 Removed 
+ Container pork-traceability-auth-service-1 Stopped 
+ Container pork-traceability-auth-service-1 Removing 
+ Container pork-traceability-breeding-service-1 Stopped 
+ Container pork-traceability-breeding-service-1 Removing 
+ Container pork-traceability-auth-service-1 Removed 
+ Container pork-traceability-breeding-service-1 Removed 
+ Container pork-traceability-file-service-1 Stopped 
+ Container pork-traceability-file-service-1 Removing 
+ Container pork-traceability-file-service-1 Removed 
+ Container pork-traceability-distribution-service-1 Stopped 
+ Container pork-traceability-distribution-service-1 Removing 
+ Container pork-traceability-distribution-service-1 Removed 
+ Container pork-traceability-slaughter-service-1 Stopped 
+ Container pork-traceability-slaughter-service-1 Removing 
+ Container pork-traceability-slaughter-service-1 Removed 
+ Container pork-traceability-sales-service-1 Stopped 
+ Container pork-traceability-sales-service-1 Removing 
+ Container pork-traceability-sales-service-1 Removed 
+ Container pork-traceability-blockchain-service-1 Stopped 
+ Container pork-traceability-blockchain-service-1 Removing 
+ Container pork-traceability-blockchain-service-1 Removed 
+ Container pork-traceability-rabbitmq-1 Stopping 
+ Container pork-traceability-ganache-1 Stopping 
+ Container pork-traceability-ganache-1 Stopped 
+ Container pork-traceability-ganache-1 Removing 
+ Container pork-traceability-ganache-1 Removed 
+ Container pork-traceability-rabbitmq-1 Stopped 
+ Container pork-traceability-rabbitmq-1 Removing 
+ Container pork-traceability-rabbitmq-1 Removed 
+ Container pork-traceability-gateway-service-1 Stopped 
+ Container pork-traceability-gateway-service-1 Removing 
+ Container pork-traceability-gateway-service-1 Removed 
+ Container pork-traceability-mysql-1 Stopping 
+ Container pork-traceability-redis-1 Stopping 
+ Container pork-traceability-nacos-1 Stopping 
+ Container pork-traceability-redis-1 Stopped 
+ Container pork-traceability-redis-1 Removing 
+ Container pork-traceability-redis-1 Removed 
+ Container pork-traceability-mysql-1 Stopped 
+ Container pork-traceability-mysql-1 Removing 
+ Container pork-traceability-mysql-1 Removed 
+ Container pork-traceability-nacos-1 Stopped 
+ Container pork-traceability-nacos-1 Removing 
+ Container pork-traceability-nacos-1 Removed 
+ Network pork-traceability_pork-net Removing 
+ Network pork-traceability_pork-net Removed 
+

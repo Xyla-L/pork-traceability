@@ -30,6 +30,13 @@
           <StatusTag :type="pigStatusType(row.status)" />
         </template>
       </el-table-column>
+      <el-table-column prop="dataSource" label="数据来源" min-width="120" align="center">
+        <template #default="{ row }">
+          <el-tooltip :content="row.dataSource === 'DEVICE' ? `设备采集：${row.sourceRef || '--'}` : '人工录入'" placement="top">
+            <el-tag :type="sourceTag(row.dataSource)" size="small" effect="plain">{{ sourceLabel(row.dataSource) }}</el-tag>
+          </el-tooltip>
+        </template>
+      </el-table-column>
       <el-table-column label="操作" width="160" fixed="right" align="center">
         <template #default="{ row }">
           <el-button v-if="row.status === 1" type="success" link size="small" @click="$emit('apply', row)">
@@ -45,6 +52,7 @@
 <script setup>
 import { computed } from 'vue'
 import StatusTag from '@/components/common/StatusTag.vue'
+import { sourceLabel, sourceTag } from '@/api/modules/ingest'
 
 defineProps({
   data: {

@@ -67,6 +67,22 @@ public class PigIndividual {
     private Integer status;
 
     /**
+     * 数据来源：MANUAL=人工录入 DEVICE=设备自动采集（注意与上面的 source「自繁/外购」区分，
+     * 那是业务上的猪只来源，这个是审计上的录入方式）
+     */
+    private String dataSource;
+
+    /**
+     * 来源设备号/单据号（data_source=DEVICE 时填设备编号）
+     */
+    private String sourceRef;
+
+    /**
+     * 设备原始报文留档
+     */
+    private String rawPayload;
+
+    /**
      * 逻辑删除标记 (0-未删除, 1-已删除)
      */
     @TableLogic

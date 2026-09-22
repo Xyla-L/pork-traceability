@@ -49,6 +49,11 @@ export const CHANNEL_LABELS: Record<string, string> = {
   RACTOPAMINE: '瘦肉精检测',
   SALE: '门店收银',
   RECEIPT: '门店签收',
+  TAG: '养殖建档（耳标）',
+  VACCINE: '免疫注射',
+  INSPECTION: '屠宰检验（工位终端）',
+  STAMP: '胴体自动盖章',
+  SPLIT: '分割批次（扫码称重）',
 }
 
 /** 待确认队列状态：0待处理 1待人工处理 2已入账 3已拒绝 4已降采样丢弃 */

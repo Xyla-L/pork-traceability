@@ -1,0 +1,7 @@
+﻿/usr/bin/curl
+/usr/bin/wget
+/bin/bash
+/bin/busybox
+---
+8848readiness=200
+

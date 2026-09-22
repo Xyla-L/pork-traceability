@@ -107,4 +107,75 @@ public final class DeviceIngestRequests {
         private String sourceRef;
         private String rawPayload;
     }
+
+    /**
+     * 屠宰检验工位终端：兽医在工位判定，终端一键回传。
+     * 判定权在人——result 与 veterinary 是硬性必填，接入层与业务侧双重校验。
+     */
+    @Data
+    public static class DeviceInspection {
+        /** 接入层按耳标反查到生猪档案后回填的主键（设备侧不填） */
+        private Long pigId;
+
+        @NotBlank(message = "耳标号不能为空")
+        private String earTagNo;
+
+        @NotBlank(message = "批次号不能为空")
+        private String batchNo;
+
+        /** 1宰前检验 2宰后检验 3同步检验；缺省按宰后检验 */
+        private Integer inspectType;
+
+        /** 1合格 0不合格；null=终端未给出结论，禁止入库 */
+        private Integer result;
+
+        /** 体温（宰前检验用） */
+        private BigDecimal temperature;
+
+        private String organCheck;
+        private String conclusion;
+        private String issueDesc;
+        private String disposal;
+
+        @NotBlank(message = "检验人不能为空：检验结论必须落具体兽医")
+        private String veterinary;
+
+        private String licenseNo;
+
+        private String source;
+        private String sourceRef;
+        private String rawPayload;
+    }
+
+    /**
+     * 胴体自动盖章机：检验合格后自动执行盖章动作。
+     * 授权兽医必填——盖章的授权是兽医的法定行为，机器只是执行机构。
+     */
+    @Data
+    public static class DeviceStamp {
+        /** 接入层按耳标反查到生猪档案后回填的主键（设备侧不填） */
+        private Long pigId;
+
+        @NotBlank(message = "耳标号不能为空")
+        private String earTagNo;
+
+        @NotBlank(message = "批次号不能为空")
+        private String batchNo;
+
+        @NotBlank(message = "胴体编号不能为空")
+        private String carcassNo;
+
+        /** 缺省按「检疫合格章」 */
+        private String stampType;
+        private String stampPosition;
+
+        @NotBlank(message = "授权兽医不能为空：盖章授权必须落具体人")
+        private String veterinary;
+
+        private String remark;
+
+        private String source;
+        private String sourceRef;
+        private String rawPayload;
+    }
 }

@@ -37,7 +37,7 @@ x-app-defaults: &app-defaults
   depends_on:
     mysql: { condition: service_healthy }
     redis: { condition: service_healthy }
-    nacos: { condition: service_started }
+    nacos: { condition: service_healthy }
   healthcheck:
     test: ["CMD-SHELL", "curl -fsS http://localhost:$${SERVICE_PORT}/actuator/health | grep -q UP"]
     interval: 15s
@@ -100,6 +100,15 @@ services:
       NACOS_AUTH_ENABLE: "false"
     ports: ["8848:8848", "9848:9848"]
     networks: [pork-net]
+    healthcheck:
+      # Nacos 是 Java 进程，容器「已启动」远早于「可服务」：8848(HTTP) 与 9848(gRPC) 前者先监听，
+      # 客户端真正依赖的是 9848。只探测 8848 会让服务在 9848 未就绪时注册失败（NacosException:
+      # Client not connected），因此两个端口都必须通才算就绪。
+      test: ["CMD-SHELL", "bash -c 'curl -fsS http://localhost:8848/nacos/v1/console/health/readiness >/dev/null && echo > /dev/tcp/localhost/9848'"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
 
   gateway-service:
     <<: *app-defaults
@@ -138,7 +147,7 @@ services:
     depends_on:
       mysql: { condition: service_healthy }
       redis: { condition: service_healthy }
-      nacos: { condition: service_started }
+      nacos: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
 
   slaughter-service:
@@ -155,7 +164,7 @@ services:
     depends_on:
       mysql: { condition: service_healthy }
       redis: { condition: service_healthy }
-      nacos: { condition: service_started }
+      nacos: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
 
   distribution-service:
@@ -171,7 +180,7 @@ services:
     depends_on:
       mysql: { condition: service_healthy }
       redis: { condition: service_healthy }
-      nacos: { condition: service_started }
+      nacos: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
 
   sales-service:
@@ -187,7 +196,7 @@ services:
     depends_on:
       mysql: { condition: service_healthy }
       redis: { condition: service_healthy }
-      nacos: { condition: service_started }
+      nacos: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
 
   trace-service:
@@ -249,7 +258,7 @@ services:
     depends_on:
       mysql: { condition: service_healthy }
       redis: { condition: service_healthy }
-      nacos: { condition: service_started }
+      nacos: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
       ganache: { condition: service_healthy }
 

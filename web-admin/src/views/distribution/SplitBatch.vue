@@ -83,6 +83,11 @@
           <el-descriptions-item label="层级">{{ detailNode.splitLevel || 0 }}</el-descriptions-item>
           <el-descriptions-item label="父批次">{{ detailNode.parentBatchId ? detailNode.parentBatchId : '无（根批次）' }}</el-descriptions-item>
           <el-descriptions-item label="操作人">{{ detailNode.operator || '--' }}</el-descriptions-item>
+          <el-descriptions-item label="数据来源">
+            <el-tag :type="sourceTag(detailNode.source)" size="small" effect="plain">
+              {{ sourceLabel(detailNode.source) }}<template v-if="detailNode.source === 'DEVICE'">（{{ detailNode.sourceRef || '' }}）</template>
+            </el-tag>
+          </el-descriptions-item>
           <el-descriptions-item label="操作时间">{{ detailNode.splitTime || detailNode.createTime || '--' }}</el-descriptions-item>
           <el-descriptions-item label="车间">{{ detailNode.workshop || '--' }}</el-descriptions-item>
         </el-descriptions>
@@ -163,6 +168,7 @@ import { useRoute } from 'vue-router'
 import { Search, Plus } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import BlockchainVerifyBadge from '@/components/common/BlockchainVerifyBadge.vue'
+import { sourceLabel, sourceTag } from '@/api/modules/ingest'
 import { distributionApi } from '@/api/modules/distribution'
 import request from '@/utils/request'
 

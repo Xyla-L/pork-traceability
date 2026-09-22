@@ -1,0 +1,17 @@
+﻿k	COUNT(*)
+col_pig	1
+k	COUNT(*)
+col_vac	1
+k	COUNT(*)
+col_insp	1
+k	COUNT(*)
+col_stamp	1
+k	COUNT(*)
+col_split	1
+device_no	device_name	channel	status
+STATION-001	灞犲妫€楠屽伐浣嶇粓绔?INSPECTION	1
+SPLIT-001	鍒嗗壊绾挎壂鐮佺О閲嶅彴	SPLIT	1
+STAMPER-001	鑳翠綋鑷姩鐩栫珷鏈?STAMP	1
+TAG-W001	鑰虫爣璇诲啓鍣?绀鸿寖涓€鍙疯垗	TAG	1
+INJ-001	鏅鸿兘鍏嶇柅娉ㄥ皠鍣?VACCINE	1
+

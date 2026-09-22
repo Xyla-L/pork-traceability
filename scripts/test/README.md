@@ -78,11 +78,36 @@ node scripts/test/ingest-acceptance-test.mjs --auto-depart
 
 ## 已有库如何补执行 DDL
 
-`init-sql/` 只在 MySQL 数据卷**首次初始化**时执行。已经有数据的库要手动补：
+`init-sql/` 只在 MySQL 数据卷**首次初始化**时执行。已经有数据的库要手动补。
+
+> **警告：这一步是中文乱码的高发点。**
+> 不要用 `Get-Content xxx.sql | docker exec -i ... mysql` 这种写法：Windows PowerShell 5.1 的
+> `Get-Content` 默认按系统 ANSI(GBK) 读取文件，UTF-8 中文会被解析成乱码字节再写进库，
+> 形成「UTF-8 字节 → Latin-1 字符 → 再按 UTF-8 存回」的双重编码（页面上显示为
+> `å†·è—è½¦`、`鍐疯棌` 之类的乱码），且**不可逆地写进了数据**。
+> 本项目 2026-09 曾因此在「设备接入 → 待确认队列 → 来源设备」列出现乱码。
+
+**正确姿势（二进制安全）**：先把文件原样拷进容器，再在容器内用 mysql 读取。
 
 ```bash
-docker exec -i pork-traceability-mysql-1 mysql -uroot -p<root密码> < backend/init-sql/11-device-ingest.sql
+# 1) 拷贝 SQL 到容器（docker cp 是二进制安全的，不会改编码）
+docker cp backend/init-sql/11-device-ingest.sql pork-traceability-mysql-1:/tmp/patch.sql
+
+# 2) 在容器内执行（显式指定 utf8mb4）
+docker exec pork-traceability-mysql-1 sh -c \
+  "mysql -uroot -p<root密码> --default-character-set=utf8mb4 < /tmp/patch.sql"
 ```
+
+若在 macOS / Linux 的 bash 下用重定向，`docker exec -i ... mysql < file.sql` 是安全的
+（bash 原样传字节）；只有 PowerShell 管道会坏。
+
+**补执行后如何自检中文没坏**（返回 0 即为正常，非 0 说明该列被双重编码）：
+
+```sql
+SELECT SUM(HEX(device_name) LIKE '%C3A5%' OR HEX(device_name) LIKE '%C3A8%') AS bad FROM db_ingest.ingest_device;
+```
+
+已在乱码的列可用 `backend/init-sql/13-fix-device-encoding.sql` 重写（该脚本同时附了成因说明）。
 
 脚本用 `CREATE TABLE IF NOT EXISTS` + `INSERT IGNORE`，重复执行安全；
 但 `ALTER TABLE ... ADD COLUMN` 在同一库上执行第二次会报「列已存在」，属正常现象。
@@ -124,6 +149,11 @@ docker exec -i pork-traceability-mysql-1 mysql -uroot -p<root密码> < backend/i
 | `RACTOPAMINE` | `earTagNo`、`sampleNo`、`result`（1阴性/0阳性）、`batchNo` | `testMethod`、`testType`、`testTarget`、`samplePart`、`reportUrl` |
 | `SALE` | `qrCode` | `sellPrice`、`sellWeightKg` |
 | `RECEIPT` | `transportNo`、`storeName`、`receiver` | `storeId`、`receiverPhone`、`tempValue`、`qtyCheck`、`tempCheck`、`packageIntact`、`signature` |
+| `TAG` | `earTagNo`、`farmName` | `breed`、`birthDate`、`gender`（1公/2母）、`penNo`、`origin`、`operator` |
+| `VACCINE` | `earTagNo`、`vaccineName`、`vaccineBatchNo` | `manufacturer`、`injectTime`、`dosage`、`injectSite`、`operator` |
+| `INSPECTION` | `earTagNo`、`batchNo`、`result`（1合格/0不合格）、`veterinary` | `inspectType`（1宰前/2宰后/3同步）、`temperature`、`organCheck`、`conclusion`、`issueDesc`、`disposal`、`licenseNo` |
+| `STAMP` | `earTagNo`、`batchNo`、`carcassNo`、`veterinary` | `stampType`、`stampPosition`、`remark` |
+| `SPLIT` | `parentBatchNo`、`productName`、`weightKg` | `packageCount`、`packageType`、`workshop`、`workshopTemp`、`operator` |
 
 > `RACTOPAMINE.result` 缺失会被直接拒绝（`status=3`）：机器不得替兽医签「阴性」结论。
 > `RACTOPAMINE.batchNo` 也一样必填——检测记录必须能归属到某一批猪，缺批次只能挡住，

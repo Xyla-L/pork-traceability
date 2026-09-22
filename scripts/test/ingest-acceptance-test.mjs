@@ -19,8 +19,13 @@
  *   8 入场查验    —— 检疫证核验未过不自动入账、转人工；人工确认后才写业务表
  *   9 门店收银    —— POS 扫码售出，零售记录来源标记为 DEVICE
  *  10 门店签收    —— PDA 签收生成签收单，并把运单推进到「已签收」
+ *  11 养殖建档    —— 缺养殖场/养殖场未登记转人工；正常建档 dataSource=DEVICE；同耳标幂等
+ *  12 免疫注射    —— 缺疫苗批号必须拒绝；带批号入账 vaccine_record.source=DEVICE
+ *  13 屠宰检验    —— 终端未给结论必须拒绝（不得默认合格）；带结论+兽医入账 source=DEVICE
+ *  14 胴体盖章    —— 无合格检验必须拒绝（人工确认也绕不过）；检验合格后盖章入账
+ *  15 分割批次    —— 胴体批次不存在转人工；扫码称重自动建批次（批次号系统生成）
  *
- * 8/9/10 会真实写入业务数据（这正是验收目的：证明设备能写业务表），
+ * 8 以后会真实写入业务数据（这正是验收目的：证明设备能写业务表），
  * 因此需要 --auto-depart 之外的前置数据；缺前置时用例标 SKIP 而非 FAIL。
  *
  * 只读校验（不改动业务数据）：断言全部基于「新增记录数」与「接口返回」，
@@ -333,6 +338,152 @@ async function main() {
           `签收单 source=${stored?.source} 签收人=${stored?.receiver}；` +
           `运单状态 1（待发车）→ ${after?.status}（4=已签收）`)
       }
+    }
+  }
+
+  // ==========================================================================
+  // 二期通道：养殖建档 / 免疫注射 / 屠宰检验 / 胴体盖章 / 分割批次。
+  // 覆盖三条法规与技术红线：判定权在人（检验）、盖章以检验为前提、批次号系统生成。
+  // ==========================================================================
+
+  // -------------------------------------- 11 养殖建档：耳标读写器，佩戴即建档
+  let freshPig = null
+  {
+    const earTagNo = `ET-ACC-${Date.now()}`
+    // 11a 养殖场未登记 → 转人工（登记后可确认入账，retryable）
+    const badFarm = await report('dev-key-tag-001', 'TAG', bizKey('TAG'), {
+      earTagNo, farmName: '不存在的养殖场-X',
+    })
+    // 11b 正常建档
+    const farm = firstPage(await api('/breeding/farms?pageNum=1&pageSize=1'))[0]
+    const farmName = farm?.farmName || farm?.farm_name
+    if (!farmName) {
+      recordSkip(11, '养殖建档通道：佩戴即建档且 dataSource=DEVICE', '养殖库没有养殖场，无法建档')
+    } else {
+      const resp = await report('dev-key-tag-001', 'TAG', bizKey('TAG'), {
+        earTagNo, farmName, breed: '三元杂', gender: 1, penNo: '验收舍', origin: '自繁',
+      })
+      const rows = firstPage(await api(`/breeding/pigs?pageNum=1&pageSize=20&earTagNo=${encodeURIComponent(earTagNo)}`))
+      const row = rows[0]
+      freshPig = row ? { id: row.id, earTagNo } : null
+      // 11c 同耳标再推一次（新 bizKey）→ 业务级幂等：返回既有档案，不新建第二条
+      const again = await report('dev-key-tag-001', 'TAG', bizKey('TAG'), {
+        earTagNo, farmName, breed: '三元杂', gender: 1,
+      })
+      const archives = firstPage(await api(`/breeding/pigs?pageNum=1&pageSize=20&earTagNo=${encodeURIComponent(earTagNo)}`))
+      record(11, '养殖建档：佩戴即建档、来源标记 DEVICE、同耳标幂等',
+        badFarm.data?.status === 1 && resp.data?.accepted === true && row?.dataSource === 'DEVICE'
+          && again.data?.accepted === true && archives.length === 1,
+        `未登记场 → ${badFarm.data?.statusLabel}；建档 → ${resp.data?.statusLabel}；` +
+        `pig_individual.dataSource=${row?.dataSource}；重复上报 → ${again.data?.statusLabel}，` +
+        `同耳标档案数=${archives.length}（期望 1）`)
+    }
+  }
+
+  // ------------------------------------------ 12 免疫注射：无批号不入库
+  {
+    const sample = freshPig || (await findPigWithCert())
+    if (!sample?.earTagNo) {
+      recordSkip(12, '免疫注射通道：缺疫苗批号必须拒绝；带批号入账 source=DEVICE', '取不到生猪样本')
+    } else {
+      const noBatch = await report('dev-key-inj-001', 'VACCINE', bizKey('INJ'), {
+        earTagNo: sample.earTagNo, vaccineName: '猪瘟兔化弱毒疫苗',
+      })
+      const batchNo = `VB-ACC-${Date.now()}`
+      const ok = await report('dev-key-inj-001', 'VACCINE', bizKey('INJ'), {
+        earTagNo: sample.earTagNo, vaccineName: '猪瘟兔化弱毒疫苗', vaccineBatchNo: batchNo,
+        dosage: '2ml', injectSite: '耳后颈部', operator: '刘兽医',
+      })
+      // 查询路径要的是 pigId（不是疫苗记录 id）；接口返回分页结构（data.records）
+      let pigId = sample.id
+      if (!pigId) {
+        const pigs = firstPage(await api(`/breeding/pigs?pageNum=1&pageSize=5&earTagNo=${encodeURIComponent(sample.earTagNo)}`))
+        pigId = pigs[0]?.id
+      }
+      const vaccines = pigId ? firstPage(await api(`/breeding/pigs/${pigId}/vaccines?pageNum=1&pageSize=10`)) : []
+      const row = vaccines.find((v) => v.batchNo === batchNo)
+      record(12, '免疫注射：缺疫苗批号必须拒绝；带批号入账且来源标记 DEVICE',
+        noBatch.data?.status === 3 && ok.data?.accepted === true && row?.source === 'DEVICE',
+        `缺批号 → ${noBatch.data?.statusLabel}（${noBatch.data?.message}）；` +
+        `带批号 → ${ok.data?.statusLabel}；vaccine_record.source=${row?.source}`)
+    }
+  }
+
+  // -------------------------------- 13 屠宰检验：终端未给结论必须拒绝
+  let inspectedPig = null
+  {
+    const sample = freshPig || (await findPigWithCert())
+    if (!sample?.earTagNo) {
+      recordSkip(13, '屠宰检验通道：无结论必须拒绝；带结论+兽医入账 source=DEVICE', '取不到生猪样本')
+    } else {
+      const noResult = await report('dev-key-station-001', 'INSPECTION', bizKey('INSP'), {
+        earTagNo: sample.earTagNo, batchNo: `BATCH-ACC-${Date.now()}`, veterinary: '李官方兽医',
+      })
+      const batchNo = `BATCH-ACC-${Date.now()}`
+      const ok = await report('dev-key-station-001', 'INSPECTION', bizKey('INSP'), {
+        earTagNo: sample.earTagNo, batchNo, result: 1, inspectType: 2, veterinary: '李官方兽医',
+        conclusion: '体表、脏器无可见病变，判合格',
+      })
+      inspectedPig = { earTagNo: sample.earTagNo, batchNo }
+      const rows = firstPage(await api('/slaughter/inspections?pageNum=1&pageSize=10'))
+      const row = rows.find((r) => r.batchNo === batchNo && (r.earTagNo === sample.earTagNo || r.ear_tag_no === sample.earTagNo))
+      record(13, '屠宰检验：终端未给结论必须拒绝（不得默认合格）；带结论入账且来源标记 DEVICE',
+        noResult.data?.status === 3 && ok.data?.accepted === true && row?.source === 'DEVICE' && row?.result === 1,
+        `无结论 → ${noResult.data?.statusLabel}（${noResult.data?.message}）；` +
+        `带结论 → ${ok.data?.statusLabel}；slaughter_inspection.source=${row?.source} 结果=${row?.result}`)
+    }
+  }
+
+  // -------------------------------- 14 胴体盖章：无合格检验不准打章（硬校验）
+  {
+    if (!inspectedPig) {
+      recordSkip(14, '胴体盖章通道：无合格检验必须拒绝；合格后盖章 source=DEVICE', '前置检验用例未执行')
+    } else {
+      // 14a 对刚建档、未检验的猪盖章 → 必须拒绝
+      let rejectMsg = '(未执行)'
+      if (freshPig) {
+        const bad = await report('dev-key-stamper-001', 'STAMP', bizKey('STMP'), {
+          earTagNo: freshPig.earTagNo, batchNo: `BATCH-ACC-${Date.now()}`,
+          carcassNo: `CT-NOINSPECT-${Date.now()}`, veterinary: '李官方兽医',
+        })
+        rejectMsg = `${bad.data?.statusLabel}：${bad.data?.message}`
+      }
+      // 14b 对检验合格的猪盖章 → 入账
+      const carcassNo = `CT-ACC-${Date.now()}`
+      const ok = await report('dev-key-stamper-001', 'STAMP', bizKey('STMP'), {
+        earTagNo: inspectedPig.earTagNo, batchNo: inspectedPig.batchNo,
+        carcassNo, veterinary: '李官方兽医',
+      })
+      const rows = firstPage(await api('/slaughter/stamps?pageNum=1&pageSize=10'))
+      const row = rows.find((r) => r.carcassNo === carcassNo || r.carcass_no === carcassNo)
+      record(14, '胴体盖章：无合格检验必须拒绝；检验合格后盖章入账且来源标记 DEVICE',
+        (!freshPig || rejectMsg.includes('拒绝')) && ok.data?.accepted === true && row?.source === 'DEVICE',
+        `未检验 → ${rejectMsg}；合格后 → ${ok.data?.statusLabel}；` +
+        `carcass_stamp.source=${row?.source} 章号=${row?.stampNo || row?.stamp_no}`)
+    }
+  }
+
+  // -------------------------------- 15 分割批次：扫码称重自动建批次
+  {
+    const bad = await report('dev-key-split-001', 'SPLIT', bizKey('SPLT'), {
+      parentBatchNo: `CB-NOT-EXIST-${Date.now()}`, productName: '带皮白条', weightKg: 78.5,
+    })
+    const parent = firstPage(await api('/distribution/batches?pageNum=1&pageSize=1'))[0]
+    if (!parent?.batchNo && !parent?.batch_no) {
+      recordSkip(15, '分割批次通道：胴体批次不存在转人工；扫码称重自动建批次', '配送库没有胴体批次')
+    } else {
+      const parentBatchNo = parent.batchNo || parent.batch_no
+      const ok = await report('dev-key-split-001', 'SPLIT', bizKey('SPLT'), {
+        parentBatchNo, productName: '带皮白条', weightKg: 78.5, packageCount: 1,
+        packageType: '真空袋', workshop: '分割车间一号线',
+      })
+      const rows = firstPage(await api('/distribution/splits?pageNum=1&pageSize=10'))
+      const row = rows[0]
+      record(15, '分割批次：胴体批次不存在转人工；扫码称重自动建批次（批次号系统生成）',
+        bad.data?.status === 1 && ok.data?.accepted === true && row?.source === 'DEVICE'
+          && String(row?.batchNo || '').startsWith('SP'),
+        `不存在的批次 → ${bad.data?.statusLabel}；正常上报 → ${ok.data?.statusLabel}；` +
+        `split_batch.source=${row?.source} 批次号=${row?.batchNo}（SP 前缀由系统生成）`)
     }
   }
 

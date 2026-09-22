@@ -40,6 +40,12 @@ public class PigIndividualVO {
     @Schema(description = "来源")
     private String source;
 
+    @Schema(description = "数据来源：MANUAL=人工录入 DEVICE=设备自动采集（区别于业务来源 source）")
+    private String dataSource;
+
+    @Schema(description = "来源设备号/单据号")
+    private String sourceRef;
+
     @Schema(description = "状态 (1-在养, 2-已出栏, 3-已屠宰, 4-异常死亡/淘汰)")
     private Integer status;
 
