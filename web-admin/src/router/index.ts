@@ -48,6 +48,16 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'farm/quarantine',
+        name: 'QuarantineCertList',
+        component: () => import('@/views/farm/QuarantineCertList.vue'),
+        meta: {
+          title: '产地检疫',
+          icon: 'Document',
+          roles: ['FARMER', 'SUPERVISOR', 'ADMIN'],
+        },
+      },
+      {
         path: 'farm/apply',
         name: 'ApplyList',
         component: () => import('@/views/farm/ApplyList.vue'),
@@ -70,22 +80,23 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
-        path: 'slaughter/inspect',
-        name: 'SlaughterInspect',
-        component: () => import('@/views/slaughter/SlaughterInspect.vue'),
-        meta: {
-          title: '屠宰检验',
-          icon: 'Search',
-          roles: ['SLAUGHTER_OP', 'SUPERVISOR', 'ADMIN'],
-        },
-      },
-      {
+        // 瘦肉精为宰前抽检，排在屠宰检验（宰前 + 宰后）之前，与侧边栏顺序一致
         path: 'slaughter/ractopamine',
         name: 'RactopamineTest',
         component: () => import('@/views/slaughter/RactopamineTest.vue'),
         meta: {
           title: '瘦肉精检测',
           icon: 'Warning',
+          roles: ['SLAUGHTER_OP', 'SUPERVISOR', 'ADMIN'],
+        },
+      },
+      {
+        path: 'slaughter/inspect',
+        name: 'SlaughterInspect',
+        component: () => import('@/views/slaughter/SlaughterInspect.vue'),
+        meta: {
+          title: '屠宰检验',
+          icon: 'Search',
           roles: ['SLAUGHTER_OP', 'SUPERVISOR', 'ADMIN'],
         },
       },

@@ -35,5 +35,5 @@ public interface SlaughterApplyService extends IService<SlaughterApply> {
      * @param dto        审批结果
      * @param approverId 审批人标识（网关下发的 X-User-Id，值为登录用户名）
      */
-    void approve(Long id, SlaughterApplyApproveDTO dto, String approverId);
+    void approve(Long id, SlaughterApplyApproveDTO dto);
 }

@@ -46,4 +46,10 @@ public class QuarantineCertVO {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @Schema(description = "创建时间")
     private LocalDateTime createTime;
+
+    @Schema(description = "数据来源 MANUAL=人工出证 DEVICE=扫码登记终端采集")
+    private String source;
+
+    @Schema(description = "来源设备号（扫码登记时记终端编号）")
+    private String sourceRef;
 }

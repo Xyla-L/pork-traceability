@@ -48,6 +48,10 @@
         <el-descriptions-item label="申报时间">{{ viewData.applyTime || '-' }}</el-descriptions-item>
         <el-descriptions-item label="体重">{{ viewData.weightKg ? `${viewData.weightKg} kg` : '-' }}</el-descriptions-item>
         <el-descriptions-item label="目标屠宰场" :span="2">{{ viewData.targetSlaughterhouse || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="采集设备">{{ deviceText(viewData) }}</el-descriptions-item>
+        <el-descriptions-item label="审批人">
+          {{ viewData.approvalStatus === 0 ? '-' : viewData.approver || '未记录' }}
+        </el-descriptions-item>
         <el-descriptions-item label="审批状态" :span="2">
           <el-tag :type="statusTagType(viewData.approvalStatus)">
             {{ statusLabel(viewData.approvalStatus) }}
@@ -103,6 +107,7 @@
 import { ref, reactive, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
+import { deviceText } from '@/api/modules/ingest'
 import ApplyFilter from './ApplyFilter.vue'
 import ApplyTable from './ApplyTable.vue'
 import ApproveDialog from './ApproveDialog.vue'

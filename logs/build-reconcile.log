@@ -1,0 +1,280 @@
+[INFO] Scanning for projects...
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Build Order:
+[INFO] 
+[INFO] pork-traceability-backend                                          [pom]
+[INFO] common-core                                                        [jar]
+[INFO] common-security                                                    [jar]
+[INFO] common-web                                                         [jar]
+[INFO] common-mq                                                          [jar]
+[INFO] gateway-service                                                    [jar]
+[INFO] auth-service                                                       [jar]
+[INFO] breeding-service                                                   [jar]
+[INFO] slaughter-service                                                  [jar]
+[INFO] distribution-service                                               [jar]
+[INFO] sales-service                                                      [jar]
+[INFO] ingest-service                                                     [jar]
+[INFO] trace-service                                                      [jar]
+[INFO] blockchain-service                                                 [jar]
+[INFO] file-service                                                       [jar]
+[INFO] 
+[INFO] --------------------------< com.pork:backend >--------------------------
+[INFO] Building pork-traceability-backend 1.0-SNAPSHOT                   [1/15]
+[INFO]   from pom.xml
+[INFO] --------------------------------[ pom ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.3.2:clean (default-clean) @ backend ---
+[INFO] 
+[INFO] ------------------------< com.pork:common-core >------------------------
+[INFO] Building common-core 1.0-SNAPSHOT                                 [2/15]
+[INFO]   from common/common-core/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.3.2:clean (default-clean) @ common-core ---
+[INFO] Deleting /workspace/common/common-core/target
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ common-core ---
+[INFO] skip non existing resourceDirectory /workspace/common/common-core/src/main/resources
+[INFO] skip non existing resourceDirectory /workspace/common/common-core/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ common-core ---
+[INFO] Changes detected - recompiling the module! :source
+[INFO] Compiling 15 source files with javac [debug release 17] to target/classes
+[INFO] 
+[INFO] ----------------------< com.pork:common-security >----------------------
+[INFO] Building common-security 1.0-SNAPSHOT                             [3/15]
+[INFO]   from common/common-security/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.3.2:clean (default-clean) @ common-security ---
+[INFO] Deleting /workspace/common/common-security/target
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ common-security ---
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ common-security ---
+[INFO] Changes detected - recompiling the module! :dependency
+[INFO] Compiling 3 source files with javac [debug release 17] to target/classes
+[INFO] 
+[INFO] ------------------------< com.pork:common-web >-------------------------
+[INFO] Building common-web 1.0-SNAPSHOT                                  [4/15]
+[INFO]   from common/common-web/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.3.2:clean (default-clean) @ common-web ---
+[INFO] Deleting /workspace/common/common-web/target
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ common-web ---
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ common-web ---
+[INFO] Changes detected - recompiling the module! :dependency
+[INFO] Compiling 11 source files with javac [debug release 17] to target/classes
+[INFO] 
+[INFO] -------------------------< com.pork:common-mq >-------------------------
+[INFO] Building common-mq 1.0-SNAPSHOT                                   [5/15]
+[INFO]   from common/common-mq/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.3.2:clean (default-clean) @ common-mq ---
+[INFO] Deleting /workspace/common/common-mq/target
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ common-mq ---
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ common-mq ---
+[INFO] Changes detected - recompiling the module! :dependency
+[INFO] Compiling 6 source files with javac [debug release 17] to target/classes
+[INFO] 
+[INFO] ----------------------< com.pork:gateway-service >----------------------
+[INFO] Building gateway-service 1.0-SNAPSHOT                             [6/15]
+[INFO]   from gateway-service/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.3.2:clean (default-clean) @ gateway-service ---
+[INFO] Deleting /workspace/gateway-service/target
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ gateway-service ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ gateway-service ---
+[INFO] Changes detected - recompiling the module! :dependency
+[INFO] Compiling 2 source files with javac [debug release 17] to target/classes
+[INFO] 
+[INFO] -----------------------< com.pork:auth-service >------------------------
+[INFO] Building auth-service 1.0-SNAPSHOT                                [7/15]
+[INFO]   from auth-service/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.3.2:clean (default-clean) @ auth-service ---
+[INFO] Deleting /workspace/auth-service/target
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ auth-service ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ auth-service ---
+[INFO] Changes detected - recompiling the module! :dependency
+[INFO] Compiling 23 source files with javac [debug release 17] to target/classes
+[INFO] /workspace/auth-service/src/main/java/com/pork/auth/service/impl/SystemAdminServiceImpl.java: /workspace/auth-service/src/main/java/com/pork/auth/service/impl/SystemAdminServiceImpl.java uses or overrides a deprecated API.
+[INFO] /workspace/auth-service/src/main/java/com/pork/auth/service/impl/SystemAdminServiceImpl.java: Recompile with -Xlint:deprecation for details.
+[INFO] 
+[INFO] ---------------------< com.pork:breeding-service >----------------------
+[INFO] Building breeding-service 1.0-SNAPSHOT                            [8/15]
+[INFO]   from breeding-service/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.3.2:clean (default-clean) @ breeding-service ---
+[INFO] Deleting /workspace/breeding-service/target
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ breeding-service ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ breeding-service ---
+[INFO] Changes detected - recompiling the module! :dependency
+[INFO] Compiling 42 source files with javac [debug release 17] to target/classes
+[INFO] /workspace/breeding-service/src/main/java/com/pork/breeding/service/impl/PigIndividualServiceImpl.java: /workspace/breeding-service/src/main/java/com/pork/breeding/service/impl/PigIndividualServiceImpl.java uses or overrides a deprecated API.
+[INFO] /workspace/breeding-service/src/main/java/com/pork/breeding/service/impl/PigIndividualServiceImpl.java: Recompile with -Xlint:deprecation for details.
+[INFO] 
+[INFO] ---------------------< com.pork:slaughter-service >---------------------
+[INFO] Building slaughter-service 1.0-SNAPSHOT                           [9/15]
+[INFO]   from slaughter-service/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.3.2:clean (default-clean) @ slaughter-service ---
+[INFO] Deleting /workspace/slaughter-service/target
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ slaughter-service ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ slaughter-service ---
+[INFO] Changes detected - recompiling the module! :dependency
+[INFO] Compiling 38 source files with javac [debug release 17] to target/classes
+[INFO] 
+[INFO] -------------------< com.pork:distribution-service >--------------------
+[INFO] Building distribution-service 1.0-SNAPSHOT                       [10/15]
+[INFO]   from distribution-service/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.3.2:clean (default-clean) @ distribution-service ---
+[INFO] Deleting /workspace/distribution-service/target
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ distribution-service ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ distribution-service ---
+[INFO] Changes detected - recompiling the module! :dependency
+[INFO] Compiling 20 source files with javac [debug release 17] to target/classes
+[INFO] 
+[INFO] -----------------------< com.pork:sales-service >-----------------------
+[INFO] Building sales-service 1.0-SNAPSHOT                              [11/15]
+[INFO]   from sales-service/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.3.2:clean (default-clean) @ sales-service ---
+[INFO] Deleting /workspace/sales-service/target
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ sales-service ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ sales-service ---
+[INFO] Changes detected - recompiling the module! :dependency
+[INFO] Compiling 19 source files with javac [debug release 17] to target/classes
+[INFO] /workspace/sales-service/src/main/java/com/pork/sales/service/impl/SalesServiceImpl.java: /workspace/sales-service/src/main/java/com/pork/sales/service/impl/SalesServiceImpl.java uses or overrides a deprecated API.
+[INFO] /workspace/sales-service/src/main/java/com/pork/sales/service/impl/SalesServiceImpl.java: Recompile with -Xlint:deprecation for details.
+[INFO] 
+[INFO] ----------------------< com.pork:ingest-service >-----------------------
+[INFO] Building ingest-service 1.0-SNAPSHOT                             [12/15]
+[INFO]   from ingest-service/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.3.2:clean (default-clean) @ ingest-service ---
+[INFO] Deleting /workspace/ingest-service/target
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ ingest-service ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ ingest-service ---
+[INFO] Changes detected - recompiling the module! :dependency
+[INFO] Compiling 37 source files with javac [debug release 17] to target/classes
+[INFO] 
+[INFO] -----------------------< com.pork:trace-service >-----------------------
+[INFO] Building trace-service 1.0-SNAPSHOT                              [13/15]
+[INFO]   from trace-service/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.3.2:clean (default-clean) @ trace-service ---
+[INFO] Deleting /workspace/trace-service/target
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ trace-service ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ trace-service ---
+[INFO] Changes detected - recompiling the module! :dependency
+[INFO] Compiling 25 source files with javac [debug release 17] to target/classes
+[INFO] 
+[INFO] --------------------< com.pork:blockchain-service >---------------------
+[INFO] Building blockchain-service 1.0-SNAPSHOT                         [14/15]
+[INFO]   from blockchain-service/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.3.2:clean (default-clean) @ blockchain-service ---
+[INFO] Deleting /workspace/blockchain-service/target
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ blockchain-service ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 3 resources from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ blockchain-service ---
+[INFO] Changes detected - recompiling the module! :dependency
+[INFO] Compiling 14 source files with javac [debug release 17] to target/classes
+[INFO] 
+[INFO] -----------------------< com.pork:file-service >------------------------
+[INFO] Building file-service 1.0-SNAPSHOT                               [15/15]
+[INFO]   from file-service/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.3.2:clean (default-clean) @ file-service ---
+[INFO] Deleting /workspace/file-service/target
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ file-service ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ file-service ---
+[INFO] Changes detected - recompiling the module! :dependency
+[INFO] Compiling 8 source files with javac [debug release 17] to target/classes
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary for pork-traceability-backend 1.0-SNAPSHOT:
+[INFO] 
+[INFO] pork-traceability-backend .......................... SUCCESS [  0.262 s]
+[INFO] common-core ........................................ SUCCESS [ 12.517 s]
+[INFO] common-security .................................... SUCCESS [  6.010 s]
+[INFO] common-web ......................................... SUCCESS [  8.696 s]
+[INFO] common-mq .......................................... SUCCESS [  5.282 s]
+[INFO] gateway-service .................................... SUCCESS [  5.091 s]
+[INFO] auth-service ....................................... SUCCESS [ 14.449 s]
+[INFO] breeding-service ................................... SUCCESS [ 19.880 s]
+[INFO] slaughter-service .................................. SUCCESS [ 18.835 s]
+[INFO] distribution-service ............................... SUCCESS [ 13.818 s]
+[INFO] sales-service ...................................... SUCCESS [ 12.652 s]
+[INFO] ingest-service ..................................... SUCCESS [ 15.801 s]
+[INFO] trace-service ...................................... SUCCESS [ 13.414 s]
+[INFO] blockchain-service ................................. SUCCESS [ 13.508 s]
+[INFO] file-service ....................................... SUCCESS [  7.863 s]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  02:49 min
+[INFO] Finished at: 2026-10-04T08:28:17Z
+[INFO] ------------------------------------------------------------------------

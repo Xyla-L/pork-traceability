@@ -36,10 +36,7 @@ export const useDistributionStore = defineStore('distribution', () => {
     }
   }
 
-  async function createSplit(data: Partial<SplitBatch>) {
-    const { distributionApi } = await import('@/api/modules/distribution')
-    await distributionApi.createSplit(data)
-  }
+  /* 人工新建分割 action 已删除（createSplit）：分割批次以扫码称重台自动创建为主路径。 */
 
   async function fetchTransportList(params?: any) {
     const { distributionApi } = await import('@/api/modules/distribution')
@@ -57,10 +54,7 @@ export const useDistributionStore = defineStore('distribution', () => {
     temperatureData.value = await distributionApi.getTemperatureLog(transportId)
   }
 
-  async function addTemperature(transportId: number, data: { temperature: number; recorder: string }) {
-    const { distributionApi } = await import('@/api/modules/distribution')
-    await distributionApi.addTemperature(transportId, data)
-  }
+  /* 人工温度打卡 action 已删除（addTemperature）：冷链温度由车载温控设备自动上报。 */
 
   async function createReceipt(data: Partial<StoreReceipt>) {
     const { distributionApi } = await import('@/api/modules/distribution')
@@ -77,11 +71,9 @@ export const useDistributionStore = defineStore('distribution', () => {
     fetchBatchList,
     createBatch,
     fetchSplitTree,
-    createSplit,
     fetchTransportList,
     createTransport,
     fetchTemperatureLog,
-    addTemperature,
     createReceipt,
   }
 })

@@ -1,0 +1,40 @@
+﻿docker : mysql: [Warning] Using a password on the command line interface can be
+ insecure.
+所在位置 行:445 字符: 113
++ ... tmp/15.sql; docker exec pork-traceability-mysql-1 sh -c 'mysql -uroot ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (mysql: [Warning...an be insecure. 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+tbl	unresolved
+entry_inspection	0
+slaughter_inspection	0
+ractopamine_test	0
+carcass_stamp	0
+pig_individual	0
+vaccine_record	0
+split_batch	0
+store_receipt	0
+temperature_log	0
+retail_sale	0
+stage	source	cnt
+灞犲妫€楠?MANUAL	24
+灞犲妫€楠?DEVICE	4
+鑳翠綋鐩栫珷	MANUAL	22
+鑳翠綋鐩栫珷	DEVICE	4
+鐦﹁倝绮炬娴?MANUAL	21
+鐦﹁倝绮炬娴?DEVICE	8
+鍏ュ満鏌ラ獙	MANUAL	22
+鍏ュ満鏌ラ獙	DEVICE	10
+鍏绘畺寤烘。	MANUAL	24
+鍏绘畺寤烘。	DEVICE	4
+鍏嶇柅娉ㄥ皠	MANUAL	23
+鍏嶇柅娉ㄥ皠	DEVICE	5
+鍒嗗壊鎵规	MANUAL	24
+鍒嗗壊鎵规	DEVICE	4
+闂ㄥ簵绛炬敹	MANUAL	16
+闂ㄥ簵绛炬敹	DEVICE	9
+闆跺敭鍞嚭	MANUAL	34
+闆跺敭鍞嚭	DEVICE	10
+exit=0

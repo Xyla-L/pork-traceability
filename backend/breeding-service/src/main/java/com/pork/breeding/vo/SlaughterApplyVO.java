@@ -41,4 +41,10 @@ public class SlaughterApplyVO {
 
     @Schema(description = "驳回原因")
     private String rejectReason;
+
+    @Schema(description = "数据来源：MANUAL 人工申报 / DEVICE 出栏口地磅自动登记")
+    private String source;
+
+    @Schema(description = "来源标识：设备编号或人工录入人实名")
+    private String sourceRef;
 }

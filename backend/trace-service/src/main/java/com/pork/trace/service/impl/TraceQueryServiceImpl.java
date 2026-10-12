@@ -45,14 +45,94 @@ public class TraceQueryServiceImpl implements TraceQueryService {
     public Map<String, Object> full(String batchNo) {
         Object upstream = upstream(batchNo);
         List<Long> pigIds = pigIds(upstream);
+        List<Object> breeding = pigIds.isEmpty() ? List.of() : asList(clients.breedingByPigs(pigIds));
+        List<Object> slaughter = pigIds.isEmpty() ? List.of() : asList(clients.slaughterByPigs(pigIds));
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("batchNo", batchNo);
         result.put("upstream", upstream);
         result.put("downstream", downstream(batchNo));
-        result.put("breeding", pigIds.isEmpty() ? List.of() : clients.breedingByPigs(pigIds));
-        result.put("slaughter", pigIds.isEmpty() ? List.of() : clients.slaughterByPigs(pigIds));
+        result.put("breeding", breeding);
+        result.put("slaughter", slaughter);
         result.put("blockchain", clients.chainStatus(batchNo));
+        // 各环节一律只展示「当前有效记录」（作废记录已在业务侧由 @TableLogic 过滤掉），
+        // 但作废这件事本身要说得出来，所以单独汇总一份标注，供页面提示。
+        List<Map<String, Object>> voided = voidedRecords(breeding, slaughter);
+        result.put("voidedRecords", voided);
+        result.put("voidedSummary", voidedSummary(voided));
         return result;
+    }
+
+    /**
+     * 汇总链路上被作废的记录。
+     * <p>
+     * 「取当前有效记录」不等于「当没发生过」：一条结论被作废后重录，是追溯方最该知道的事。
+     * 这里只做只读汇总，不参与任何取数口径——链上展示的始终是有效记录。
+     */
+    private List<Map<String, Object>> voidedRecords(List<Object> breeding, List<Object> slaughter) {
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (Object value : breeding) {
+            if (!(value instanceof Map<?, ?>)) continue;
+            Map<String, Object> pig = map(value);
+            String earTag = Objects.toString(pig.get("earTagNo"), "");
+            if (Boolean.TRUE.equals(pig.get("voided"))) {
+                rows.add(voidedRow("TAG", "养殖建档（耳标）", earTag,
+                        pig.get("voidReason"), pig.get("voidOperator"), pig.get("voidTime")));
+            }
+            if (pig.get("voidedRecords") instanceof Collection<?> records) {
+                for (Object item : records) {
+                    if (!(item instanceof Map<?, ?>)) continue;
+                    Map<String, Object> record = map(item);
+                    rows.add(voidedRow(text(record.get("stage")), text(record.get("stageLabel")), earTag,
+                            record.get("voidReason"), record.get("voidOperator"), record.get("voidTime")));
+                }
+            }
+        }
+        for (Object value : slaughter) {
+            if (!(value instanceof Map<?, ?>)) continue;
+            Map<String, Object> pig = map(value);
+            if (!(pig.get("voided") instanceof Collection<?> records)) continue;
+            for (Object item : records) {
+                if (!(item instanceof Map<?, ?>)) continue;
+                Map<String, Object> record = map(item);
+                rows.add(voidedRow(text(record.get("stage")), text(record.get("stageLabel")),
+                        text(record.get("bizNo")),
+                        record.get("voidReason"), record.get("voidOperator"), record.get("voidTime")));
+            }
+        }
+        return rows;
+    }
+
+    private Map<String, Object> voidedRow(String stage, String stageLabel, String bizNo,
+                                          Object reason, Object operator, Object time) {
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("stage", stage);
+        row.put("stageLabel", stageLabel);
+        row.put("bizNo", bizNo);
+        row.put("reason", reason == null ? "" : reason.toString());
+        row.put("operator", operator == null ? "" : operator.toString());
+        row.put("time", formatTime(time));
+        return row;
+    }
+
+    /** 给前端一句话说清「有记录被作废过、页面展示的是作废后版本」，不展示则返回空串 */
+    private String voidedSummary(List<Map<String, Object>> voided) {
+        if (voided.isEmpty()) return "";
+        String stages = voided.stream()
+                .map(row -> text(row.get("stageLabel")))
+                .filter(s -> !s.isBlank())
+                .distinct()
+                .collect(Collectors.joining("、"));
+        return "该批次有 " + voided.size() + " 条记录已被作废重录（涉及：" + stages + "）。"
+                + "页面展示的是作废后当前有效的记录；作废理由与实名操作人已留档，可展开核对。";
+    }
+
+    private String text(Object value) {
+        return value == null ? "" : value.toString();
+    }
+
+    /** 下游返回的列表统一收敛成 List，形状不对时按空处理，避免追溯整体失败 */
+    private List<Object> asList(Object value) {
+        return value instanceof Collection<?> rows ? new ArrayList<>(rows) : List.of();
     }
 
     @Override
@@ -160,19 +240,20 @@ public class TraceQueryServiceImpl implements TraceQueryService {
                     originCertAdded = true;
                 }
             }
+            // 证照顺序对齐业务链：产地检疫证明 → 瘦肉精检测报告 → 胴体/肉品品质检验合格证
+            if (!ractopamineAdded) {
+                Map<String, Object> test = first(row.get("ractopamineTests"));
+                if (test != null && hasText(test.get("testNo"))) {
+                    certs.add(cert("瘦肉精检测报告", test.get("testNo"), test.get("operator"), test.get("testTime")));
+                    ractopamineAdded = true;
+                }
+            }
             if (row.get("stamps") instanceof Collection<?> stamps) {
                 for (Object value : stamps) {
                     Map<String, Object> stamp = map(value);
                     String type = hasText(stamp.get("stampType")) ? stamp.get("stampType").toString() : "肉品品质检验合格证";
                     if (!stampTypes.add(type)) continue;
                     certs.add(cert(type, stamp.get("stampNo"), stamp.get("veterinary"), stamp.get("stampTime")));
-                }
-            }
-            if (!ractopamineAdded) {
-                Map<String, Object> test = first(row.get("ractopamineTests"));
-                if (test != null && hasText(test.get("testNo"))) {
-                    certs.add(cert("瘦肉精检测报告", test.get("testNo"), test.get("operator"), test.get("testTime")));
-                    ractopamineAdded = true;
                 }
             }
         }
@@ -216,6 +297,16 @@ public class TraceQueryServiceImpl implements TraceQueryService {
                     pass ? "该批次生猪经官方兽医现场检疫，临床检查健康，具备产地检疫合格条件。" : "该批次生猪入场查验存在异常项。",
                     "共查验" + entries.size() + "头生猪；检疫证明编号：" + (certNos.isBlank() ? "无" : certNos), pass));
         }
+        // 报告顺序对齐业务链：产地检疫 → 瘦肉精（宰前抽检）→ 宰前检验 → 宰后检验
+        if (!tests.isEmpty()) {
+            boolean pass = tests.stream().allMatch(t -> intEquals(t.get("result"), 1));
+            Map<String, Object> sample = tests.get(0);
+            reports.add(report("瘦肉精检测",
+                    pass ? "盐酸克伦特罗、莱克多巴胺等检测均为阴性。" : "瘦肉精检测存在阳性样本。",
+                    "检测方法：" + Objects.toString(sample.get("testMethod"), "未记录")
+                            + "；采样部位：" + Objects.toString(sample.get("samplePart"), "未记录")
+                            + "；共检测" + tests.size() + "批次样本", pass));
+        }
         if (!preInspections.isEmpty()) {
             boolean pass = preInspections.stream().allMatch(this::inspectionPass);
             reports.add(report("宰前检验",
@@ -227,15 +318,6 @@ public class TraceQueryServiceImpl implements TraceQueryService {
             reports.add(report("宰后检验",
                     pass ? "胴体及内脏同步检疫，淋巴结、脏器检查未见异常。" : "宰后检验存在不合格项。",
                     inspectionDetail(postInspections), pass));
-        }
-        if (!tests.isEmpty()) {
-            boolean pass = tests.stream().allMatch(t -> intEquals(t.get("result"), 1));
-            Map<String, Object> first = tests.get(0);
-            reports.add(report("瘦肉精检测",
-                    pass ? "盐酸克伦特罗、莱克多巴胺等检测均为阴性。" : "瘦肉精检测存在阳性样本。",
-                    "检测方法：" + Objects.toString(first.get("testMethod"), "未记录")
-                            + "；采样部位：" + Objects.toString(first.get("samplePart"), "未记录")
-                            + "；共检测" + tests.size() + "批次样本", pass));
         }
         return reports;
     }

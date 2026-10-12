@@ -13,11 +13,13 @@
       <el-table-column prop="arriveTime" label="入场时间" min-width="160" align="center" />
       <el-table-column prop="weight" label="重量(kg)" min-width="100" align="center" />
       <el-table-column prop="quarantineCert" label="检疫证明" min-width="140" show-overflow-tooltip />
-      <el-table-column prop="inspector" label="查验员" min-width="100" align="center" />
-      <el-table-column prop="source" label="数据来源" min-width="120" align="center">
+      <el-table-column prop="inspector" label="查验员" min-width="100" align="center">
+        <template #default="{ row }">{{ row.inspector || '未记录' }}</template>
+      </el-table-column>
+      <el-table-column prop="source" label="采集设备" min-width="140" align="center">
         <template #default="{ row }">
-          <el-tooltip :content="row.source === 'DEVICE' ? `设备采集：${row.sourceRef || '--'}` : '人工录入'" placement="top">
-            <el-tag :type="sourceTag(row.source)" size="small" effect="plain">{{ sourceLabel(row.source) }}</el-tag>
+          <el-tooltip :content="row.source === 'DEVICE' ? `设备采集：${row.sourceRef || '--'}` : sourceLabel(row.source)" placement="top">
+            <el-tag :type="sourceTag(row.source)" size="small" effect="plain">{{ deviceText(row) }}</el-tag>
           </el-tooltip>
         </template>
       </el-table-column>
@@ -26,12 +28,12 @@
           <el-tag :type="entryStatusTag(row.status)" size="small">{{ entryStatusLabel(row.status) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="130" fixed="right" align="center">
+      <el-table-column label="操作" width="190" fixed="right" align="center">
         <template #default="{ row }">
           <el-button type="primary" link size="small" @click="handleView(row)">
             查看
           </el-button>
-          <el-button type="warning" link size="small" @click="$emit('edit', row)">编辑</el-button>
+          <el-button type="danger" link size="small" @click="handleVoid(row)">作废</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -46,7 +48,8 @@
         <el-descriptions-item label="重量(kg)">{{ currentView.weight }}</el-descriptions-item>
         <el-descriptions-item label="检疫证明">{{ currentView.quarantineCert || '--' }}</el-descriptions-item>
         <el-descriptions-item label="车辆牌号">{{ currentView.vehicleNo || '--' }}</el-descriptions-item>
-        <el-descriptions-item label="查验员">{{ currentView.inspector }}</el-descriptions-item>
+        <el-descriptions-item label="查验员">{{ currentView.inspector || '未记录' }}</el-descriptions-item>
+        <el-descriptions-item label="采集设备">{{ deviceText(currentView) }}</el-descriptions-item>
         <el-descriptions-item label="健康检查">{{ passFailLabel(currentView.healthCheck) }}</el-descriptions-item>
         <el-descriptions-item label="检疫证核验">{{ passFailLabel(currentView.certVerified) }}</el-descriptions-item>
         <el-descriptions-item label="状态">
@@ -60,7 +63,9 @@
 
 <script setup>
 import { ref } from 'vue'
-import { sourceLabel, sourceTag } from '@/api/modules/ingest'
+import { deviceText, sourceLabel, sourceTag } from '@/api/modules/ingest'
+import { slaughterApi } from '@/api/modules/slaughter'
+import { confirmVoid } from '@/composables/useVoidAction'
 
 defineProps({
   data: {
@@ -73,10 +78,20 @@ defineProps({
   }
 })
 
-defineEmits(['edit'])
+const emit = defineEmits(['voided'])
 
 const viewVisible = ref(false)
 const currentView = ref({})
+
+// 作废：已上链记录不提供删除——作废需填理由，理由与实名操作人随作废事件一并上链
+const handleVoid = async (row) => {
+  const ok = await confirmVoid({
+    title: '作废入场查验记录',
+    message: `确认作废 ${row.batchNo || row.earTagNo || ''} 的入场查验记录吗？作废后该记录不再生效，但仍保留在库中并可追溯。`,
+    onConfirm: (reason) => slaughterApi.voidEntry(row.id, reason),
+  })
+  if (ok) emit('voided')
+}
 
 const handleView = (row) => {
   currentView.value = row

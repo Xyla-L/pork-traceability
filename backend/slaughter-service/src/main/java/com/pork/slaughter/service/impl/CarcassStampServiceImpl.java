@@ -4,17 +4,20 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.pork.core.enums.ErrorCode;
+import com.pork.core.exception.BusinessException;
+import com.pork.core.source.ManualOperator;
+import com.pork.core.source.TraceStage;
+import com.pork.core.util.HashUtil;
+import com.pork.mq.ChainEventPublisher;
+import com.pork.mq.ChainTxMessage;
 import com.pork.slaughter.dto.CarcassStampDTO;
 import com.pork.slaughter.entity.CarcassStamp;
 import com.pork.slaughter.mapper.CarcassStampMapper;
 import com.pork.slaughter.service.CarcassStampService;
 import com.pork.slaughter.support.SlaughterStatus;
 import com.pork.slaughter.vo.CarcassStampVO;
-import com.pork.core.enums.ErrorCode;
-import com.pork.core.exception.BusinessException;
-import com.pork.core.util.HashUtil;
-import com.pork.mq.ChainEventPublisher;
-import com.pork.mq.ChainTxMessage;
+import com.pork.web.source.SourceGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
@@ -22,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,7 +35,14 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class CarcassStampServiceImpl extends ServiceImpl<CarcassStampMapper, CarcassStamp>
         implements CarcassStampService {
+
+    /** 人工录入来源标记（与设备采集 DEVICE 对应） */
+    private static final String SOURCE_MANUAL = "MANUAL";
+    /** 允许修改的说明性字段：盖章记录的其余字段都是法定授权内容，改不得 */
+    private static final String EDITABLE_FIELDS = "备注";
+
     private final ChainEventPublisher chainEvents;
+    private final SourceGuard sourceGuard;
 
     @Override
     public IPage<CarcassStampVO> pageQuery(Page<CarcassStamp> page, CarcassStampDTO query,
@@ -78,63 +89,34 @@ public class CarcassStampServiceImpl extends ServiceImpl<CarcassStampMapper, Car
         return voPage;
     }
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public boolean addStamp(CarcassStampDTO dto) {
-        CarcassStamp stamp = new CarcassStamp();
-        BeanUtils.copyProperties(dto, stamp);
-        stamp.setCreateTime(LocalDateTime.now());
-        stamp.setContentHash(HashUtil.sha256Json(dto));
-        if (!this.save(stamp)) throw new BusinessException(ErrorCode.DATABASE_ERROR, "检疫盖章保存失败");
-        chainEvents.publish(ChainTxMessage.create("SLAUGHTER_INSPECT", stamp.getId(), stamp.getStampNo(),
-                stamp.getContentHash(), Map.of("stampNo", stamp.getStampNo(), "pigId", stamp.getPigId())));
-        return true;
-    }
+    /* 人工新增方法已删除：胴体盖章为设备独占环节，写入只走设备通道
+       （SlaughterDeviceIngestController /slaughter/internal/ingest/stamp）。 */
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public boolean updateStamp(CarcassStampDTO dto) {
-        if (dto.getId() == null) {
-            throw new BusinessException(ErrorCode.PARAM_MISSING, "ID不能为空");
-        }
-        CarcassStamp old = this.getById(dto.getId());
-        if (old == null) throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, "检疫盖章记录不存在");
-        if (old.getStatus() != null && old.getStatus() == 2)
-            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "已作废记录不可编辑，请重新录入");
-        if (dto.getStatus() != null && dto.getStatus() == 2)
-            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "作废请使用作废功能，不可通过编辑设置");
-        CarcassStamp stamp = new CarcassStamp();
-        BeanUtils.copyProperties(dto, stamp);
-        stamp.setContentHash(HashUtil.sha256Json(dto));
-        if (!this.updateById(stamp)) throw new BusinessException(ErrorCode.DATABASE_ERROR, "检疫盖章更新失败");
-        // 已上链数据：编辑后重新发布新哈希（链上按 bizKey 保留版本历史，验真取最新）
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("stampNo", old.getStampNo());
-        payload.put("pigId", old.getPigId());
-        chainEvents.publish(ChainTxMessage.create("SLAUGHTER_INSPECT", old.getId(), old.getStampNo(),
-                stamp.getContentHash(), payload));
-        return true;
-    }
 
+    /** 作废：逻辑作废 + 理由 + 实名，单独上链一条 VOID 事件，不做物理删除 */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void voidStamp(Long id) {
+    public void voidStamp(Long id, String reason) {
+        // 作废与新增同级受控：实名 + 理由 + 上链，防止「用作废绕开管控」
+        ManualOperator voidBy = sourceGuard.requireVoidAllowed(TraceStage.STAMP, reason);
+        String cleanReason = reason.trim();
         CarcassStamp old = this.getById(id);
-        if (old == null) throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, "检疫盖章记录不存在");
-        if (old.getStatus() != null && old.getStatus() == 2) return; // 已作废，幂等
-        CarcassStamp stamp = new CarcassStamp();
-        stamp.setId(id);
-        stamp.setStatus(2);
-        if (!this.updateById(stamp)) throw new BusinessException(ErrorCode.DATABASE_ERROR, "检疫盖章作废失败");
-        // 作废动作本身单独上链存证（独立 bizKey，不影响原记录哈希验真）
-        String voidBizKey = old.getStampNo() + ":VOID";
-        String voidHash = HashUtil.sha256Json(Map.of("bizKey", old.getStampNo(), "action", "VOID",
-                "voidTime", LocalDateTime.now().toString()));
+        if (old == null) throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, "检疫盖章记录不存在或已作废");
+        String operator = voidBy.display();
+        if (baseMapper.voidById(id, cleanReason, operator) == 0) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "作废失败：记录可能已被他人作废");
+        }
         Map<String, Object> voidPayload = new HashMap<>();
         voidPayload.put("stampNo", old.getStampNo());
         voidPayload.put("pigId", old.getPigId());
         voidPayload.put("action", "VOID");
-        chainEvents.publish(ChainTxMessage.create("CARCASS_STAMP_VOID", id, voidBizKey, voidHash, voidPayload));
+        voidPayload.put("voidReason", cleanReason);
+        voidPayload.put("operator", operator);
+        voidPayload.put("originalSource", old.getSource());
+        Map<String, Object> hashSource = new HashMap<>(voidPayload);
+        hashSource.put("voidTime", LocalDateTime.now().toString());
+        chainEvents.publish(ChainTxMessage.create("CARCASS_STAMP_VOID", id, old.getStampNo() + ":VOID",
+                HashUtil.sha256Json(hashSource), voidPayload));
     }
 
     @Override

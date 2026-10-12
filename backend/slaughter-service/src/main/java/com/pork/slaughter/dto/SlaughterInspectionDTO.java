@@ -20,7 +20,7 @@ public class SlaughterInspectionDTO {
 
     private String earTagNo;
 
-    // 查询时支持中文("宰前检验/宰后检验/同步检验")或数字编码
+    // 查询时支持中文("宰前检验/宰后检验/宰后检验（同步）")或数字编码
     @NotNull(message = "检验类型不能为空")
     private String inspectType;
 

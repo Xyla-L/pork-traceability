@@ -54,4 +54,15 @@ final class Handlers {
             return null;
         }
     }
+
+    /** 业务服务回传的数字字段可能是 Integer 也可能是字符串（如 JSON 宽松解析），统一转 Integer */
+    static Integer intValue(Object value) {
+        if (value == null) return null;
+        if (value instanceof Number number) return number.intValue();
+        try {
+            return Integer.valueOf(value.toString().trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
 }

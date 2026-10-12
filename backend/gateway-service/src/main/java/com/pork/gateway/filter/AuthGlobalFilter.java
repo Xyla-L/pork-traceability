@@ -1,5 +1,6 @@
 package com.pork.gateway.filter;
 
+import com.pork.core.source.OperatorHeader;
 import com.pork.security.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +28,11 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
     private static final String BLACKLIST_PREFIX = "auth:blacklist:token:";
     private static final String COMPLAINTS_PATH = "/api/v1/trace/complaints";
     /**
+     * 服务间内部接口前缀：仅供服务在容器网络内直连调用（如养殖场档案同步登记机构）。
+     * 网关一律不转发，返回 404，避免外部调用者绕过机构管理的 ADMIN 限制。
+     */
+    private static final String INTERNAL_ONLY_PREFIX = "/api/v1/auth/internal/";
+    /**
      * 消费者侧只读接口（小程序无需登录即可访问）：
      * 扫码溯源 / 安心购 / 一键验真 / 溯源搜索
      */
@@ -48,11 +54,16 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
         String path = request.getURI().getPath();
+        // 服务间内部接口不对外暴露
+        if (path.startsWith(INTERNAL_ONLY_PREFIX)) {
+            return notFound(exchange);
+        }
         if (isPublic(path, request.getMethod().name()) || "OPTIONS".equals(request.getMethod().name())) {
-            // 公开路径同样剥离身份头，防止调用方伪造 X-User-Id / X-User-Role
+            // 公开路径同样剥离身份头，防止调用方伪造 X-User-Id / X-User-Role / X-User-Name
             ServerHttpRequest stripped = request.mutate().headers(headers -> {
                 headers.remove("X-User-Id");
                 headers.remove("X-User-Role");
+                headers.remove("X-User-Name");
             }).build();
             return chain.filter(exchange.mutate().request(stripped).build());
         }
@@ -73,8 +84,15 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
                     ServerHttpRequest forwarded = request.mutate().headers(headers -> {
                         headers.remove("X-User-Id");
                         headers.remove("X-User-Role");
+                        headers.remove("X-User-Name");
                         headers.set("X-User-Id", userId);
                         headers.set("X-User-Role", role);
+                        // 关键环节人工动作要落到具体人头上：姓名单独透传（老令牌无该声明时退回用户ID）。
+                        // 姓名可能是中文，HTTP 头只安全承载 ASCII（否则会被按 ISO-8859-1 编成 '?'，
+                        // 业务表里就变成「?????」），所以这里先 URL 编码，各服务读头后解码。
+                        String userName = JwtUtil.getClaim(token, "userName");
+                        String displayName = userName == null || userName.isBlank() ? userId : userName;
+                        headers.set("X-User-Name", OperatorHeader.encode(displayName));
                     }).build();
                     log.info("gateway_forward path={} userId={} role={}", path, userId, role);
                     return chain.filter(exchange.mutate().request(forwarded).build());
@@ -112,6 +130,17 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
         response.setStatusCode(HttpStatus.UNAUTHORIZED);
         response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
         String body = "{\"code\":401,\"message\":\"" + message + "\",\"data\":null,\"traceId\":\""
+                + UUID.randomUUID() + "\",\"timestamp\":" + System.currentTimeMillis() + "}";
+        return response.writeWith(Mono.just(response.bufferFactory().wrap(body.getBytes(StandardCharsets.UTF_8))));
+    }
+
+    /** 内部接口一律按「不存在」处理：不暴露接口的存在性 */
+    private Mono<Void> notFound(ServerWebExchange exchange) {
+        log.warn("gateway_blocked_internal path={}", exchange.getRequest().getURI().getPath());
+        ServerHttpResponse response = exchange.getResponse();
+        response.setStatusCode(HttpStatus.NOT_FOUND);
+        response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
+        String body = "{\"code\":404,\"message\":\"资源不存在\",\"data\":null,\"traceId\":\""
                 + UUID.randomUUID() + "\",\"timestamp\":" + System.currentTimeMillis() + "}";
         return response.writeWith(Mono.just(response.bufferFactory().wrap(body.getBytes(StandardCharsets.UTF_8))));
     }

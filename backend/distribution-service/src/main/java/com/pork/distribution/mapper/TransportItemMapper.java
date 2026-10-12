@@ -1,0 +1,9 @@
+package com.pork.distribution.mapper;
+
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.pork.distribution.entity.TransportItem;
+import org.apache.ibatis.annotations.Mapper;
+
+@Mapper
+public interface TransportItemMapper extends BaseMapper<TransportItem> {
+}

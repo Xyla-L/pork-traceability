@@ -50,4 +50,17 @@ public class VaccineRecordVO {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @Schema(description = "创建时间")
     private LocalDateTime createTime;
+
+    @Schema(description = "是否已作废：0=有效 1=已作废（作废记录仍在库中可追溯，列表按此打标）")
+    private Integer voidFlag;
+
+    @Schema(description = "作废理由")
+    private String voidReason;
+
+    @Schema(description = "作废操作人（实名）")
+    private String voidOperator;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @Schema(description = "作废时间")
+    private LocalDateTime voidTime;
 }

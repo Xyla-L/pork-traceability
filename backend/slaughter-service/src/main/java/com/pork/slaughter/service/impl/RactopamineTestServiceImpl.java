@@ -4,51 +4,76 @@ import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.pork.core.enums.ErrorCode;
+import com.pork.core.exception.BusinessException;
+import com.pork.core.source.ManualOperator;
+import com.pork.core.source.TraceStage;
+import com.pork.core.util.HashUtil;
+import com.pork.mq.ChainEventPublisher;
+import com.pork.mq.ChainTxMessage;
 import com.pork.slaughter.dto.RactopamineTestDTO;
 import com.pork.slaughter.entity.RactopamineTest;
 import com.pork.slaughter.mapper.RactopamineTestMapper;
 import com.pork.slaughter.service.RactopamineTestService;
 import com.pork.slaughter.support.SlaughterStatus;
 import com.pork.slaughter.vo.RactopamineTestVO;
-import com.pork.core.enums.ErrorCode;
-import com.pork.core.exception.BusinessException;
+import com.pork.web.source.SourceGuard;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class RactopamineTestServiceImpl extends ServiceImpl<RactopamineTestMapper, RactopamineTest>
         implements RactopamineTestService {
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public boolean addTest(RactopamineTestDTO dto) {
-        RactopamineTest entity = new RactopamineTest();
-        BeanUtil.copyProperties(dto, entity, "result");
-        entity.setResult(SlaughterStatus.testResult(dto.getResult()));
-        entity.setCreateTime(LocalDateTime.now());
-        if (!this.save(entity)) throw new BusinessException(ErrorCode.DATABASE_ERROR, "瘦肉精检测保存失败");
-        return true;
-    }
+    /** 人工录入来源标记（与设备采集 DEVICE 对应） */
+    private static final String SOURCE_MANUAL = "MANUAL";
+    /** 允许修改的说明性字段：检测报告地址、备注、附件 */
+    private static final String EDITABLE_FIELDS = "报告地址、备注、附件";
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public boolean updateTest(Long id, RactopamineTestDTO dto) {
-        if (this.getById(id) == null) throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, "瘦肉精检测记录不存在");
-        RactopamineTest entity = new RactopamineTest();
-        BeanUtil.copyProperties(dto, entity, "result");
-        entity.setId(id);
-        entity.setResult(SlaughterStatus.testResult(dto.getResult()));
-        if (!this.updateById(entity)) throw new BusinessException(ErrorCode.DATABASE_ERROR, "瘦肉精检测更新失败");
-        return true;
-    }
+    private final SourceGuard sourceGuard;
+    private final ChainEventPublisher chainEvents;
 
+    /* 人工新增方法已删除：瘦肉精检测为设备独占环节，写入只走设备通道
+       （SlaughterDeviceIngestController /slaughter/internal/ingest/ractopamine）。 */
+
+
+    /** 作废：逻辑作废 + 理由 + 实名，单独上链一条 VOID 事件，不做物理删除 */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public boolean deleteTest(Long id) {
-        if (!this.removeById(id)) throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, "瘦肉精检测记录不存在");
+    public boolean voidTest(Long id, String reason) {
+        // 作废与新增同级受控：实名 + 理由 + 上链，防止「用作废绕开管控」
+        ManualOperator voidBy = sourceGuard.requireVoidAllowed(TraceStage.RACTOPAMINE, reason);
+        String cleanReason = reason.trim();
+        RactopamineTest old = this.getById(id);
+        if (old == null) throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, "瘦肉精检测记录不存在或已作废");
+        String operator = voidBy.display();
+        if (baseMapper.voidById(id, cleanReason, operator) == 0) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "作废失败：记录可能已被他人作废");
+        }
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("recordId", id);
+        payload.put("testNo", old.getTestNo());
+        payload.put("sampleNo", old.getSampleNo());
+        payload.put("action", "VOID");
+        payload.put("voidReason", cleanReason);
+        payload.put("operator", operator);
+        payload.put("originalSource", old.getSource());
+        Map<String, Object> hashSource = new HashMap<>(payload);
+        hashSource.put("voidTime", LocalDateTime.now().toString());
+        chainEvents.publish(ChainTxMessage.create("RACTOPAMINE_VOID", id, "RACTOPAMINE:" + id + ":VOID",
+                HashUtil.sha256Json(hashSource), payload));
+        log.info("ractopamine_voided id={} operator={} reason={}", id, operator, cleanReason);
         return true;
     }
 

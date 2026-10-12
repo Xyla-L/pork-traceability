@@ -3,6 +3,7 @@ package com.pork.slaughter.entity;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableLogic;
 import lombok.Data;
 import java.time.LocalDateTime;
 
@@ -33,4 +34,16 @@ public class EntryInspection {
     private String remark;
     private String fileIds; // JSON字符串存储
     private LocalDateTime createTime;
+    /**
+     * 作废标记：0=有效 1=已作废。
+     * 同时作为 MyBatis-Plus 的逻辑删除标记——查询默认只取有效记录，作废数据留在库里不物理删除。
+     */
+    @TableLogic(value = "0", delval = "1")
+    private Integer voidFlag;
+    /** 作废理由（必填），随作废事件一并上链 */
+    private String voidReason;
+    /** 作废操作人（实名） */
+    private String voidOperator;
+    /** 作废时间 */
+    private LocalDateTime voidTime;
 }

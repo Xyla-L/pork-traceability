@@ -20,6 +20,16 @@
         </template>
       </el-table-column>
       <el-table-column prop="targetSlaughterhouse" label="目标屠宰场" min-width="160" show-overflow-tooltip />
+      <el-table-column label="采集设备" min-width="130" show-overflow-tooltip>
+        <template #default="{ row }">
+          {{ deviceText(row) }}
+        </template>
+      </el-table-column>
+      <el-table-column label="审批人" min-width="100" align="center">
+        <template #default="{ row }">
+          {{ row.approvalStatus === 0 ? '-' : row.approver || '未记录' }}
+        </template>
+      </el-table-column>
       <el-table-column prop="approvalStatus" label="审批状态" min-width="100" align="center">
         <template #default="{ row }">
           <StatusTag :type="applyStatusType(row.approvalStatus)" />
@@ -47,6 +57,7 @@
 
 <script setup>
 import StatusTag from '@/components/common/StatusTag.vue'
+import { deviceText } from '@/api/modules/ingest'
 
 defineProps({
   data: {

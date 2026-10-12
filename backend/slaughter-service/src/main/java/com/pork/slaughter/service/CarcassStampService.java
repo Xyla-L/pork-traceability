@@ -15,23 +15,11 @@ public interface CarcassStampService extends IService<CarcassStamp> {
     IPage<CarcassStampVO> pageQuery(Page<CarcassStamp> page, CarcassStampDTO query,
                                     String status, String startDate, String endDate);
 
-    /**
-     * 新增盖章记录
-     */
-    boolean addStamp(CarcassStampDTO dto);
+    /* 人工新增与修改方法均已删除：胴体盖章为设备独占环节，写入只走设备通道。 */
 
-    /**
-     * 更新盖章记录
-     */
-    boolean updateStamp(CarcassStampDTO dto);
+    /** 作废（原「删除」）：实名 + 理由必填，上链留证 */
+    void voidStamp(Long id, String reason);
 
-    /**
-     * 根据ID删除盖章记录（已上链，禁止物理删除，仅作占位以保持接口兼容）
-     */
+    /** 已上链记录不可物理删除，调用即抛业务异常 */
     boolean deleteStamp(Long id);
-
-    /**
-     * 作废盖章记录（逻辑作废，作废动作单独上链存证）
-     */
-    void voidStamp(Long id);
 }

@@ -1,0 +1,19 @@
+== 免疫注射凭证照片链路 ==
+  [PASS] 管理员登录
+  [PASS] 凭证照片上传成功并返回 fileId
+  [PASS] 文件元信息接口返回同一 fileId
+  [PASS] 存在启用的免疫注射设备
+  [PASS] 存在在养生猪可供演示
+  [PASS] 缺凭证上报转「待人工确认」
+  [PASS] 转人工原因提到凭证
+  [PASS] 带真实 fileId 上报自动入账
+  [INFO] 已入账记录编号（vaccine_record.id）= 55，凭证 fileId = bf6f5ee53b5940c3b84154e4f64258b2
+  [PASS] 伪造 fileId 被拒绝
+  [PASS] 拒绝原因说明凭证不存在
+  [PASS] 缺人缺照片转「待人工确认」
+  [PASS] 人工补齐后确认入账
+  [INFO] 人工补齐入账记录编号（vaccine_record.id）= 56，应落操作人「王复核」且凭证含 bf6f5ee53b5940c3b84154e4f64258b2
+  [INFO] 该上报 staging.id = 1053
+  [PASS] 同报文重发判重复且不新建
+
+结果：13 通过，0 失败

@@ -30,6 +30,27 @@
 
     <!-- 溯源结果 -->
     <template v-if="!searching && traceData">
+      <!-- 作废标注：链上展示的始终是当前有效记录，被作废的记录在这里单独说明，
+           避免数据「凭空消失」看起来像从没录过 -->
+      <el-alert
+        v-if="voidedInfo.records.length"
+        class="voided-alert"
+        type="warning"
+        :closable="false"
+        show-icon
+        :title="voidedInfo.summary"
+      >
+        <div class="voided-list">
+          <div v-for="(item, idx) in voidedInfo.records" :key="idx" class="voided-item">
+            <el-tag size="small" type="danger" effect="plain">已作废</el-tag>
+            <span class="voided-stage">{{ item.stageLabel || item.stage }}</span>
+            <span v-if="item.bizNo" class="voided-biz">单号 {{ item.bizNo }}</span>
+            <span class="voided-reason">理由：{{ item.reason || '未填写' }}</span>
+            <span class="voided-meta">{{ item.operator || '未知操作人' }} · {{ item.time || '时间未记录' }}</span>
+          </div>
+        </div>
+      </el-alert>
+
       <!-- 产品信息 -->
       <el-card class="result-card">
         <template #header><span class="card-title">产品信息</span></template>
@@ -169,12 +190,20 @@ const verifying = ref(false)
 // 节点详情表
 const nodeDetails = ref<any[]>([])
 
+// 作废标注：追溯链一律只取当前有效记录，但「哪条记录被作废了」要能看见
+const voidedInfo = ref<{ summary: string; records: any[] }>({ summary: '', records: [] })
+
 // 图表
 const graphChartRef = ref<HTMLElement>()
 let graphChart: echarts.ECharts | null = null
 
 const pick = (v: any, fallback: any = '-') =>
   v === null || v === undefined || v === '' ? fallback : v
+
+// 检验类型：1=宰前 2=宰后 3=宰后（同步）
+// 2 和 3 按法规口径是同一个环节——宰后检疫的标准做法就是同步检疫，3 只标明这次是按同步方式做的
+const inspectTypeText = (t: any) =>
+  ({ 1: '宰前检验', 2: '宰后检验', 3: '宰后检验（同步）' }[Number(t)] ?? '屠宰检验')
 
 function mapChainRecords(chain: any) {
   const list = Array.isArray(chain) ? chain : []
@@ -237,10 +266,16 @@ function buildNodeDetails(full: any) {
       push('入场查验', entry.arriveTime, entry.sourceFarm,
         `检疫证${pick(entry.quarantineCert)} / 健康检查${entry.healthCheck === 1 ? '通过' : '异常'}`)
     }
+    // 瘦肉精为宰前抽检，排在屠宰检验之前（与侧边栏「瘦肉精检测 → 屠宰检验」一致）
+    const tests = Array.isArray(row?.ractopamineTests) ? row.ractopamineTests : []
+    tests.forEach((t: any) => {
+      push('瘦肉精检测', t.testTime, t.operator,
+        `样本${pick(t.testNo)} / 结果${t.result === 1 ? '阴性(合格)' : '阳性(不合格)'}`)
+    })
     const inspections = Array.isArray(row?.inspections) ? row.inspections : []
     inspections.forEach((ins: any) => {
       push('屠宰检验', ins.inspectTime, ins.veterinary ?? entry?.sourceFarm,
-        `${ins.inspectType === 1 ? '宰前检验' : ins.inspectType === 2 ? '宰后检验' : '检验'} / ${pick(ins.conclusion)}`)
+        `${inspectTypeText(ins.inspectType)} / ${pick(ins.conclusion)}`)
     })
     const stamp = Array.isArray(row?.stamps) ? row.stamps[0] : null
     if (stamp) {
@@ -286,6 +321,15 @@ function buildNodeDetails(full: any) {
   return rows
 }
 
+// 作废标注：把后端汇总的已作废记录落到页面上（无作废记录时不占位）
+function applyVoided(full: any) {
+  const records: any[] = Array.isArray(full?.voidedRecords) ? full.voidedRecords : []
+  voidedInfo.value = {
+    summary: full?.voidedSummary || (records.length ? `该批次有 ${records.length} 条记录已被作废重录` : ''),
+    records,
+  }
+}
+
 async function handleSearch() {
   const kw = keyword.value.trim()
   if (!kw) { ElMessage.warning('请输入搜索关键词'); return }
@@ -294,6 +338,7 @@ async function handleSearch() {
   traceData.value = null
   verifyResult.value = null
   nodeDetails.value = []
+  voidedInfo.value = { summary: '', records: [] }
 
   try {
     const res: any = await traceApi.search(kw)
@@ -304,6 +349,7 @@ async function handleSearch() {
     }
     traceData.value = buildTraceData(res, full, kw)
     nodeDetails.value = buildNodeDetails(full)
+    applyVoided(full)
     searching.value = false
     await nextTick()
     initGraphChart(full)
@@ -326,6 +372,7 @@ const bizTypeMap: Record<string, string> = {
   SLAUGHTER_INSPECT: '屠宰检验',
   RACTOPAMINE_TEST: '瘦肉精检测',
   CARCASS_STAMP: '检疫盖章',
+  CARCASS_BATCH: '胴体批次',
   SPLIT_BATCH: '批次拆分',
   COLD_CHAIN_TRANSPORT: '冷链运输',
   STORE_RECEIPT: '门店签收',
@@ -333,6 +380,13 @@ const bizTypeMap: Record<string, string> = {
   RECALL_ORDER: '产品召回',
   SLAUGHTER_INSPECT_VOID: '检验作废',
   CARCASS_STAMP_VOID: '盖章作废',
+  CARCASS_BATCH_VOID: '胴体批次作废',
+  SPLIT_BATCH_VOID: '分割批次作废',
+  RETAIL_SALE_VOID: '销售作废',
+  PIG_INDIVIDUAL_VOID: '生猪档案作废',
+  VACCINE_RECORD_VOID: '免疫记录作废',
+  RACTOPAMINE_VOID: '瘦肉精检测作废',
+  QUARANTINE_CERT_VOID: '检疫证明作废',
   RECALL_ORDER_PROGRESS: '召回进度',
 }
 const bizTypeLabel = (t: string) => bizTypeMap[t] || t
@@ -491,6 +545,16 @@ onUnmounted(() => {
 
 // 加载
 .loading-section { padding: 40px 0; }
+
+// 作废标注
+.voided-alert { margin-bottom: 20px;
+  :deep(.el-alert__content) { width: 100%; } }
+.voided-list { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.voided-item { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12px; }
+.voided-stage { font-weight: 600; color: #303133; }
+.voided-biz { color: #606266; }
+.voided-reason { color: #e6a23c; }
+.voided-meta { margin-left: auto; color: #909399; }
 
 // 结果
 .result-card { margin-bottom: 20px; }

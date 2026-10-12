@@ -23,6 +23,10 @@ import java.util.Map;
  * 注射器自动记录「哪头猪、什么疫苗、什么批号、多少剂量、几点打的」；
  * 兽医批号（疫苗批号）必须由扫码或人工提供——没有批号的免疫记录无法溯源疫苗来源，
  * 一律拒绝，不允许设备默认填"未知批号"。
+ * <p>
+ * 接种凭证照片（fileIds）：能拍照的终端（手机 App / PDA）在上报时一并带上；
+ * 只会打针的连续注射器拿不到照片时，不拒绝、转人工补传 ——
+ * 免疫记录是监管最容易追问的一环，缺佐证材料的记录不该悄悄入库，也不该被直接丢掉。
  */
 @Slf4j
 @Component
@@ -30,11 +34,14 @@ public class VaccineChannelHandler implements ChannelHandler {
 
     private final BizClient bizClient;
     private final String breedingUrl;
+    private final String fileUrl;
 
     public VaccineChannelHandler(BizClient bizClient,
-                                 @Value("${services.breeding-url:http://localhost:8082}") String breedingUrl) {
+                                 @Value("${services.breeding-url:http://localhost:8082}") String breedingUrl,
+                                 @Value("${services.file-url:http://localhost:8088}") String fileUrl) {
         this.bizClient = bizClient;
         this.breedingUrl = breedingUrl;
+        this.fileUrl = fileUrl;
     }
 
     @Override
@@ -75,6 +82,30 @@ public class VaccineChannelHandler implements ChannelHandler {
             return DispatchResult.manual(table, "耳标查到的生猪档案缺少主键，无法自动入账");
         }
 
+        // 操作人必须是现场操作注射器的兽医本人。注射器只是工具，不能把它写进操作人字段 ——
+        // 否则追溯链上「谁给这头猪打的疫苗」查到的是一台机器。缺人就转人工补录。
+        String operator = Payloads.str(data, "operator");
+        if (operator == null && !force) {
+            return DispatchResult.manual(table, "缺少操作人（现场兽医姓名），免疫记录必须落到具体人员，请补录后入账");
+        }
+
+        // 接种凭证照片：设备报了就必须是真的，编一个 fileId 蒙混过不了这一关；
+        // 终端拿不到照片（只有注射器的形态）时不拒绝，转人工补传。
+        List<String> fileIds = Payloads.strings(data, "fileIds");
+        for (String fileId : fileIds) {
+            try {
+                bizClient.get(fileUrl + "/file/" + fileId + "/meta", Map.of());
+            } catch (BusinessException e) {
+                if (ErrorCode.REMOTE_CALL_ERROR.getCode().equals(e.getCode())) {
+                    return DispatchResult.manual(table, "文件服务不可用，暂时无法核验接种凭证：" + e.getMessage());
+                }
+                return DispatchResult.rejected(table, "接种凭证照片不存在（" + fileId + "），疑似伪造凭证，禁止入库");
+            }
+        }
+        if (fileIds.isEmpty() && !force) {
+            return DispatchResult.manual(table, "缺少接种凭证照片，免疫记录缺佐证材料，请人工核对后补传");
+        }
+
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("pigId", pigId);
         body.put("earTagNo", earTagNo);
@@ -84,7 +115,8 @@ public class VaccineChannelHandler implements ChannelHandler {
         body.put("injectTime", Payloads.time(data, "injectTime") == null ? Handlers.time(ctx.reportTime()) : Handlers.time(Payloads.time(data, "injectTime")));
         body.put("dosage", Payloads.str(data, "dosage"));
         body.put("injectSite", Payloads.str(data, "injectSite"));
-        body.put("operator", Payloads.str(data, "operator") == null ? ctx.deviceLabel() : Payloads.str(data, "operator"));
+        body.put("operator", operator == null ? "未记录" : operator);
+        body.put("fileIds", fileIds);
         body.put("source", "DEVICE");
         body.put("sourceRef", ctx.sourceRef());
         body.put("rawPayload", ctx.rawPayload());

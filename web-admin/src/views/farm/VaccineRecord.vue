@@ -19,6 +19,11 @@
             @keyup.enter="handleSearch"
           />
         </el-form-item>
+        <el-form-item label="作废记录">
+          <el-checkbox v-model="searchForm.includeVoid" @change="handleSearch">
+            显示已作废（仍在库中可追溯）
+          </el-checkbox>
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">
             <el-icon><Search /></el-icon>
@@ -32,19 +37,12 @@
       </el-form>
     </div>
 
-    <!-- 操作栏 -->
-    <div class="action-bar">
-      <el-button type="primary" @click="handleCreate">
-        <el-icon><Plus /></el-icon>
-        录入疫苗
-      </el-button>
-    </div>
 
     <!-- 数据表格 -->
     <VaccineTable
       :data="tableData"
       :loading="tableLoading"
-      @edit="handleEdit"
+      @voided="fetchList"
     />
 
     <!-- 分页 -->
@@ -61,27 +59,23 @@
       />
     </div>
 
-    <!-- 录入疫苗弹窗 -->
-    <VaccineFormDialog
-      v-model:visible="formDialogVisible"
-      :edit-data="currentEditData"
-      @saved="handleFormSaved"
-    />
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { Search, Refresh, Plus } from '@element-plus/icons-vue'
+import { Search, Refresh } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 import VaccineTable from './VaccineTable.vue'
-import VaccineFormDialog from './VaccineFormDialog.vue'
 
 // ==================== 搜索相关 ====================
 
 const searchForm = reactive({
   earTagNo: '',
-  vaccineName: ''
+  vaccineName: '',
+  // 默认带上已作废记录：作废只是「这条不再生效」，记录仍在库中可追溯，
+  // 若默认藏起来，用户会误以为「上报成功却没入账」。
+  includeVoid: true
 })
 
 // ==================== 表格相关 ====================
@@ -113,8 +107,13 @@ const fetchList = async () => {
     const allVaccines = []
     const promises = pigs.map(async (pig) => {
       try {
-        const vacRes = await request.get(`/breeding/pigs/${pig.id}/vaccines`, { timeout: 5000 })
-        const vaccines = vacRes?.records || vacRes?.list || []
+        // 走 /list 全量取回：分页接口默认每页 10 条，一头猪的免疫记录会被截断；
+        // includeVoid 让已作废的记录留在原位（由表格打标），而不是整条消失。
+        const vacRes = await request.get(`/breeding/pigs/${pig.id}/vaccines/list`, {
+          params: { includeVoid: searchForm.includeVoid },
+          timeout: 5000,
+        })
+        const vaccines = Array.isArray(vacRes) ? vacRes : vacRes?.records || vacRes?.list || []
         vaccines.forEach((v) => {
           allVaccines.push({ ...v, earTagNo: pig.earTagNo, pigId: pig.id })
         })
@@ -128,6 +127,16 @@ const fetchList = async () => {
     if (searchForm.vaccineName) {
       filtered = filtered.filter((v) => v.vaccineName?.includes(searchForm.vaccineName))
     }
+
+    // 上面的数据是「逐头猪并发拉取再拼接」的，天然没有顺序（谁先返回谁在前）。
+    // 不排序时刚上报的记录可能落到第 2、3 页，看起来像「上报成功却没入账」，
+    // 因此统一按入账时间倒序，最新的排第一页。
+    filtered.sort((a, b) => {
+      const ta = String(a.createTime || a.injectTime || '')
+      const tb = String(b.createTime || b.injectTime || '')
+      if (ta !== tb) return tb.localeCompare(ta)
+      return (b.id || 0) - (a.id || 0)
+    })
 
     pagination.total = filtered.length
     const start = (pagination.pageNum - 1) * pagination.pageSize
@@ -167,27 +176,6 @@ const handlePageChange = (page) => {
   fetchList()
 }
 
-// ==================== 表单弹窗 ====================
-
-const formDialogVisible = ref(false)
-const currentEditData = ref(null)
-
-const handleCreate = () => {
-  currentEditData.value = null
-  formDialogVisible.value = true
-}
-
-const handleEdit = (row) => {
-  currentEditData.value = { ...row }
-  formDialogVisible.value = true
-}
-
-const handleFormSaved = () => {
-  // 提交已在 VaccineFormDialog 内部完成并成功，这里只需刷新列表
-  currentEditData.value = null
-  fetchList()
-}
-
 // ==================== 初始化 ====================
 
 onMounted(() => {
@@ -209,12 +197,6 @@ onMounted(() => {
     :deep(.el-form-item) {
       margin-bottom: 12px;
     }
-  }
-
-  .action-bar {
-    display: flex;
-    justify-content: flex-end;
-    margin-bottom: 16px;
   }
 
   .pagination-wrapper {

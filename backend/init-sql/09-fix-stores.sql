@@ -1,8 +1,10 @@
 -- 修复 sys_org 门店数据（PowerShell 编码导致双重编码，重新插入）
+-- 注意：本脚本是门店机构的「权威种子」。07-demo-data.sql 早先也插过 2 个门店（id=5 '安心生鲜门店'、id=6 '惠民社区超市'），
+--       与这里的 1001-1014 重名，若不先清空会留下重复门店。故按 type 整体重置，而不是只删 1001-1014 这一段 id。
 SET NAMES utf8mb4;
 USE db_common;
 
-DELETE FROM sys_org WHERE id BETWEEN 1001 AND 1014;
+DELETE FROM sys_org WHERE type = 'retail';
 
 INSERT INTO sys_org (id, parent_id, type, name, manager, phone, address, remark) VALUES
 (1001, 4, 'retail', '安心生鲜门店', '孙店长', '13800000003', '北京市海淀区中关村大街99号', '直营店'),

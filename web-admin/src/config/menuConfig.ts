@@ -35,6 +35,13 @@ export const menuConfig: MenuItem[] = [
         roles: ['FARMER', 'SUPERVISOR', 'ADMIN'],
       },
       {
+        // 链路环节：养殖建档 → 免疫注射 → 产地检疫出证 → 入场查验。
+        // 出证有扫码登记终端（设备优先，只登记证面信息）；没有终端时人工出证，须实名并留痕上链。
+        path: '/admin/farm/quarantine',
+        title: '产地检疫',
+        roles: ['FARMER', 'SUPERVISOR', 'ADMIN'],
+      },
+      {
         path: '/admin/farm/apply',
         title: '出栏审批',
         roles: ['SUPERVISOR', 'ADMIN'],
@@ -55,13 +62,14 @@ export const menuConfig: MenuItem[] = [
         roles: ['SLAUGHTER_OP', 'SUPERVISOR', 'ADMIN'],
       },
       {
-        path: '/admin/slaughter/inspect',
-        title: '屠宰检验',
+        // 瘦肉精为宰前抽检，排在屠宰检验（宰前 + 宰后）之前
+        path: '/admin/slaughter/ractopamine',
+        title: '瘦肉精检测',
         roles: ['SLAUGHTER_OP', 'SUPERVISOR', 'ADMIN'],
       },
       {
-        path: '/admin/slaughter/ractopamine',
-        title: '瘦肉精检测',
+        path: '/admin/slaughter/inspect',
+        title: '屠宰检验',
         roles: ['SLAUGHTER_OP', 'SUPERVISOR', 'ADMIN'],
       },
       {

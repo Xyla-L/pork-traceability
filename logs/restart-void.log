@@ -1,0 +1,79 @@
+﻿
+docker :  Container pork-traceability-nacos-1 Running 
+所在位置 行:448 字符: 1
++ docker compose up -d breeding-service slaughter-service distribution- ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ( Container pork...acos-1 Running  
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ Container pork-traceability-rabbitmq-1 Running 
+ Container pork-traceability-mysql-1 Running 
+ Container pork-traceability-redis-1 Running 
+ Container pork-traceability-breeding-service-1 Recreate 
+ Container pork-traceability-distribution-service-1 Recreate 
+ Container pork-traceability-slaughter-service-1 Recreate 
+ Container pork-traceability-trace-service-1 Recreate 
+ Container pork-traceability-ingest-service-1 Recreate 
+ Container pork-traceability-breeding-service-1 Recreated 
+ Container pork-traceability-ingest-service-1 Recreated 
+ Container pork-traceability-trace-service-1 Recreated 
+ Container pork-traceability-slaughter-service-1 Recreated 
+ Container pork-traceability-distribution-service-1 Recreated 
+ Container pork-traceability-nacos-1 Waiting 
+ Container pork-traceability-mysql-1 Waiting 
+ Container pork-traceability-redis-1 Waiting 
+ Container pork-traceability-mysql-1 Waiting 
+ Container pork-traceability-redis-1 Waiting 
+ Container pork-traceability-nacos-1 Waiting 
+ Container pork-traceability-rabbitmq-1 Waiting 
+ Container pork-traceability-mysql-1 Waiting 
+ Container pork-traceability-redis-1 Waiting 
+ Container pork-traceability-nacos-1 Waiting 
+ Container pork-traceability-rabbitmq-1 Waiting 
+ Container pork-traceability-nacos-1 Waiting 
+ Container pork-traceability-rabbitmq-1 Waiting 
+ Container pork-traceability-redis-1 Waiting 
+ Container pork-traceability-mysql-1 Waiting 
+ Container pork-traceability-nacos-1 Waiting 
+ Container pork-traceability-mysql-1 Waiting 
+ Container pork-traceability-redis-1 Waiting 
+ Container pork-traceability-redis-1 Healthy 
+ Container pork-traceability-rabbitmq-1 Healthy 
+ Container pork-traceability-mysql-1 Healthy 
+ Container pork-traceability-rabbitmq-1 Healthy 
+ Container pork-traceability-redis-1 Healthy 
+ Container pork-traceability-nacos-1 Healthy 
+ Container pork-traceability-nacos-1 Healthy 
+ Container pork-traceability-nacos-1 Healthy 
+ Container pork-traceability-mysql-1 Healthy 
+ Container pork-traceability-ingest-service-1 Starting 
+ Container pork-traceability-redis-1 Healthy 
+ Container pork-traceability-breeding-service-1 Starting 
+ Container pork-traceability-rabbitmq-1 Healthy 
+ Container pork-traceability-redis-1 Healthy 
+ Container pork-traceability-mysql-1 Healthy 
+ Container pork-traceability-redis-1 Healthy 
+ Container pork-traceability-mysql-1 Healthy 
+ Container pork-traceability-mysql-1 Healthy 
+ Container pork-traceability-slaughter-service-1 Starting 
+ Container pork-traceability-nacos-1 Healthy 
+ Container pork-traceability-distribution-service-1 Starting 
+ Container pork-traceability-nacos-1 Healthy 
+ Container pork-traceability-trace-service-1 Starting 
+ Container pork-traceability-ingest-service-1 Started 
+ Container pork-traceability-breeding-service-1 Started 
+ Container pork-traceability-slaughter-service-1 Started 
+ Container pork-traceability-distribution-service-1 Started 
+ Container pork-traceability-trace-service-1 Started 
+EXIT=0
+docker :  Container pork-traceability-nginx-1 Restarting 
+所在位置 行:451 字符: 1
++ docker compose -f backend\docker-compose.yml restart nginx 2>&1 | Out ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ( Container pork...x-1 Restarting  
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ Container pork-traceability-nginx-1 Started 
+EXIT2=0

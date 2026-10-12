@@ -3,6 +3,7 @@ package com.pork.breeding.service.impl;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.pork.breeding.client.OrgSyncClient;
 import com.pork.breeding.dto.FarmDTO;
 import com.pork.breeding.entity.Farm;
 import com.pork.breeding.mapper.FarmMapper;
@@ -21,6 +22,8 @@ import org.springframework.util.StringUtils;
 @RequiredArgsConstructor
 public class FarmServiceImpl extends ServiceImpl<FarmMapper, Farm> implements FarmService {
     private final PigIndividualMapper pigIndividualMapper;
+    /** 养殖场档案变更后同步机构表，保证「机构管理」不缺机构 */
+    private final OrgSyncClient orgSyncClient;
 
     @Override
     public Page<FarmVO> pageQuery(Long current, Long size, String farmName) {
@@ -53,6 +56,8 @@ public class FarmServiceImpl extends ServiceImpl<FarmMapper, Farm> implements Fa
         farm.setStatus(1);
         farm.setCreateTime(java.time.LocalDateTime.now());
         if (!this.save(farm)) throw new BusinessException(ErrorCode.DATABASE_ERROR, "养殖场创建失败");
+        // 档案落库后同步登记机构（尽力而为，失败只告警）
+        orgSyncClient.syncFarm(farm.getFarmName(), null, farm.getContactPerson(), farm.getContactPhone(), farm.getAddress());
     }
 
     @Override
@@ -68,8 +73,11 @@ public class FarmServiceImpl extends ServiceImpl<FarmMapper, Farm> implements Fa
         if (count > 0) {
             throw new BusinessException(ErrorCode.BUSINESS_ERROR, "养殖许可证编号已存在");
         }
+        // 改名要连带改机构：先记下旧名，机构侧按旧名定位后再改成新名
+        String previousName = farm.getFarmName();
         BeanUtils.copyProperties(dto, farm);
         if (!this.updateById(farm)) throw new BusinessException(ErrorCode.DATABASE_ERROR, "养殖场更新失败");
+        orgSyncClient.syncFarm(farm.getFarmName(), previousName, farm.getContactPerson(), farm.getContactPhone(), farm.getAddress());
     }
 
     @Override
@@ -86,10 +94,13 @@ public class FarmServiceImpl extends ServiceImpl<FarmMapper, Farm> implements Fa
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void removeFarm(Long id) {
-        if (this.getById(id) == null) throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, "养殖场不存在");
+        Farm farm = this.getById(id);
+        if (farm == null) throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, "养殖场不存在");
         long pigCount = pigIndividualMapper.selectCount(Wrappers.<com.pork.breeding.entity.PigIndividual>lambdaQuery()
                 .eq(com.pork.breeding.entity.PigIndividual::getFarmId, id));
         if (pigCount > 0) throw new BusinessException(ErrorCode.BUSINESS_ERROR, "该养殖场下存在生猪档案，无法删除");
         if (!this.removeById(id)) throw new BusinessException(ErrorCode.DATABASE_ERROR, "养殖场删除失败");
+        // 机构侧同步移除（若机构下还有下级或已关联用户，auth-service 会保留不动）
+        orgSyncClient.removeFarm(farm.getFarmName());
     }
 }

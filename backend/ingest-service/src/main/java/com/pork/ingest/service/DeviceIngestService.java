@@ -7,6 +7,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pork.core.enums.ErrorCode;
 import com.pork.core.exception.BusinessException;
 import com.pork.core.result.PageResult;
+import com.pork.core.source.SourcePolicy;
+import com.pork.core.source.TraceStage;
 import com.pork.ingest.dto.DeviceReportRequest;
 import com.pork.ingest.entity.IngestDevice;
 import com.pork.ingest.entity.IngestStaging;
@@ -27,6 +29,7 @@ import org.springframework.util.StringUtils;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -55,6 +58,10 @@ public class DeviceIngestService {
     private static final int MAX_PAYLOAD_BYTES = 64 * 1024;
     /** 设备时间允许的前置偏差，超出视为时钟错误 */
     private static final int MAX_FUTURE_MINUTES = 10;
+    /** 人工补齐字段的界面叫法：写进处理备注时用中文，事后看备注不用再对字段名 */
+    private static final Map<String, String> PATCH_LABELS = Map.of(
+            "operator", "接种人", "inspector", "查验员", "veterinary", "兽医",
+            "receiver", "签收人", "fileIds", "接种凭证");
 
     private final IngestDeviceMapper deviceMapper;
     private final IngestStagingMapper stagingMapper;
@@ -90,6 +97,33 @@ public class DeviceIngestService {
         if (exists != null) {
             touchDevice(device, now);
             return toResponse(exists, true);
+        }
+
+        // 重复上报兜底：同设备 + 同通道 + 同一份报文，只要已经收过，就直接回既有结论，不再新建。
+        // 覆盖三种状态：
+        //   - 待处理 / 待人工处理：设备拿不到「待人工处理」这个结论，只会当成没收到而重推；
+        //     设备端若每次自造新唯一号，就绕过了上面的 bizKey 幂等，队列里会堆出一串
+        //     一模一样的记录，人工还得逐条辨别哪条有效。
+        //   - 已入账：数据已经成功写入业务，重发没有任何意义，只会在队列里多留一条重复记录。
+        // 仍然放行「已拒绝 / 已降采样」：前者要给「外部条件补上后重发」留出机会
+        // （例如耳标先没建档被拒、后来建档了再重发同一条报文就该放过去）；
+        // 后者是高频抽稀，本来就不写业务表，重发再抽一次无副作用。
+        //
+        // 注意 payload 列是 MySQL 的 JSON 类型：写 `payload = ?` 拿字符串去比永远对不上
+        // （JSON 列与字符串不走文本相等，字段顺序、空格也不同），必须把参数 CAST 成 JSON。
+        // 这样比较的是 JSON 语义，字段顺序与空格差异都不影响，恰好就是「同一份报文」的定义。
+        IngestStaging samePayload = stagingMapper.selectOne(Wrappers.<IngestStaging>lambdaQuery()
+                .eq(IngestStaging::getDeviceNo, device.getDeviceNo())
+                .eq(IngestStaging::getChannel, channel.name())
+                .apply("payload = CAST({0} AS JSON)", rawPayload)
+                .in(IngestStaging::getStatus, IngestStatus.PENDING, IngestStatus.MANUAL, IngestStatus.ACCEPTED)
+                .orderByDesc(IngestStaging::getId)
+                .last("LIMIT 1"));
+        if (samePayload != null) {
+            touchDevice(device, now);
+            log.info("ingest_duplicate_payload device={} channel={} stagingId={}",
+                    device.getDeviceNo(), channel, samePayload.getId());
+            return toResponse(samePayload, true);
         }
 
         IngestStaging staging = new IngestStaging();
@@ -189,23 +223,30 @@ public class DeviceIngestService {
     }
 
     /** 人工确认后强制入账：跳过依赖外部数据的软校验，硬校验（越界值、缺必填）仍然生效 */
-    public Map<String, Object> approve(Long id, String handler, String remark) {
+    public Map<String, Object> approve(Long id, String handler, String remark, Map<String, Object> patch) {
         IngestStaging staging = requireStaging(id);
         if (!Objects.equals(staging.getStatus(), IngestStatus.MANUAL)) {
             throw new BusinessException(ErrorCode.BUSINESS_ERROR, "仅「待人工处理」的数据可以确认入账");
         }
+        requireReviewerForCriticalStage(staging, handler, remark);
         IngestChannel channel = IngestChannel.of(staging.getChannel());
         ChannelHandler channelHandler = handlers.get(channel);
         IngestDevice device = deviceMapper.selectOne(Wrappers.<IngestDevice>lambdaQuery()
                 .eq(IngestDevice::getDeviceNo, staging.getDeviceNo()));
         if (device == null) throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, "上报设备不存在");
 
+        // 人工补齐：把设备拿不到、记录又必须有的字段（现场人员姓名、凭证照片）并进报文后重放。
+        // 设备原始报文保持不可变（留档用），补了什么写进处理备注，事后可追问。
+        Map<String, Object> data = new LinkedHashMap<>(toMap(staging.getPayload()));
+        String patchSummary = applyPatch(data, patch);
+        String finalRemark = mergeRemark(remark, patchSummary);
+
         DeviceReportRequest request = new DeviceReportRequest();
         request.setChannel(channel.name());
         request.setBizKey(staging.getBizKey());
         request.setReportTime(staging.getReportTime());
         request.setSourceRef(staging.getSourceRef());
-        request.setData(toMap(staging.getPayload()));
+        request.setData(data);
 
         DispatchResult result = process(new IngestContext(device, request, staging.getPayload()), channelHandler, true);
         if (result.accepted()) {
@@ -215,16 +256,53 @@ public class DeviceIngestService {
             staging.setErrorMsg(null);
             staging.setHandleTime(LocalDateTime.now());
             staging.setHandler(handler);
-            staging.setRemark(remark);
+            staging.setRemark(finalRemark);
             stagingMapper.updateById(staging);
         } else {
             // 强制入账再失败说明条件仍不满足（如耳标仍无档），保留待人工状态并回写原因
             staging.setErrorMsg(result.message());
             staging.setHandleTime(LocalDateTime.now());
             staging.setHandler(handler);
+            staging.setRemark(finalRemark);
             stagingMapper.updateById(staging);
         }
         return toResponse(staging, false);
+    }
+
+    /**
+     * 把人工补齐的字段并入本次入账数据，返回「补了什么」的中文摘要。
+     * <p>
+     * 空白值（空串、空数组、null）视为「没补」，不覆盖原值，也不记进备注——
+     * 前端表单里没填的字段会以空值提交，不能因此把设备已报的数据抹掉。
+     */
+    private String applyPatch(Map<String, Object> data, Map<String, Object> patch) {
+        if (patch == null || patch.isEmpty()) return null;
+        List<String> changed = new ArrayList<>();
+        patch.forEach((key, value) -> {
+            if (key == null || key.isBlank() || isBlank(value)) return;
+            if (Objects.equals(data.get(key), value)) return;
+            data.put(key, value);
+            changed.add(PATCH_LABELS.getOrDefault(key, key) + "=" + describe(value));
+        });
+        return changed.isEmpty() ? null : String.join("、", changed);
+    }
+
+    private boolean isBlank(Object value) {
+        if (value == null) return true;
+        if (value instanceof String text) return text.isBlank();
+        if (value instanceof List<?> list) return list.isEmpty();
+        return false;
+    }
+
+    private String describe(Object value) {
+        if (value instanceof List<?> list) return "已补传 " + list.size() + " 张照片";
+        return String.valueOf(value);
+    }
+
+    /** 处理备注 = 人工填写的说明 + 系统记的补齐摘要，两者都在，谁也盖不掉谁 */
+    private String mergeRemark(String remark, String patchSummary) {
+        if (!StringUtils.hasText(patchSummary)) return remark;
+        return StringUtils.hasText(remark) ? remark + "｜人工补齐：" + patchSummary : "人工补齐：" + patchSummary;
     }
 
     /** 人工拒绝：数据留档，但不入业务表 */
@@ -241,10 +319,33 @@ public class DeviceIngestService {
         return toResponse(staging, false);
     }
 
+    /**
+     * 关键环节（检验/盖章/瘦肉精/入场查验）的人工复核必须实名 + 写明理由。
+     * <p>
+     * 原因：这些环节的人工入口在业务侧已经关闭，能走到这里说明是"设备报了但条件不满足"，
+     * 人工放行等于替设备背书。既然要背书，就得写清楚是谁、为什么，链上存证才有意义。
+     */
+    private void requireReviewerForCriticalStage(IngestStaging staging, String handler, String remark) {
+        TraceStage stage = TraceStage.ofChannel(staging.getChannel());
+        boolean critical = stage != null && stage.defaultPolicy() == SourcePolicy.DEVICE_ONLY;
+        if (!critical) return;
+        if (!StringUtils.hasText(handler) || "unknown".equalsIgnoreCase(handler)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN,
+                    "【来源管控】" + stage.label() + "的人工复核必须实名：请使用已登录账号操作");
+        }
+        if (!StringUtils.hasText(remark)) {
+            throw new BusinessException(ErrorCode.PARAM_MISSING,
+                    "【来源管控】" + stage.label() + "的人工复核必须填写放行理由（将随复核记录留档）");
+        }
+    }
+
     /** 设备台账（全量，设备数量在千级以内，不做分页）。返回 VO：密钥不下发到管理端 */
     public List<IngestDeviceVO> listDevices(String channel, Integer status) {
+        // 按「同一台终端能上报的全部通道」过滤，而不是只匹配主通道：车载终端（发车确认 + 到站刷卡）
+        // 在两个通道的列表里都该出现 —— 否则「一台终端两个角色」在页面上根本看不出来。
+        List<String> channels = IngestChannel.deviceChannelGroup(channel);
         return deviceMapper.selectList(Wrappers.<IngestDevice>lambdaQuery()
-                        .eq(StringUtils.hasText(channel), IngestDevice::getChannel, channel)
+                        .in(!channels.isEmpty(), IngestDevice::getChannel, channels)
                         .eq(status != null, IngestDevice::getStatus, status)
                         .orderByAsc(IngestDevice::getDeviceNo))
                 .stream()
@@ -261,16 +362,21 @@ public class DeviceIngestService {
      * 实现上不绕过任何一步：先用 deviceNo 反查设备，再用该设备自己的密钥调用
      * {@link #receive}，因此鉴权、幂等、校验、降采样、派发的行为与真机完全一致。
      * 密钥始终留在服务端，不下发给浏览器。
+     * <p>
+     * {@code channel} 不给就取设备台账登记的那个通道；给了则要求落在该设备的能力范围内
+     * （一台车载终端同时承担「发车确认」与「到站刷卡确认」，所以这里允许说清是哪个动作）。
      */
     public Map<String, Object> demoReport(String deviceNo, String bizKey, LocalDateTime reportTime,
-                                          String sourceRef, Map<String, Object> data) {
+                                          String sourceRef, String channel, Map<String, Object> data) {
         IngestDevice device = deviceMapper.selectOne(Wrappers.<IngestDevice>lambdaQuery()
                 .eq(IngestDevice::getDeviceNo, deviceNo));
         if (device == null) {
             throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, "设备不存在：" + deviceNo);
         }
         DeviceReportRequest request = new DeviceReportRequest();
-        request.setChannel(device.getChannel());
+        // 通道由调用方说清（一台终端可以承担多个通道）；没说就退回台账登记的那个 ——
+        // 只有一个通道的设备，行为与从前完全一样。
+        request.setChannel(StringUtils.hasText(channel) ? channel : device.getChannel());
         // 演示场景每次默认新唯一号，保证能反复触发；需要验证幂等时显式传入同一个 bizKey
         request.setBizKey(StringUtils.hasText(bizKey) ? bizKey : "DEMO-" + System.currentTimeMillis());
         request.setReportTime(reportTime == null ? LocalDateTime.now() : reportTime);
@@ -315,11 +421,13 @@ public class DeviceIngestService {
         IngestChannel deviceChannel = IngestChannel.of(device.getChannel());
         if (!StringUtils.hasText(requested)) return deviceChannel;
         IngestChannel channel = IngestChannel.of(requested);
-        if (channel != deviceChannel) {
-            throw new BusinessException(ErrorCode.PARAM_ERROR,
-                    "设备 " + device.getDeviceNo() + " 登记通道为 " + deviceChannel + "，与上报通道 " + channel + " 不一致");
-        }
-        return channel;
+        if (channel == deviceChannel) return channel;
+        // 同一台终端承担的多个通道（车载终端：发车确认 + 到站刷卡确认）：设备身份是同一台，
+        // 报文自己说清这次是哪个动作 —— 不必为了第二个角色在台账里再登记一条设备、再配一把密钥。
+        // 除此之外仍然「一台设备一条通道」：温度探头、地磅、盖章机谁也不许替谁报。
+        if (deviceChannel.sameDeviceAs(channel)) return channel;
+        throw new BusinessException(ErrorCode.PARAM_ERROR,
+                "设备 " + device.getDeviceNo() + " 登记通道为 " + deviceChannel + "，与上报通道 " + channel + " 不一致");
     }
 
     private IngestStaging findStaging(String deviceNo, String bizKey) {

@@ -8,23 +8,10 @@ import com.pork.slaughter.vo.EntryInspectionVO;
 
 public interface EntryInspectionService extends IService<EntryInspection> {
 
-    /**
-     * 新增入场查验记录
-     */
-    boolean addEntry(EntryInspectionDTO dto);
+    /* 人工新增与修改方法均已删除：入场查验为设备独占环节，写入只走设备通道。 */
 
-    /**
-     * 修改入场查验记录
-     */
-    boolean updateEntry(Long id, EntryInspectionDTO dto);
-
-    /**
-     * 删除入场查验记录
-     */
-    boolean deleteEntry(Long id);
-
-    /**
-     * 分页查询入场查验列表
-     */
     Page<EntryInspectionVO> pageQuery(EntryInspectionDTO dto, int pageNum, int pageSize);
+
+    /** 作废（原「删除」）：实名 + 理由必填，上链留证 */
+    boolean voidEntry(Long id, String reason);
 }

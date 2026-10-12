@@ -1,9 +1,12 @@
 package com.pork.ingest.vo;
 
 import com.pork.ingest.entity.IngestDevice;
+import com.pork.ingest.support.IngestChannel;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 设备台账展示对象。
@@ -19,7 +22,20 @@ public class IngestDeviceVO {
     private String deviceName;
     private String channel;
     private String channelLabel;
+    /**
+     * 这台设备能上报的全部通道（枚举名）。
+     * <p>
+     * 全系统只有车载终端不是「一设备一通道」：驾驶室里那台终端既确认发车也确认到站刷卡
+     * （同一个读卡头、同一把密钥），所以台账里一台车只有一行，而它承担两个通道。
+     */
+    private List<String> channels;
+    /** 上面那组通道的中文名，按业务顺序用「·」连接，直接展示 */
+    private String channelLabels;
     private String location;
+    /** 车载设备绑定的车牌（固定点位设备为空）；发车设备化要靠它把「设备 ↔ 车」对上 */
+    private String vehicleNo;
+    /** 额定上报间隔（秒），温度探头用；展示成「5 分钟一条」这种说法 */
+    private Integer sampleIntervalSeconds;
     /** 1启用 0停用 */
     private Integer status;
     private String statusLabel;
@@ -33,25 +49,19 @@ public class IngestDeviceVO {
         vo.setDeviceNo(entity.getDeviceNo());
         vo.setDeviceName(entity.getDeviceName());
         vo.setChannel(entity.getChannel());
-        vo.setChannelLabel(channelLabel(entity.getChannel()));
+        vo.setChannelLabel(IngestChannel.labelOf(entity.getChannel()));
+        // 一台车载终端 = 发车确认 + 到站刷卡确认（同一台设备、同一个读卡头）
+        List<String> group = IngestChannel.deviceChannelGroup(entity.getChannel());
+        vo.setChannels(group);
+        vo.setChannelLabels(group.stream().map(IngestChannel::labelOf).collect(Collectors.joining(" · ")));
         vo.setLocation(entity.getLocation());
+        vo.setVehicleNo(entity.getVehicleNo());
+        vo.setSampleIntervalSeconds(entity.getSampleIntervalSeconds());
         vo.setStatus(entity.getStatus());
         vo.setStatusLabel(Integer.valueOf(1).equals(entity.getStatus()) ? "启用" : "停用");
         vo.setLastSeenTime(entity.getLastSeenTime());
         vo.setRemark(entity.getRemark());
         vo.setCreateTime(entity.getCreateTime());
         return vo;
-    }
-
-    private static String channelLabel(String channel) {
-        if (channel == null) return null;
-        return switch (channel) {
-            case "TEMPERATURE" -> "冷链温度采集";
-            case "ENTRY" -> "入场查验";
-            case "RACTOPAMINE" -> "瘦肉精检测";
-            case "SALE" -> "门店收银";
-            case "RECEIPT" -> "门店签收";
-            default -> channel;
-        };
     }
 }

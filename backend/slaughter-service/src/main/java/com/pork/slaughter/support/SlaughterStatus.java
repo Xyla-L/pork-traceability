@@ -24,7 +24,9 @@ public final class SlaughterStatus {
         return switch (value) {
             case "1", "宰前检验" -> 1;
             case "2", "宰后检验" -> 2;
-            case "3", "同步检验" -> 3;
+            // 3 与 2 是同一个环节（宰后检疫的标准做法就是同步检疫）；
+            // 「同步检验」是设备侧/历史叫法，「宰后检验（同步）」是现在的展示名，一并认。
+            case "3", "同步检验", "宰后检验（同步）" -> 3;
             default -> throw invalid("检验类型", value);
         };
     }
@@ -55,7 +57,12 @@ public final class SlaughterStatus {
     public static String testLabel(Integer value) { return label(value, "待检测", "检测中", "已完成"); }
     public static String stampLabel(Integer value) { return label(value, "待盖章", "已盖章", "已作废"); }
     public static String inspectTypeLabel(Integer value) {
-        return switch (value == null ? 0 : value) { case 1 -> "宰前检验"; case 2 -> "宰后检验"; case 3 -> "同步检验"; default -> "未知"; };
+        return switch (value == null ? 0 : value) {
+            case 1 -> "宰前检验";
+            case 2 -> "宰后检验";
+            case 3 -> "宰后检验（同步）";
+            default -> "未知";
+        };
     }
     public static String inspectionResultLabel(Integer value) { return value == null ? "待检验" : value == 1 ? "合格" : "不合格"; }
     public static String testResultLabel(Integer value) { return value == null ? "待检测" : value == 1 ? "阴性" : "阳性"; }

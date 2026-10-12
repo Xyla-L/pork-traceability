@@ -94,7 +94,13 @@ public class EntryChannelHandler implements ChannelHandler {
             }
         }
 
-        // 3) 落业务表
+        // 3) 查验员：闸口设备只是读卡工具，查验责任落在现场查验人员身上，缺人转人工
+        String inspector = Payloads.str(data, "inspector");
+        if (inspector == null && !force) {
+            return DispatchResult.manual(table, "缺少查验员（inspector），入场查验责任必须落到具体人员，请补录后入账");
+        }
+
+        // 4) 落业务表
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("pigId", pigId);
         body.put("batchNo", Payloads.str(data, "batchNo"));
@@ -107,7 +113,7 @@ public class EntryChannelHandler implements ChannelHandler {
         body.put("healthCheck", Payloads.flag(data, "healthCheck", 1));
         body.put("certVerified", certVerified);
         body.put("abnormalNote", Payloads.str(data, "abnormalNote"));
-        body.put("inspector", Payloads.str(data, "inspector") == null ? ctx.deviceLabel() : Payloads.str(data, "inspector"));
+        body.put("inspector", inspector == null ? "未记录" : inspector);
         body.put("remark", Payloads.str(data, "remark"));
         body.put("source", "DEVICE");
         body.put("sourceRef", ctx.sourceRef());

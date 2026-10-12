@@ -30,6 +30,11 @@ x-app-environment: &app-environment
   SERVICES_DISTRIBUTION_URL: http://distribution-service:8084
   SERVICES_SALES_URL: http://sales-service:8085
   SERVICES_BLOCKCHAIN_URL: http://blockchain-service:8087
+  # 接入层核对接种凭证 fileId 真实性时调用（只查元信息，不拉文件内容）
+  SERVICES_FILE_URL: http://file-service:8088
+  # 机构登记同步用（breeding → auth 的 /auth/internal/orgs，容器内直连，网关不转发）
+  AUTH_SERVICE_URL: http://auth-service:8081
+  SERVICES_AUTH_URL: http://auth-service:8081
 
 x-app-defaults: &app-defaults
   restart: unless-stopped

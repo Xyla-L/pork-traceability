@@ -36,4 +36,18 @@ public class BreedingDeviceIngestController {
     public Result<Map<String, Object>> vaccine(@Valid @RequestBody BreedingDeviceIngestRequests.DeviceVaccine request) {
         return Result.success(ingestService.ingestVaccine(request));
     }
+
+    /** 产地检疫出证：检疫证扫码登记终端（扫证面二维码登记，非人工出证） */
+    @PostMapping("/quarantine-cert")
+    public Result<Map<String, Object>> quarantineCert(
+            @Valid @RequestBody BreedingDeviceIngestRequests.DeviceQuarantineCert request) {
+        return Result.success(ingestService.ingestQuarantineCert(request));
+    }
+
+    /** 申请出栏：出栏口地磅（耳标识读 + 称重），缺去向时回执 retryable=true 由接入层转待人工确认 */
+    @PostMapping("/exit-apply")
+    public Result<Map<String, Object>> exitApply(
+            @Valid @RequestBody BreedingDeviceIngestRequests.DeviceExitApply request) {
+        return Result.success(ingestService.ingestExitApply(request));
+    }
 }

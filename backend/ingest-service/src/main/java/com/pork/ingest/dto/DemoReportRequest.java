@@ -20,6 +20,15 @@ public class DemoReportRequest {
     @NotBlank(message = "deviceNo(设备编号)不能为空")
     private String deviceNo;
 
+    /**
+     * 这次上报走哪个通道；留空取设备台账登记的那个通道。
+     * <p>
+     * 一台车载终端同时承担「发车确认」与「到站刷卡确认」两个通道（同一台设备、同一个读卡头，
+     * 见 {@code IngestChannel.deviceGroup()}），所以代设备上报时得说清<b>这次是哪个动作</b> ——
+     * 真机也一样：报文自己带 channel，服务端只校验它是否落在该设备的能力范围内。
+     */
+    private String channel;
+
     /** 设备侧唯一号；留空则自动生成，便于反复触发。填同一个值可验证幂等 */
     private String bizKey;
 

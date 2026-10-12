@@ -83,6 +83,12 @@ public class RactopamineChannelHandler implements ChannelHandler {
             return DispatchResult.manual(table, "耳标查到的生猪档案缺少主键，无法自动入账");
         }
 
+        // 检测员必须是现场操作检测仪的人，检测仪只是工具，不能写进检测员字段（追溯要能查到人）
+        String operator = Payloads.str(data, "operator");
+        if (operator == null && !force) {
+            return DispatchResult.manual(table, "缺少检测员（operator），检测记录必须落到具体人员，请补录后入账");
+        }
+
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("pigId", pigId);
         body.put("earTagNo", earTagNo);
@@ -97,7 +103,7 @@ public class RactopamineChannelHandler implements ChannelHandler {
         body.put("detectionLimit", Payloads.str(data, "detectionLimit"));
         body.put("reportUrl", Payloads.str(data, "reportUrl"));
         body.put("remark", Payloads.str(data, "remark"));
-        body.put("operator", Payloads.str(data, "operator") == null ? ctx.deviceLabel() : Payloads.str(data, "operator"));
+        body.put("operator", operator == null ? "未记录" : operator);
         body.put("source", "DEVICE");
         body.put("sourceRef", ctx.sourceRef());
         body.put("rawPayload", ctx.rawPayload());

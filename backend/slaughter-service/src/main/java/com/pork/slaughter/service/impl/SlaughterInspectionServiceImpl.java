@@ -13,16 +13,21 @@ import com.pork.slaughter.support.SlaughterStatus;
 import com.pork.slaughter.vo.SlaughterInspectionVO;
 import com.pork.core.enums.ErrorCode;
 import com.pork.core.exception.BusinessException;
+import com.pork.core.source.ManualOperator;
+import com.pork.core.source.TraceStage;
 import com.pork.core.util.HashUtil;
 import com.pork.mq.ChainEventPublisher;
 import com.pork.mq.ChainTxMessage;
+import com.pork.web.source.SourceGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -30,73 +35,48 @@ import java.util.Map;
 public class SlaughterInspectionServiceImpl extends ServiceImpl<SlaughterInspectionMapper, SlaughterInspection>
         implements SlaughterInspectionService {
 
+    /** 人工录入来源标记（与设备采集 SOURCE_DEVICE 对应，便于链上审计区分） */
+    private static final String SOURCE_MANUAL = "MANUAL";
+    /** 允许修改的说明性字段：检验记录本身即结论载体，只有附件属于可补充的说明性内容 */
+    private static final String EDITABLE_FIELDS = "检验照片/报告附件";
+
     private final ChainEventPublisher chainEvents;
     private final BreedingClient breedingClient;
+    private final SourceGuard sourceGuard;
 
+    /* 人工新增方法已删除：屠宰检验为设备独占环节，写入只走设备通道
+       （SlaughterDeviceIngestController /slaughter/internal/ingest/inspection）。 */
+
+
+    /**
+     * 作废：逻辑作废 + 理由 + 实名，并单独上链一条 VOID 事件。
+     * <p>
+     * 「这条合格结论为什么不算数了」必须答得出来，所以理由不能省；
+     * 也不做物理删除——链上已有哈希，删掉记录等于让追溯链断在这里。
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public boolean addInspection(SlaughterInspectionDTO dto) {
-        SlaughterInspection entity = new SlaughterInspection();
-        BeanUtil.copyProperties(dto, entity, "inspectType", "status");
-        entity.setInspectType(SlaughterStatus.inspectType(dto.getInspectType()));
-        entity.setStatus(SlaughterStatus.inspection(dto.getStatus()));
-        entity.setCreateTime(LocalDateTime.now());
-        entity.setContentHash(HashUtil.sha256Json(dto));
-        if (!this.save(entity)) throw new BusinessException(ErrorCode.DATABASE_ERROR, "屠宰检验保存失败");
-        chainEvents.publish(ChainTxMessage.create("SLAUGHTER_INSPECT", entity.getId(), entity.getInspectNo(),
-                entity.getContentHash(), Map.of("inspectNo", entity.getInspectNo(), "pigId", entity.getPigId())));
-        // 宰后/同步检验意味着生猪已完成屠宰：同步推进生猪档案状态为 3=已屠宰（失败不阻塞业务）
-        if (entity.getPigId() != null && entity.getInspectType() != null && entity.getInspectType() >= 2) {
-            breedingClient.advanceStatus(entity.getPigId(), 3);
+    public void voidInspection(Long id, String reason) {
+        // 作废与新增同级受控：实名 + 理由 + 上链，防止「用作废绕开管控」
+        ManualOperator voidBy = sourceGuard.requireVoidAllowed(TraceStage.INSPECTION, reason);
+        String cleanReason = reason.trim();
+        SlaughterInspection old = this.getById(id);
+        if (old == null) throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, "屠宰检验记录不存在或已作废");
+        String operator = voidBy.display();
+        if (baseMapper.voidById(id, cleanReason, operator) == 0) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "作废失败：记录可能已被他人作废");
         }
-        return true;
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public boolean updateInspection(Long id, SlaughterInspectionDTO dto) {
-        SlaughterInspection old = this.getById(id);
-        if (old == null) throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, "屠宰检验记录不存在");
-        if (old.getStatus() != null && old.getStatus() == 3)
-            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "已作废记录不可编辑，请重新录入");
-        SlaughterInspection entity = new SlaughterInspection();
-        BeanUtil.copyProperties(dto, entity, "inspectType", "status");
-        entity.setId(id);
-        entity.setInspectType(SlaughterStatus.inspectType(dto.getInspectType()));
-        Integer newStatus = SlaughterStatus.inspection(dto.getStatus());
-        if (newStatus != null && newStatus == 3)
-            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "作废请使用作废功能，不可通过编辑设置");
-        entity.setStatus(newStatus);
-        entity.setContentHash(HashUtil.sha256Json(dto));
-        if (!this.updateById(entity)) throw new BusinessException(ErrorCode.DATABASE_ERROR, "屠宰检验更新失败");
-        // 已上链数据：编辑后重新发布新哈希（链上按 bizKey 保留版本历史，验真取最新），避免链上哈希与业务数据不一致
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("inspectNo", old.getInspectNo());
-        payload.put("pigId", old.getPigId());
-        chainEvents.publish(ChainTxMessage.create("SLAUGHTER_INSPECT", id, old.getInspectNo(),
-                entity.getContentHash(), payload));
-        return true;
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void voidInspection(Long id) {
-        SlaughterInspection old = this.getById(id);
-        if (old == null) throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, "屠宰检验记录不存在");
-        if (old.getStatus() != null && old.getStatus() == 3) return; // 已作废，幂等
-        SlaughterInspection entity = new SlaughterInspection();
-        entity.setId(id);
-        entity.setStatus(3);
-        if (!this.updateById(entity)) throw new BusinessException(ErrorCode.DATABASE_ERROR, "屠宰检验作废失败");
-        // 作废动作本身单独上链存证（独立 bizKey，不影响原记录哈希验真）
-        String voidBizKey = old.getInspectNo() + ":VOID";
-        String voidHash = HashUtil.sha256Json(Map.of("bizKey", old.getInspectNo(), "action", "VOID",
-                "voidTime", LocalDateTime.now().toString()));
         Map<String, Object> voidPayload = new HashMap<>();
         voidPayload.put("inspectNo", old.getInspectNo());
         voidPayload.put("pigId", old.getPigId());
         voidPayload.put("action", "VOID");
-        chainEvents.publish(ChainTxMessage.create("SLAUGHTER_INSPECT_VOID", id, voidBizKey, voidHash, voidPayload));
+        voidPayload.put("voidReason", cleanReason);
+        voidPayload.put("operator", operator);
+        voidPayload.put("originalSource", old.getSource());
+        Map<String, Object> hashSource = new HashMap<>(voidPayload);
+        hashSource.put("voidTime", LocalDateTime.now().toString());
+        chainEvents.publish(ChainTxMessage.create("SLAUGHTER_INSPECT_VOID", id, old.getInspectNo() + ":VOID",
+                HashUtil.sha256Json(hashSource), voidPayload));
     }
 
     @Override
@@ -125,10 +105,14 @@ public class SlaughterInspectionServiceImpl extends ServiceImpl<SlaughterInspect
         if (dto.getEarTagNo() != null && !dto.getEarTagNo().isEmpty()) {
             wrapper.like(SlaughterInspection::getEarTagNo, dto.getEarTagNo());
         }
-        // 检验类型支持中文("宰前检验/宰后检验")或数字编码，"同步检验"不加条件
+        // 检验类型支持中文或数字编码。宰后检验(2) 与 宰后同步检验(3) 按法规口径是同一个环节
+        // （宰后检疫的标准做法就是同步检疫），所以筛「宰后检验」要把两者都带出来；
+        // 筛「宰后检验（同步）」才精确到 3。
+        // 原先 3 直接跳过条件，等于选「同步检验」时返回全部类型——一个静默失效的筛选项。
         Integer inspectType = SlaughterStatus.inspectType(dto.getInspectType());
-        if (inspectType != null && inspectType != 3) {
-            wrapper.eq(SlaughterInspection::getInspectType, inspectType);
+        if (inspectType != null) {
+            wrapper.in(SlaughterInspection::getInspectType,
+                    inspectType == 2 ? List.of(2, 3) : List.of(inspectType));
         }
         // 状态支持中文("待检验/合格/不合格")或数字编码
         Integer status = SlaughterStatus.inspection(dto.getStatus());

@@ -35,5 +35,8 @@ CREATE TABLE IF NOT EXISTS quarantine_certificate (
     issue_org VARCHAR(128) NOT NULL, issue_time DATETIME NOT NULL, valid_until DATE, inspector VARCHAR(32),
     cert_type VARCHAR(32) DEFAULT '产地检疫', file_id VARCHAR(64) NOT NULL, ca_signature TEXT NOT NULL,
     content_hash CHAR(64) NOT NULL, create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY uk_cert_no (cert_no), UNIQUE KEY uk_pig (pig_id)
+    -- pig_id 建普通索引而不是唯一键：证书作废后必须能重新出证（「作废 + 重录」是本项目的统一更正口径），
+    -- 唯一键会把作废行一起算进去，导致「作废了却再也出不了证」。
+    -- 「一头猪同时只能有一张有效证书」由 Service 层查有效记录来保证（见 QuarantineCertServiceImpl）。
+    UNIQUE KEY uk_cert_no (cert_no), INDEX idx_pig (pig_id)
 ) ENGINE=InnoDB COMMENT='产地检疫证明';

@@ -36,9 +36,13 @@ mybatis-plus:
   global-config:
     banner: false
     db-config:
-      logic-delete-field: deleted
+      # 逻辑删除字段不再全局指定（原为 deleted）：现由各实体的 @TableLogic 显式声明 void_flag，
+      # 避免「一个隐式全局配置 + 一个实体注解」两套规则并存导致的过滤行为不可预期
       logic-delete-value: 1
       logic-not-delete-value: 0
+# 机构登记同步：养殖场档案增改删后，把机构同步到 auth-service 的 sys_org（机构管理的数据源）
+services:
+  auth-url: ${SERVICES_AUTH_URL:http://localhost:8081}
 management:
   endpoints:
     web:

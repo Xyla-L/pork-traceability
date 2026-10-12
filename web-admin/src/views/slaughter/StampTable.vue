@@ -12,16 +12,18 @@
       <el-table-column prop="carcassNo" label="胴体编号" min-width="140" show-overflow-tooltip />
       <el-table-column prop="stampType" label="印章类型" min-width="140" align="center" />
       <el-table-column prop="stampTime" label="盖章时间" min-width="160" align="center" />
-      <el-table-column prop="veterinary" label="检疫员" min-width="100" align="center" />
+      <el-table-column prop="veterinary" label="检疫员" min-width="100" align="center">
+        <template #default="{ row }">{{ row.veterinary || '未记录' }}</template>
+      </el-table-column>
       <el-table-column prop="status" label="状态" min-width="100" align="center">
         <template #default="{ row }">
           <el-tag :type="stampStatusTag(row.status)" size="small">{{ stampStatusLabel(row.status) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="source" label="数据来源" min-width="120" align="center">
+      <el-table-column prop="source" label="采集设备" min-width="140" align="center">
         <template #default="{ row }">
-          <el-tooltip :content="row.source === 'DEVICE' ? `自动盖章机：${row.sourceRef || '--'}` : '人工录入'" placement="top">
-            <el-tag :type="sourceTag(row.source)" size="small" effect="plain">{{ sourceLabel(row.source) }}</el-tag>
+          <el-tooltip :content="row.source === 'DEVICE' ? `自动盖章机：${row.sourceRef || '--'}` : sourceLabel(row.source)" placement="top">
+            <el-tag :type="sourceTag(row.source)" size="small" effect="plain">{{ deviceText(row) }}</el-tag>
           </el-tooltip>
         </template>
       </el-table-column>
@@ -45,7 +47,8 @@
         <el-descriptions-item label="胴体编号">{{ currentView.carcassNo }}</el-descriptions-item>
         <el-descriptions-item label="印章类型">{{ currentView.stampType }}</el-descriptions-item>
         <el-descriptions-item label="盖章时间">{{ currentView.stampTime }}</el-descriptions-item>
-        <el-descriptions-item label="官方兽医">{{ currentView.veterinary }}</el-descriptions-item>
+        <el-descriptions-item label="官方兽医">{{ currentView.veterinary || '未记录' }}</el-descriptions-item>
+        <el-descriptions-item label="采集设备">{{ deviceText(currentView) }}</el-descriptions-item>
         <el-descriptions-item label="状态">
           <el-tag :type="stampStatusTag(currentView.status)" size="small">{{ stampStatusLabel(currentView.status) }}</el-tag>
         </el-descriptions-item>
@@ -57,7 +60,9 @@
 <script setup>
 import { ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { sourceLabel, sourceTag } from '@/api/modules/ingest'
+import { deviceText, sourceLabel, sourceTag } from '@/api/modules/ingest'
+import { slaughterApi } from '@/api/modules/slaughter'
+import { confirmVoid } from '@/composables/useVoidAction'
 import request from '@/utils/request'
 import BlockchainVerifyBadge from '@/components/common/BlockchainVerifyBadge.vue'
 
@@ -85,24 +90,14 @@ const stampStatusLabel = (s) => ({ 0: '待盖章', 1: '已盖章', 2: '已作废
 const stampStatusTag = (s) => ({ 0: 'info', 1: 'success', 2: 'danger' }[s] ?? 'info')
 
 // 作废：盖章记录已上链，不支持物理删除，输错信息请作废后重新录入
-const emit = defineEmits(['voided', 'edit'])
+const emit = defineEmits(['voided'])
 const handleVoid = async (row) => {
-  try {
-    await ElMessageBox.confirm(
-      `确认作废盖章记录 ${row.stampNo || ''} 吗？作废动作将上链存证，且不可恢复。如信息录入有误，请作废后重新新增。`,
-      '作废确认',
-      { confirmButtonText: '确认作废', cancelButtonText: '取消', type: 'warning' }
-    )
-  } catch {
-    return
-  }
-  try {
-    await request.put(`/slaughter/stamps/${row.id}/void`)
-    ElMessage.success('已作废，作废存证已上链')
-    emit('voided')
-  } catch (e) {
-    console.error('作废失败:', e)
-  }
+  const ok = await confirmVoid({
+    title: '作废胴体盖章记录',
+    message: `确认作废盖章记录 ${row.stampNo || ''} 吗？作废后该盖章凭据不再生效，作废凭据上链且不可撤销；录入有误请作废后重新录入。`,
+    onConfirm: (reason) => slaughterApi.voidStamp(row.id, reason),
+  })
+  if (ok) emit('voided')
 }
 </script>
 

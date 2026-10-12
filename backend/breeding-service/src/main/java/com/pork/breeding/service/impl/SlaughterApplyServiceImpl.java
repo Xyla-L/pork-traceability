@@ -14,7 +14,10 @@ import com.pork.breeding.service.SlaughterApplyService;
 import com.pork.breeding.vo.SlaughterApplyVO;
 import com.pork.core.enums.ErrorCode;
 import com.pork.core.exception.BusinessException;
+import com.pork.core.source.ManualOperator;
+import com.pork.core.source.TraceStage;
 import com.pork.core.util.BusinessNoGenerator;
+import com.pork.web.source.SourceGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
@@ -42,7 +45,11 @@ public class SlaughterApplyServiceImpl extends ServiceImpl<SlaughterApplyMapper,
     /** 生猪状态：已出栏 */
     private static final int PIG_STATUS_SLAUGHTERED_OUT = 2;
 
+    /** 数据来源：人工申报（出栏口地磅自动登记走设备通道，记 DEVICE） */
+    private static final String SOURCE_MANUAL = "MANUAL";
+
     private final PigIndividualMapper pigIndividualMapper;
+    private final SourceGuard sourceGuard;
 
     @Override
     public Page<SlaughterApplyVO> pageQuery(Long current, Long size, Integer approvalStatus) {
@@ -103,6 +110,10 @@ public class SlaughterApplyServiceImpl extends ServiceImpl<SlaughterApplyMapper,
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Long createApply(SlaughterApplyDTO dto) {
+        // 来源管控：申请出栏以出栏口地磅自动登记为主路径；人工申报是设备覆盖不到时的补录，须实名并上链留痕。
+        // 这是全项目第二个人工采集入口（另一个是产地检疫出证），写入强制实名并标注来源为人工。
+        ManualOperator operator = sourceGuard.requireManualAllowed(TraceStage.EXIT_APPLY, "申请出栏");
+
         PigIndividual pig = pigIndividualMapper.selectById(dto.getPigId());
         if (pig == null) {
             throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, "生猪档案不存在");
@@ -133,7 +144,9 @@ public class SlaughterApplyServiceImpl extends ServiceImpl<SlaughterApplyMapper,
                     .set(SlaughterApply::getApprovalStatus, STATUS_PENDING)
                     .set(SlaughterApply::getApprover, null)
                     .set(SlaughterApply::getApprovalTime, null)
-                    .set(SlaughterApply::getRejectReason, null));
+                    .set(SlaughterApply::getRejectReason, null)
+                    .set(SlaughterApply::getSource, SOURCE_MANUAL)
+                    .set(SlaughterApply::getSourceRef, operator.display()));
             if (!updated) {
                 throw new BusinessException(ErrorCode.DATABASE_ERROR, "出栏申报重新提交失败");
             }
@@ -147,6 +160,8 @@ public class SlaughterApplyServiceImpl extends ServiceImpl<SlaughterApplyMapper,
         apply.setWeightKg(weightKg);
         apply.setTargetSlaughterhouse(dto.getTargetSlaughterhouse());
         apply.setApprovalStatus(STATUS_PENDING);
+        apply.setSource(SOURCE_MANUAL);
+        apply.setSourceRef(operator.display());
         apply.setCreateTime(LocalDateTime.now());
         if (!this.save(apply)) {
             throw new BusinessException(ErrorCode.DATABASE_ERROR, "出栏申报保存失败");
@@ -156,7 +171,7 @@ public class SlaughterApplyServiceImpl extends ServiceImpl<SlaughterApplyMapper,
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void approve(Long id, SlaughterApplyApproveDTO dto, String approverId) {
+    public void approve(Long id, SlaughterApplyApproveDTO dto) {
         SlaughterApply apply = this.getById(id);
         if (apply == null) {
             throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, "出栏申报记录不存在");
@@ -165,11 +180,19 @@ public class SlaughterApplyServiceImpl extends ServiceImpl<SlaughterApplyMapper,
             throw new BusinessException(ErrorCode.BUSINESS_ERROR, "该申报已审批，不能重复操作");
         }
 
+        // 审批的产物是「结论 + 责任人」：设备只能提供依据，签名必须落到实名的人身上。
+        // 拿不到实名（令牌里只有用户ID）就拦下——否则记录上写的是一串编号，等于没人负责。
+        ManualOperator operator = sourceGuard.currentOperator();
+        if (!operator.hasRealName()) {
+            throw new BusinessException(ErrorCode.FORBIDDEN,
+                    "出栏审批必须实名：当前登录身份未登记真实姓名，请先在「个人中心」补全真实姓名后再审批");
+        }
+
         boolean approved = Boolean.TRUE.equals(dto.getApproved());
         apply.setApprovalStatus(approved ? STATUS_APPROVED : STATUS_REJECTED);
         apply.setApprovalTime(LocalDateTime.now());
-        // X-User-Id 由网关注入，值为登录用户名（可能为 null，如绕过网关直连）
-        apply.setApprover(approverId == null || approverId.isBlank() ? "系统" : approverId);
+        // 审批人取登录人的真实姓名（不再取 X-User-Id，那是一串用户ID，读不出是谁）
+        apply.setApprover(operator.display());
         apply.setRejectReason(approved ? null : dto.getComment());
         if (!this.updateById(apply)) {
             throw new BusinessException(ErrorCode.DATABASE_ERROR, "出栏申报审批失败");

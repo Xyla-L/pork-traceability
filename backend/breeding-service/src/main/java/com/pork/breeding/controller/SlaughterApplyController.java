@@ -48,9 +48,10 @@ public class SlaughterApplyController {
     @PutMapping("/{id}/approve")
     @Operation(summary = "审批出栏申报")
     public Result<Void> approve(@PathVariable Long id,
-                                @Valid @RequestBody SlaughterApplyApproveDTO dto,
-                                @RequestHeader(value = "X-User-Id", required = false) String userId) {
-        slaughterApplyService.approve(id, dto, userId);
+                                @Valid @RequestBody SlaughterApplyApproveDTO dto) {
+        // 审批人不由前端传参决定：服务端从网关注入的身份里取当前登录人的真实姓名，
+        // 避免「谁批的」变成可以随手填的字段
+        slaughterApplyService.approve(id, dto);
         return Result.success();
     }
 }

@@ -33,6 +33,11 @@ export const ingestApi = {
    */
   demoReport(data: {
     deviceNo: string
+    /**
+     * 这次上报走哪个通道。一台车载终端同时承担「发车确认」与「到站刷卡确认」两个通道
+     * （同一台设备、同一个读卡头），所以必须说清这次是哪个动作；不传则由服务端取设备主通道。
+     */
+    channel?: string
     bizKey?: string
     reportTime?: string
     sourceRef?: string
@@ -43,20 +48,30 @@ export const ingestApi = {
 }
 
 /** 接入通道中文名（与后端 IngestChannel 对应） */
+/** 设备通道 → 中文名。键顺序即业务发生顺序，用于「接入通道」下拉/筛选的展示次序 */
 export const CHANNEL_LABELS: Record<string, string> = {
-  TEMPERATURE: '冷链温度采集',
-  ENTRY: '入场查验',
-  RACTOPAMINE: '瘦肉精检测',
-  SALE: '门店收银',
-  RECEIPT: '门店签收',
   TAG: '养殖建档（耳标）',
   VACCINE: '免疫注射',
+  QUARANTINE: '产地检疫出证',
+  EXIT_APPLY: '出栏称重登记',
+  ENTRY: '入场查验',
+  RACTOPAMINE: '瘦肉精检测',
   INSPECTION: '屠宰检验（工位终端）',
   STAMP: '胴体自动盖章',
+  BATCH: '胴体批次（分拣台）',
   SPLIT: '分割批次（扫码称重）',
+  ORDER: '订单转入（商家选购）',
+  LOAD: '装车发运（装车口）',
+  DEPART: '发车确认（车载终端）',
+  ARRIVE: '到达确认（车载终端刷卡）',
+  TEMPERATURE: '冷链温度采集',
+  RECEIPT: '门店签收',
+  SALE: '门店收银',
+  SPLIT_SNAPSHOT: '分割车间监控',
 }
 
 /** 待确认队列状态：0待处理 1待人工处理 2已入账 3已拒绝 4已降采样丢弃 */
+
 export const INGEST_STATUS_LABELS: Record<number, string> = {
   0: '待处理',
   1: '待人工处理',
@@ -96,4 +111,16 @@ export function sourceLabel(source?: string) {
 export function sourceTag(source?: string) {
   if (!source) return SOURCE_TAGS.MANUAL
   return SOURCE_TAGS[source] || 'info'
+}
+
+/**
+ * 「采集设备」列的取值：设备采集时直接给出设备编号（如 INJ-001 / RFID-001），
+ * 人工录入等其他来源给出对应中文。
+ *
+ * 注意：设备只是采集工具，**它不等于操作人**。疫苗由兽医打、查验由查验员做、
+ * 签收由收货人签——这些人名字段一律取业务表里的人名，不能拿本函数的值去顶。
+ */
+export function deviceText(row?: { source?: string; sourceRef?: string }) {
+  if (row?.source === 'DEVICE') return row.sourceRef || SOURCE_LABELS.DEVICE
+  return sourceLabel(row?.source)
 }

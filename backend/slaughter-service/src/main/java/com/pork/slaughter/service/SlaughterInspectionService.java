@@ -8,28 +8,13 @@ import com.pork.slaughter.vo.SlaughterInspectionVO;
 
 public interface SlaughterInspectionService extends IService<SlaughterInspection> {
 
-    /**
-     * 新增屠宰检验记录
-     */
-    boolean addInspection(SlaughterInspectionDTO dto);
+    /* 人工新增与修改方法均已删除：屠宰检验为设备独占环节，写入只走设备通道。 */
 
-    /**
-     * 修改屠宰检验记录
-     */
-    boolean updateInspection(Long id, SlaughterInspectionDTO dto);
-
-    /**
-     * 删除屠宰检验记录（已上链，禁止物理删除，仅作占位以保持接口兼容）
-     */
-    boolean deleteInspection(Long id);
-
-    /**
-     * 作废屠宰检验记录（逻辑作废，作废动作单独上链存证）
-     */
-    void voidInspection(Long id);
-
-    /**
-     * 分页查询屠宰检验记录
-     */
     Page<SlaughterInspectionVO> pageQuery(SlaughterInspectionDTO dto);
+
+    /** 作废（原「删除」）：实名 + 理由必填，上链留证 */
+    void voidInspection(Long id, String reason);
+
+    /** 已上链记录不可物理删除，调用即抛业务异常 */
+    boolean deleteInspection(Long id);
 }

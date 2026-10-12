@@ -89,7 +89,16 @@ public class SalesController {
     @GetMapping("/internal/products/qr/{qrCode}")
     public Result<RetailSale> productByQr(@PathVariable String qrCode) {
         RetailSale row = saleMapper.selectOne(Wrappers.<RetailSale>lambdaQuery().eq(RetailSale::getProductQrCode, qrCode));
-        if (row == null) throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, "二维码对应产品不存在");
+        if (row == null) {
+            // 有效商品里查不到时，再看是不是「曾经存在但已作废」——扫码场景必须区分这两件事
+            RetailSale voided = saleMapper.selectVoidedByQr(qrCode);
+            if (voided != null) {
+                throw new BusinessException(ErrorCode.RECORD_NOT_FOUND,
+                        "该商品已被作废，不再作为有效销售记录。作废理由：" + voided.getVoidReason()
+                                + "（操作人 " + voided.getVoidOperator() + "）");
+            }
+            throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, "二维码对应产品不存在");
+        }
         return Result.success(row);
     }
 

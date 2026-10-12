@@ -149,6 +149,11 @@ public class SystemAdminServiceImpl implements SystemAdminService {
     }
 
     @Override
+    public SysOrg org(Long id) {
+        return id == null ? null : orgMapper.selectById(id);
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public SysOrg createOrg(SystemRequests.OrgCreate request) {
         validateParent(request.parentId(), null);
@@ -181,6 +186,67 @@ public class SystemAdminServiceImpl implements SystemAdminService {
         if (userMapper.selectCount(Wrappers.<SysUser>lambdaQuery().eq(SysUser::getOrgId, id)) > 0)
             throw new BusinessException(ErrorCode.BUSINESS_ERROR, "机构仍有关联用户，不能删除");
         orgMapper.deleteById(id);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Long syncOrg(SystemRequests.SyncOrg request) {
+        // 按「旧名」定位（改名场景），无旧名则按新名定位
+        String matchName = StringUtils.hasText(request.previousName()) ? request.previousName() : request.name();
+        SysOrg row = findOrg(request.type(), matchName);
+        if (row == null) {
+            row = new SysOrg();
+            row.setParentId(defaultOrgParentId());
+            row.setType(request.type());
+            row.setName(request.name());
+            row.setManager(request.manager());
+            row.setPhone(request.phone());
+            row.setAddress(request.address());
+            row.setRemark(request.remark());
+            row.setCreateTime(LocalDateTime.now());
+            row.setUpdateTime(LocalDateTime.now());
+            orgMapper.insert(row);
+            return row.getId();
+        }
+        // 已登记：更新名称与联系方式（空值不覆盖，避免业务档案没填就把机构信息清空）
+        row.setName(request.name());
+        if (StringUtils.hasText(request.manager())) row.setManager(request.manager());
+        if (StringUtils.hasText(request.phone())) row.setPhone(request.phone());
+        if (StringUtils.hasText(request.address())) row.setAddress(request.address());
+        if (StringUtils.hasText(request.remark())) row.setRemark(request.remark());
+        row.setUpdateTime(LocalDateTime.now());
+        orgMapper.updateById(row);
+        return row.getId();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean removeOrgByName(String type, String name) {
+        SysOrg row = findOrg(type, name);
+        if (row == null) return false;
+        // 有下级或有用户关联的机构不动：宁可留一个空机构，也不能破坏既有引用
+        if (orgMapper.selectCount(Wrappers.<SysOrg>lambdaQuery().eq(SysOrg::getParentId, row.getId())) > 0) return false;
+        if (userMapper.selectCount(Wrappers.<SysUser>lambdaQuery().eq(SysUser::getOrgId, row.getId())) > 0) return false;
+        orgMapper.deleteById(row.getId());
+        return true;
+    }
+
+    /** 按 (type, name) 取唯一机构，取不到返回 null（LIMIT 1 防止重名时 TooManyResultsException） */
+    private SysOrg findOrg(String type, String name) {
+        return orgMapper.selectOne(Wrappers.<SysOrg>lambdaQuery()
+                .eq(SysOrg::getType, type)
+                .eq(SysOrg::getName, name)
+                .orderByAsc(SysOrg::getId)
+                .last("LIMIT 1"));
+    }
+
+    /** 新登记机构的默认父级：顶层监管机构；没有则挂到根 */
+    private Long defaultOrgParentId() {
+        SysOrg root = orgMapper.selectOne(Wrappers.<SysOrg>lambdaQuery()
+                .eq(SysOrg::getType, "supervisor")
+                .orderByAsc(SysOrg::getId)
+                .last("LIMIT 1"));
+        return root == null ? 0L : root.getId();
     }
 
     private List<Map<String, Object>> buildTree(Long parent, Map<Long, List<SysOrg>> grouped, Set<Long> path) {

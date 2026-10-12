@@ -36,7 +36,7 @@
           >
             <el-option label="宰前检验" value="宰前检验" />
             <el-option label="宰后检验" value="宰后检验" />
-            <el-option label="同步检验" value="同步检验" />
+            <el-option label="宰后检验（同步）" value="宰后检验（同步）" />
           </el-select>
         </el-form-item>
         <el-form-item label="状态">
@@ -75,20 +75,12 @@
       </el-form>
     </div>
 
-    <!-- 操作栏 -->
-    <div class="action-bar">
-      <el-button type="primary" @click="handleCreate">
-        <el-icon><Plus /></el-icon>
-        新增检验
-      </el-button>
-    </div>
 
     <!-- 数据表格 -->
     <InspectTable
       :data="tableData"
       :loading="tableLoading"
       @voided="fetchList"
-      @edit="handleEdit"
     />
 
     <!-- 分页 -->
@@ -105,21 +97,14 @@
       />
     </div>
 
-    <!-- 新建弹窗 -->
-    <InspectFormDialog
-      v-model:visible="formDialogVisible"
-      :edit-data="currentEditData"
-      @submit="handleFormSubmit"
-    />
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { Search, Refresh, Plus } from '@element-plus/icons-vue'
+import { Search, Refresh } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 import InspectTable from './InspectTable.vue'
-import InspectFormDialog from './InspectFormDialog.vue'
 
 // ==================== 搜索相关 ====================
 
@@ -203,25 +188,6 @@ const handlePageChange = (page) => {
   fetchList()
 }
 
-// ==================== 表单弹窗 ====================
-
-const formDialogVisible = ref(false)
-const currentEditData = ref(null)
-
-const handleCreate = () => {
-  currentEditData.value = null
-  formDialogVisible.value = true
-}
-
-const handleEdit = (row) => {
-  currentEditData.value = { ...row }
-  formDialogVisible.value = true
-}
-
-const handleFormSubmit = () => {
-  fetchList()
-}
-
 // ==================== 初始化 ====================
 
 onMounted(() => {
@@ -243,12 +209,6 @@ onMounted(() => {
     :deep(.el-form-item) {
       margin-bottom: 12px;
     }
-  }
-
-  .action-bar {
-    display: flex;
-    justify-content: flex-end;
-    margin-bottom: 16px;
   }
 
   .pagination-wrapper {

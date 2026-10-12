@@ -8,23 +8,10 @@ import com.pork.slaughter.vo.RactopamineTestVO;
 
 public interface RactopamineTestService extends IService<RactopamineTest> {
 
-    /**
-     * 新增瘦肉精检测记录
-     */
-    boolean addTest(RactopamineTestDTO dto);
+    /* 人工新增与修改方法均已删除：瘦肉精检测为设备独占环节，写入只走设备通道。 */
 
-    /**
-     * 修改瘦肉精检测记录
-     */
-    boolean updateTest(Long id, RactopamineTestDTO dto);
-
-    /**
-     * 删除瘦肉精检测记录
-     */
-    boolean deleteTest(Long id);
-
-    /**
-     * 分页查询瘦肉精检测记录
-     */
     Page<RactopamineTestVO> pageQuery(RactopamineTestDTO dto);
+
+    /** 作废（原「删除」）：实名 + 理由必填，上链留证 */
+    boolean voidTest(Long id, String reason);
 }

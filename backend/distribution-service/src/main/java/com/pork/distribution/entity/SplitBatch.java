@@ -2,6 +2,7 @@ package com.pork.distribution.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
@@ -15,7 +16,15 @@ public class SplitBatch {
     private Long id;
     private String batchNo;
     private Long parentBatchId;
+
+    /** 所属分割作业 split_job.id；为空表示「未经作业归集」的历史记录（字典建立前写入的） */
+    private Long jobId;
+
     private Integer splitLevel;
+
+    /** 标准部位编码（见 meat_part 字典）；为空表示字典建立前的历史记录 */
+    private String partCode;
+
     private String productName;
     private BigDecimal weightKg;
     private Integer packageCount;
@@ -36,4 +45,14 @@ public class SplitBatch {
     private String rawPayload;
 
     private LocalDateTime createTime;
+
+    /** 作废标记：0=有效 1=已作废（同时是 MyBatis-Plus 逻辑删除标记，查询默认只取有效记录） */
+    @TableLogic(value = "0", delval = "1")
+    private Integer voidFlag;
+    /** 作废理由（必填），随作废事件一并上链 */
+    private String voidReason;
+    /** 作废操作人（实名） */
+    private String voidOperator;
+    /** 作废时间 */
+    private LocalDateTime voidTime;
 }

@@ -17,29 +17,52 @@ public class JwtUtil {
     private static final long REFRESH_EXPIRE_TIME = 7 * 24 * 60 * 60 * 1000L;
 
     public static String generateToken(String username) {
-        return generateToken(username, null, "access", ACCESS_EXPIRE_TIME);
+        return generateToken(username, null, null, "access", ACCESS_EXPIRE_TIME);
     }
 
     public static String generateRefreshToken(String username) {
-        return generateToken(username, null, "refresh", REFRESH_EXPIRE_TIME);
+        return generateToken(username, null, null, "refresh", REFRESH_EXPIRE_TIME);
     }
 
     public static String generateToken(String username, String role) {
-        return generateToken(username, role, "access", ACCESS_EXPIRE_TIME);
+        return generateToken(username, role, null, "access", ACCESS_EXPIRE_TIME);
+    }
+
+    /**
+     * 带姓名声明的访问令牌。
+     * <p>
+     * subject（username 声明）仍必须是用户ID——网关把它透传成 X-User-Id，
+     * 下游有按 Long 解析的地方，动不得。姓名单独放进 userName 声明，
+     * 只为让"谁改的这条关键数据"在链上和审计里能读出人名，而不是一串数字ID。
+     */
+    public static String generateToken(String subject, String role, String userName) {
+        return generateToken(subject, role, userName, "access", ACCESS_EXPIRE_TIME);
     }
 
     public static String generateRefreshToken(String username, String role) {
-        return generateToken(username, role, "refresh", REFRESH_EXPIRE_TIME);
+        return generateToken(username, role, null, "refresh", REFRESH_EXPIRE_TIME);
     }
 
-    private static String generateToken(String username, String role, String type, long ttl) {
+    private static String generateToken(String username, String role, String userName, String type, long ttl) {
         Map<String, Object> payload = new HashMap<>();
         payload.put("username", username);
         if (role != null && !role.isBlank()) payload.put("role", role);
+        if (userName != null && !userName.isBlank()) payload.put("userName", userName);
         payload.put("tokenType", type);
         payload.put("iat", new Date());
         payload.put("exp", new Date(System.currentTimeMillis() + ttl));
         return JWTUtil.createToken(payload, secret());
+    }
+
+    /** 读取任意自定义声明，取不到返回 null */
+    public static String getClaim(String token, String key) {
+        try {
+            if (!isValid(token)) return null;
+            Object value = JWTUtil.parseToken(token).getPayloads().getObj(key);
+            return value == null ? null : value.toString();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     public static String getUsername(String token) {

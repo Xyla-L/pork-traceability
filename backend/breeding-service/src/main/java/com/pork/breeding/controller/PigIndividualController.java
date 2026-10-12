@@ -8,12 +8,15 @@ import com.pork.breeding.service.SlaughterApplyService;
 import com.pork.breeding.vo.PigIndividualVO;
 import com.pork.core.result.PageResult;
 import com.pork.core.result.Result;
+import com.pork.web.source.VoidRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/pigs")
@@ -40,20 +43,15 @@ public class PigIndividualController {
         return Result.success(PageResult.of(page));
     }
 
-    @PostMapping
-    @Operation(summary = "新增生猪个体")
-    public Result<Void> add(@Valid @RequestBody PigIndividualDTO dto) {
-        pigIndividualService.addIndividual(dto);
-        return Result.success();
+    @GetMapping("/breeds")
+    @Operation(summary = "品种字典", description = "供前端下拉使用：预置常见猪种与库内实际出现过的品种合并返回")
+    public Result<List<String>> breeds() {
+        return Result.success(pigIndividualService.breedOptions());
     }
 
-    @PutMapping("/{id}")
-    @Operation(summary = "修改生猪个体")
-    public Result<Void> update(@PathVariable Long id, @Valid @RequestBody PigIndividualDTO dto) {
-        dto.setId(id);
-        pigIndividualService.updateIndividual(dto);
-        return Result.success();
-    }
+    /* 人工新增（建档）入口已删除：耳标佩戴由读写器设备通道自动建档
+       （/breeding/internal/ingest/tag），不再提供人工建档接口。 */
+
 
     @GetMapping("/{id}")
     @Operation(summary = "根据ID获取详情")
@@ -62,10 +60,10 @@ public class PigIndividualController {
         return Result.success(vo);
     }
 
-    @DeleteMapping("/{id}")
-    @Operation(summary = "删除生猪个体")
-    public Result<Void> remove(@PathVariable Long id) {
-        pigIndividualService.removeIndividual(id);
+    @PostMapping("/{id}/void")
+    @Operation(summary = "作废生猪档案（原删除）：需填写作废理由，记录保留不物理删除")
+    public Result<Void> voidIndividual(@PathVariable Long id, @Valid @RequestBody VoidRequest request) {
+        pigIndividualService.voidIndividual(id, request.getReason());
         return Result.success();
     }
 

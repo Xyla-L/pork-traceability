@@ -56,10 +56,10 @@
       <el-table-column prop="sellWeightKg" label="重量(kg)" width="100" align="center">
         <template #default="{ row }">{{ row.sellWeightKg != null ? row.sellWeightKg : '-' }}</template>
       </el-table-column>
-      <el-table-column prop="source" label="数据来源" width="120" align="center">
+      <el-table-column prop="source" label="采集设备" width="140" align="center">
         <template #default="{ row }">
-          <el-tooltip :content="row.source === 'DEVICE' ? `POS 扫码售出：${row.sourceRef || '--'}` : '人工录入'" placement="top">
-            <el-tag :type="sourceTag(row.source)" size="small" effect="plain">{{ sourceLabel(row.source) }}</el-tag>
+          <el-tooltip :content="row.source === 'DEVICE' ? `POS 扫码售出：${row.sourceRef || '--'}` : sourceLabel(row.source)" placement="top">
+            <el-tag :type="sourceTag(row.source)" size="small" effect="plain">{{ deviceText(row) }}</el-tag>
           </el-tooltip>
         </template>
       </el-table-column>
@@ -135,7 +135,7 @@ import { Search, Refresh, ShoppingCart } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import type { EpTagType } from '@/types/common'
 import { salesApi } from '@/api/modules/sales'
-import { sourceLabel, sourceTag } from '@/api/modules/ingest'
+import { deviceText, sourceLabel, sourceTag } from '@/api/modules/ingest'
 import type { FormInstance, FormRules } from 'element-plus'
 
 const dateRange = ref(null)

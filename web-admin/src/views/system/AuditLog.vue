@@ -102,6 +102,7 @@ const operTypeMap: Record<string, string> = {
   SLAUGHTER_INSPECT: '屠宰检验',
   RACTOPAMINE_TEST: '瘦肉精检测',
   CARCASS_STAMP: '检疫盖章',
+  CARCASS_BATCH: '胴体批次',
   SPLIT_BATCH: '批次拆分',
   COLD_CHAIN_TRANSPORT: '冷链运输',
   STORE_RECEIPT: '门店签收',
@@ -109,6 +110,13 @@ const operTypeMap: Record<string, string> = {
   RECALL_ORDER: '产品召回',
   SLAUGHTER_INSPECT_VOID: '检验作废',
   CARCASS_STAMP_VOID: '盖章作废',
+  CARCASS_BATCH_VOID: '胴体批次作废',
+  SPLIT_BATCH_VOID: '分割批次作废',
+  RETAIL_SALE_VOID: '销售作废',
+  PIG_INDIVIDUAL_VOID: '生猪档案作废',
+  VACCINE_RECORD_VOID: '免疫记录作废',
+  RACTOPAMINE_VOID: '瘦肉精检测作废',
+  QUARANTINE_CERT_VOID: '检疫证明作废',
   RECALL_ORDER_PROGRESS: '召回进度',
 }
 const operTypeLabel = (t: string) => operTypeMap[t] || t
@@ -121,6 +129,7 @@ const operTypeColor = (t: string): EpTagType => {
     SLAUGHTER_INSPECT: 'info',
     RACTOPAMINE_TEST: 'warning',
     CARCASS_STAMP: 'primary',
+    CARCASS_BATCH: 'info',
     SPLIT_BATCH: 'info',
     COLD_CHAIN_TRANSPORT: 'warning',
     STORE_RECEIPT: 'warning',
@@ -128,6 +137,13 @@ const operTypeColor = (t: string): EpTagType => {
     RECALL_ORDER: 'danger',
     SLAUGHTER_INSPECT_VOID: 'warning',
     CARCASS_STAMP_VOID: 'warning',
+    CARCASS_BATCH_VOID: 'warning',
+    SPLIT_BATCH_VOID: 'warning',
+    RETAIL_SALE_VOID: 'warning',
+    PIG_INDIVIDUAL_VOID: 'warning',
+    VACCINE_RECORD_VOID: 'warning',
+    RACTOPAMINE_VOID: 'warning',
+    QUARANTINE_CERT_VOID: 'warning',
     RECALL_ORDER_PROGRESS: 'danger',
   }
   return colors[t] || 'info'

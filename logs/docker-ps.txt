@@ -1,16 +1,17 @@
-﻿SERVICE                STATUS
-auth-service           Up 2 minutes (healthy)
-blockchain-service     Up 2 minutes (healthy)
-breeding-service       Up 2 minutes (healthy)
-distribution-service   Up 2 minutes (healthy)
-file-service           Up 2 minutes (healthy)
-ganache                Up 11 hours (healthy)
-gateway-service        Up 2 minutes (healthy)
-mysql                  Up 8 hours (healthy)
-nacos                  Up 11 hours
-nginx                  Up 8 hours (unhealthy)
-rabbitmq               Up 11 hours (healthy)
-redis                  Up 11 hours (healthy)
-sales-service          Up 2 minutes (healthy)
-slaughter-service      Up 2 minutes (healthy)
-trace-service          Up 2 minutes (healthy)
+﻿CONTAINER ID   IMAGE                                    COMMAND                   CREATED       STATUS                    PORTS                                                                                          NAMES
+2712f7ff1731   pork-traceability-breeding-service       "sh -c 'exec java $J鈥?   10 days ago   Up 9 minutes (healthy)                                                                                                   pork-traceability-breeding-service-1
+de0203fa272e   pork-traceability-slaughter-service      "sh -c 'exec java $J鈥?   10 days ago   Up 9 minutes (healthy)                                                                                                   pork-traceability-slaughter-service-1
+9b33866be125   pork-traceability-distribution-service   "sh -c 'exec java $J鈥?   10 days ago   Up 9 minutes (healthy)                                                                                                   pork-traceability-distribution-service-1
+234a0ea2895d   pork-traceability-ingest-service         "sh -c 'exec java $J鈥?   10 days ago   Up 9 minutes (healthy)                                                                                                   pork-traceability-ingest-service-1
+954ae9e6e8bd   pork-traceability-blockchain-service     "sh -c 'exec java $J鈥?   10 days ago   Up 9 minutes (healthy)                                                                                                   pork-traceability-blockchain-service-1
+0b617b76dfcb   pork-traceability-trace-service          "sh -c 'exec java $J鈥?   10 days ago   Up 9 minutes (healthy)                                                                                                   pork-traceability-trace-service-1
+d67509a70fb7   pork-traceability-auth-service           "sh -c 'exec java $J鈥?   10 days ago   Up 9 minutes (healthy)                                                                                                   pork-traceability-auth-service-1
+a56d04f56152   pork-traceability-file-service           "sh -c 'exec java $J鈥?   10 days ago   Up 9 minutes (healthy)                                                                                                   pork-traceability-file-service-1
+8db63b4f234c   nginx:1.27-alpine                        "/docker-entrypoint.鈥?   10 days ago   Up 11 minutes (healthy)   0.0.0.0:80->80/tcp, [::]:80->80/tcp                                                            pork-traceability-nginx-1
+2f1d021ca296   pork-traceability-gateway-service        "sh -c 'exec java $J鈥?   10 days ago   Up 9 minutes (healthy)    0.0.0.0:8080->8080/tcp, [::]:8080->8080/tcp                                                    pork-traceability-gateway-service-1
+d5eedd489e4e   pork-traceability-sales-service          "sh -c 'exec java $J鈥?   10 days ago   Up 9 minutes (healthy)                                                                                                   pork-traceability-sales-service-1
+959eeffc97a2   redis:7.4-alpine                         "docker-entrypoint.s鈥?   10 days ago   Up 11 minutes (healthy)   0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp                                                    pork-traceability-redis-1
+0eb1059f14c0   rabbitmq:3.13-management-alpine          "docker-entrypoint.s鈥?   10 days ago   Up 11 minutes (healthy)   0.0.0.0:5672->5672/tcp, [::]:5672->5672/tcp, 0.0.0.0:15672->15672/tcp, [::]:15672->15672/tcp   pork-traceability-rabbitmq-1
+2b6e537d77b8   nacos/nacos-server:v2.4.3                "sh bin/docker-start鈥?   10 days ago   Up 11 minutes (healthy)   0.0.0.0:8848->8848/tcp, [::]:8848->8848/tcp, 0.0.0.0:9848->9848/tcp, [::]:9848->9848/tcp       pork-traceability-nacos-1
+e77beca0a4f4   mysql:8.4                                "docker-entrypoint.s鈥?   10 days ago   Up 11 minutes (healthy)   0.0.0.0:3307->3306/tcp, [::]:3307->3306/tcp                                                    pork-traceability-mysql-1
+a5ab54c939a9   trufflesuite/ganache:v7.9.2              "node /app/dist/node鈥?   10 days ago   Up 11 minutes (healthy)   0.0.0.0:8545->8545/tcp, [::]:8545->8545/tcp                                                    pork-traceability-ganache-1

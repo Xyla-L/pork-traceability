@@ -63,19 +63,12 @@
       </el-form>
     </div>
 
-    <!-- 操作栏 -->
-    <div class="action-bar">
-      <el-button type="primary" @click="handleCreate">
-        <el-icon><Plus /></el-icon>
-        新增入场
-      </el-button>
-    </div>
 
     <!-- 数据表格 -->
     <EntryTable
       :data="tableData"
       :loading="tableLoading"
-      @edit="handleEdit"
+      @voided="fetchList"
     />
 
     <!-- 分页 -->
@@ -92,22 +85,14 @@
       />
     </div>
 
-    <!-- 新建/查验弹窗 -->
-    <EntryFormDialog
-      v-model:visible="formDialogVisible"
-      :edit-data="currentEditData"
-      :mode="dialogMode"
-      @submit="handleFormSubmit"
-    />
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { Search, Refresh, Plus } from '@element-plus/icons-vue'
+import { Search, Refresh } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 import EntryTable from './EntryTable.vue'
-import EntryFormDialog from './EntryFormDialog.vue'
 
 // ==================== 搜索相关 ====================
 
@@ -188,28 +173,6 @@ const handlePageChange = (page) => {
   fetchList()
 }
 
-// ==================== 表单弹窗 ====================
-
-const formDialogVisible = ref(false)
-const currentEditData = ref(null)
-const dialogMode = ref('create')
-
-const handleCreate = () => {
-  currentEditData.value = null
-  dialogMode.value = 'create'
-  formDialogVisible.value = true
-}
-
-const handleEdit = (row) => {
-  currentEditData.value = { ...row }
-  dialogMode.value = 'edit'
-  formDialogVisible.value = true
-}
-
-const handleFormSubmit = () => {
-  fetchList()
-}
-
 // ==================== 初始化 ====================
 
 onMounted(() => {
@@ -231,12 +194,6 @@ onMounted(() => {
     :deep(.el-form-item) {
       margin-bottom: 12px;
     }
-  }
-
-  .action-bar {
-    display: flex;
-    justify-content: flex-end;
-    margin-bottom: 16px;
   }
 
   .pagination-wrapper {

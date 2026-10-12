@@ -96,6 +96,11 @@ public class LocalFileStorageService implements FileStorageService {
     }
 
     @Override
+    public FileInfoVO meta(String fileId) {
+        return view(find(fileId));
+    }
+
+    @Override
     public StoredResource load(String fileId) {
         FileMetadata metadata = find(fileId);
         Path path = resolve(metadata.getStoredPath());

@@ -28,8 +28,15 @@ public record IngestContext(IngestDevice device, DeviceReportRequest report, Str
         return report.getSourceRef() == null ? device.getDeviceNo() : report.getSourceRef();
     }
 
-    /** 落库到业务表"采集人/查验人/操作员"字段的默认值 */
-    public String deviceLabel() {
-        return device.getDeviceNo() + " 自动采集";
+    /**
+     * 采集设备编号。
+     * <p>
+     * 只用于「本来就是机器在记录」的字段（如冷链温度的温度记录仪）。
+     * 操作人 / 查验员 / 检测员 / 签收人这类字段**一律不得**用它兜底 ——
+     * 设备不是人，把设备名写进人名字段会让追溯链上查不到具体责任人。
+     * 这类字段缺失时由各通道转人工补录。
+     */
+    public String deviceNo() {
+        return device.getDeviceNo();
     }
 }

@@ -1,0 +1,228 @@
+﻿
+[INFO] Scanning for projects...
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Build Order:
+[INFO] 
+[INFO] pork-traceability-backend                                          [pom]
+[INFO] common-core                                                        [jar]
+[INFO] common-security                                                    [jar]
+[INFO] common-web                                                         [jar]
+[INFO] common-mq                                                          [jar]
+[INFO] gateway-service                                                    [jar]
+[INFO] auth-service                                                       [jar]
+[INFO] breeding-service                                                   [jar]
+[INFO] slaughter-service                                                  [jar]
+[INFO] distribution-service                                               [jar]
+[INFO] sales-service                                                      [jar]
+[INFO] ingest-service                                                     [jar]
+[INFO] trace-service                                                      [jar]
+[INFO] blockchain-service                                                 [jar]
+[INFO] file-service                                                       [jar]
+[INFO] 
+[INFO] Using the MultiThreadedBuilder implementation with a thread count of 18
+[INFO] 
+[INFO] --------------------------< com.pork:backend >--------------------------
+[INFO] Building pork-traceability-backend 1.0-SNAPSHOT                   [1/15]
+[INFO]   from pom.xml
+[INFO] --------------------------------[ pom ]---------------------------------
+[INFO] 
+[INFO] ------------------------< com.pork:common-core >------------------------
+[INFO] Building common-core 1.0-SNAPSHOT                                 [2/15]
+[INFO]   from common/common-core/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ common-core ---
+[INFO] skip non existing resourceDirectory /workspace/common/common-core/src/main/resources
+[INFO] skip non existing resourceDirectory /workspace/common/common-core/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ common-core ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] ----------------------< com.pork:common-security >----------------------
+[INFO] Building common-security 1.0-SNAPSHOT                             [3/15]
+[INFO]   from common/common-security/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] ------------------------< com.pork:common-web >-------------------------
+[INFO] Building common-web 1.0-SNAPSHOT                                  [4/15]
+[INFO]   from common/common-web/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] -------------------------< com.pork:common-mq >-------------------------
+[INFO] Building common-mq 1.0-SNAPSHOT                                   [5/15]
+[INFO]   from common/common-mq/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ common-mq ---
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ common-security ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ common-web ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ common-mq ---
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ common-security ---
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ common-web ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] ----------------------< com.pork:gateway-service >----------------------
+[INFO] Building gateway-service 1.0-SNAPSHOT                             [6/15]
+[INFO]   from gateway-service/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ gateway-service ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ gateway-service ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] -----------------------< com.pork:auth-service >------------------------
+[INFO] Building auth-service 1.0-SNAPSHOT                                [7/15]
+[INFO]   from auth-service/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] 
+[INFO] -------------------< com.pork:distribution-service >--------------------
+[INFO] 
+[INFO] Building distribution-service 1.0-SNAPSHOT                        [8/15]
+[INFO]   from distribution-service/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] ---------------------< com.pork:breeding-service >----------------------
+[INFO] 
+[INFO] 
+[INFO] ----------------------< com.pork:ingest-service >-----------------------
+[INFO] 
+[INFO] ---------------------< com.pork:slaughter-service >---------------------
+[INFO] -----------------------< com.pork:sales-service >-----------------------
+[INFO] 
+[INFO] --------------------< com.pork:blockchain-service >---------------------
+[INFO] Building blockchain-service 1.0-SNAPSHOT                         [13/15]
+[INFO] Building ingest-service 1.0-SNAPSHOT                             [10/15]
+[INFO] -----------------------< com.pork:trace-service >-----------------------
+[INFO]   from ingest-service/pom.xml
+[INFO] Building trace-service 1.0-SNAPSHOT                              [14/15]
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] Building breeding-service 1.0-SNAPSHOT                            [9/15]
+[INFO]   from trace-service/pom.xml
+[INFO]   from blockchain-service/pom.xml
+[INFO] Building sales-service 1.0-SNAPSHOT                              [12/15]
+[INFO] Building slaughter-service 1.0-SNAPSHOT                          [11/15]
+[INFO]   from sales-service/pom.xml
+[INFO]   from slaughter-service/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] -----------------------< com.pork:file-service >------------------------
+[INFO] Building file-service 1.0-SNAPSHOT                               [15/15]
+[INFO]   from breeding-service/pom.xml
+[INFO]   from file-service/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] --------------------------------[ jar ]---------------------------------
+[WARNING] The POM for org.web3j:core:jar:4.12.3 is missing, no dependency information available
+[WARNING] The POM for org.jcodec:jcodec:jar:0.2.5 is missing, no dependency information available
+[WARNING] The POM for org.jcodec:jcodec-javase:jar:0.2.5 is missing, no dependency information available
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ ingest-service ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ trace-service ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ distribution-service ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ auth-service ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ breeding-service ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ sales-service ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ slaughter-service ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ ingest-service ---
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ trace-service ---
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ sales-service ---
+[INFO] --- compiler:3.11.0:compile (default-compile) @ auth-service ---
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ breeding-service ---
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ distribution-service ---
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ slaughter-service ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] Nothing to compile - all classes are up to date
+[INFO] Nothing to compile - all classes are up to date
+[INFO] Nothing to compile - all classes are up to date
+[INFO] Nothing to compile - all classes are up to date
+[INFO] Nothing to compile - all classes are up to date
+[INFO] Nothing to compile - all classes are up to date
+[INFO] Nothing to compile - all classes are up to date
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary for pork-traceability-backend 1.0-SNAPSHOT:
+[INFO] 
+[INFO] pork-traceability-backend .......................... SUCCESS [  0.039 s]
+[INFO] common-core ........................................ SUCCESS [  1.565 s]
+[INFO] common-security .................................... SUCCESS [  1.070 s]
+[INFO] common-web ......................................... SUCCESS [  1.978 s]
+[INFO] common-mq .......................................... SUCCESS [  1.088 s]
+[INFO] gateway-service .................................... SUCCESS [  1.983 s]
+[INFO] auth-service ....................................... SUCCESS [  4.881 s]
+[INFO] breeding-service ................................... SUCCESS [  7.783 s]
+[INFO] slaughter-service .................................. SUCCESS [  6.831 s]
+[INFO] distribution-service ............................... SUCCESS [  4.561 s]
+[INFO] sales-service ...................................... SUCCESS [  4.523 s]
+[INFO] ingest-service ..................................... SUCCESS [  5.960 s]
+[INFO] trace-service ...................................... SUCCESS [  4.957 s]
+[INFO] blockchain-service ................................. FAILURE [  0.197 s]
+[INFO] file-service ....................................... FAILURE [  0.190 s]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  12.414 s (Wall Clock)
+[INFO] Finished at: 2026-10-03T09:05:39Z
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal on project file-service: Could not resolve dependencies for project com.pork:file-service:jar:1.0-SNAPSHOT
+[ERROR] dependency: org.jcodec:jcodec:jar:0.2.5 (compile)
+[ERROR] 	Cannot access central (https://repo.maven.apache.org/maven2) in offline mode and the artifact org.jcodec:jcodec:jar:0.2.5 has not been downloaded from it before.
+[ERROR] dependency: org.jcodec:jcodec-javase:jar:0.2.5 (compile)
+[ERROR] 	Cannot access central (https://repo.maven.apache.org/maven2) in offline mode and the artifact org.jcodec:jcodec-javase:jar:0.2.5 has not been downloaded from it before.
+[ERROR] -> [Help 1]
+[ERROR] Failed to execute goal on project blockchain-service: Could not resolve dependencies for project com.pork:blockchain-service:jar:1.0-SNAPSHOT
+[ERROR] dependency: org.web3j:core:jar:4.12.3 (compile)
+[ERROR] 	Cannot access central (https://repo.maven.apache.org/maven2) in offline mode and the artifact org.web3j:core:jar:4.12.3 has not been downloaded from it before.
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/DependencyResolutionException
+[ERROR] 
+[ERROR] After correcting the problems, you can resume the build with the command
+[ERROR]   mvn <args> -rf :file-service
+EXIT=1

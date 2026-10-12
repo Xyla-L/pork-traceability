@@ -102,7 +102,11 @@ public class TemperatureChannelHandler implements ChannelHandler {
         body.put("tempRangeMin", rangeMin);
         body.put("tempRangeMax", rangeMax);
         body.put("isAbnormal", abnormal ? 1 : 0);
-        body.put("recorder", ctx.deviceLabel());
+        // 「多久采一次」是探头的属性，不该由系统假设：把设备台账里登记的额定间隔透传给业务侧，
+        // 它据此判断「这一条到上一条之间是否异常地长」（断档）。设备没登记则传 null，走服务默认值。
+        body.put("sampleIntervalSeconds", ctx.device().getSampleIntervalSeconds());
+        // 冷链温度是探头自动采集，本就没有人工参与，recorder 如实记采集设备编号
+        body.put("recorder", ctx.deviceNo());
         body.put("recordMethod", "DEVICE");
         body.put("recordTime", Handlers.time(ctx.reportTime()));
         body.put("source", "DEVICE");

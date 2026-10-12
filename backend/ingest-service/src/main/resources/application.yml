@@ -27,6 +27,8 @@ services:
   slaughter-url: ${SERVICES_SLAUGHTER_URL:http://localhost:8083}
   distribution-url: ${SERVICES_DISTRIBUTION_URL:http://localhost:8084}
   sales-url: ${SERVICES_SALES_URL:http://localhost:8085}
+  # 文件服务：只用于核对设备上报的凭证 fileId 是否真实存在（不下载文件内容）
+  file-url: ${SERVICES_FILE_URL:http://localhost:8088}
 
 ingest:
   temperature:

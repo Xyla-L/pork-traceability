@@ -81,13 +81,6 @@
       </el-form>
     </div>
 
-    <!-- 操作栏 -->
-    <div class="action-bar">
-      <el-button type="primary" @click="handleCreate">
-        <el-icon><Plus /></el-icon>
-        新建生猪
-      </el-button>
-    </div>
 
     <!-- 数据表格 -->
     <PigTable
@@ -95,7 +88,7 @@
       :loading="tableLoading"
       :farm-name-map="farmNameMap"
       @apply="handleApply"
-      @edit="handleEdit"
+      @voided="fetchList"
     />
 
     <!-- 分页 -->
@@ -112,13 +105,6 @@
       />
     </div>
 
-    <!-- 新建弹窗 -->
-    <PigFormDialog
-      v-model:visible="formDialogVisible"
-      :edit-data="currentEditData"
-      @saved="handleFormSaved"
-      @farm-created="fetchFarmOptions"
-    />
 
     <!-- 出栏申报弹窗 -->
     <el-dialog v-model="applyDialogVisible" title="出栏申报" width="460px" destroy-on-close>
@@ -157,12 +143,11 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { Search, Refresh, Plus } from '@element-plus/icons-vue'
+import { Search, Refresh } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
 import { pigApi } from '@/api/modules/breeding'
 import PigTable from './PigTable.vue'
-import PigFormDialog from './PigFormDialog.vue'
 
 // ==================== 搜索相关 ====================
 
@@ -177,12 +162,28 @@ const searchForm = reactive({
   birthDateEnd: ''
 })
 
-const breedOptions = [
+// 品种下拉：优先取后端字典（预置常见猪种 + 库内实际出现过的品种），
+// 不再前端硬编码——设备通道上报的品种不受前端枚举约束，硬编码会让
+// 「列表里看得到、下拉里选不到」（如设备上报的「三元杂」）。接口异常时回退内置常用值。
+const breedOptions = ref([
   { label: '长白猪', value: '长白猪' },
   { label: '大白猪', value: '大白猪' },
   { label: '杜洛克', value: '杜洛克' },
-  { label: '皮特兰', value: '皮特兰' }
-]
+  { label: '皮特兰', value: '皮特兰' },
+  { label: '三元杂', value: '三元杂' }
+])
+
+const fetchBreeds = async () => {
+  try {
+    const res = await request.get('/breeding/pigs/breeds')
+    const list = Array.isArray(res) ? res : (res?.data || [])
+    if (Array.isArray(list) && list.length) {
+      breedOptions.value = list.map((b) => ({ label: b, value: b }))
+    }
+  } catch (error) {
+    console.error('获取品种字典失败，使用内置备选:', error)
+  }
+}
 
 const statusOptions = [
   { label: '在养', value: '在养' },
@@ -306,72 +307,11 @@ const handlePageChange = (page) => {
   fetchList()
 }
 
-// ==================== 表单弹窗 ====================
-
-const formDialogVisible = ref(false)
-const currentEditData = ref(null)
-
-const handleCreate = () => {
-  currentEditData.value = null
-  formDialogVisible.value = true
-}
-
-const handleEdit = (row) => {
-  currentEditData.value = { ...row }
-  formDialogVisible.value = true
-}
-
-const handleFormSaved = () => {
-  // 提交已在 PigFormDialog 内部完成并成功，这里只需刷新列表
-  fetchList()
-}
-
-// ==================== 出栏申报 ====================
-
-const applyDialogVisible = ref(false)
-const applySubmitting = ref(false)
-const applyRow = ref(null)
-const applyFormRef = ref()
-const applyForm = reactive({
-  targetSlaughterhouse: '',
-  weightKg: null
-})
-const applyRules = {
-  targetSlaughterhouse: [{ required: true, message: '请输入目标屠宰场', trigger: 'blur' }]
-}
-
-const handleApply = (row) => {
-  applyRow.value = row
-  applyForm.targetSlaughterhouse = ''
-  applyForm.weightKg = null
-  applyDialogVisible.value = true
-}
-
-const submitApply = async () => {
-  if (!applyFormRef.value) return
-  await applyFormRef.value.validate(async (valid) => {
-    if (!valid) return
-    applySubmitting.value = true
-    try {
-      await pigApi.applySlaughter(applyRow.value.id, {
-        targetSlaughterhouse: applyForm.targetSlaughterhouse,
-        weightKg: applyForm.weightKg
-      })
-      ElMessage.success('出栏申报已提交，等待审批')
-      applyDialogVisible.value = false
-      fetchList()
-    } catch (error) {
-      console.error('出栏申报失败:', error)
-    } finally {
-      applySubmitting.value = false
-    }
-  })
-}
-
 // ==================== 初始化 ====================
 
 onMounted(() => {
   fetchFarmOptions()
+  fetchBreeds()
   fetchList()
   fetchSlaughterhouses()
 })
@@ -391,12 +331,6 @@ onMounted(() => {
     :deep(.el-form-item) {
       margin-bottom: 12px;
     }
-  }
-
-  .action-bar {
-    display: flex;
-    justify-content: flex-end;
-    margin-bottom: 16px;
   }
 
   .pagination-wrapper {

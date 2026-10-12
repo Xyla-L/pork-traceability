@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -48,6 +49,13 @@ public class TagChannelHandler implements ChannelHandler {
         Map<String, Object> data = ctx.data();
         if (Payloads.str(data, "earTagNo") == null) errors.add("缺少耳标号(earTagNo)");
         if (Payloads.str(data, "farmName") == null) errors.add("缺少养殖场名称(farmName)，建档必须归属已登记的养殖场");
+        // 出生日期是建档的必备身份信息（影响月龄、可出栏判断与追溯口径），不允许留空
+        String birthDate = Payloads.str(data, "birthDate");
+        if (birthDate == null) {
+            errors.add("缺少出生日期(birthDate)，建档必须记录出生日期");
+        } else if (Payloads.time(data, "birthDate") == null) {
+            errors.add("出生日期(birthDate)格式不正确，应为 yyyy-MM-dd：" + birthDate);
+        }
         Integer gender = Payloads.integer(data, "gender");
         if (gender != null && gender != 1 && gender != 2) {
             errors.add("性别(gender)只允许 1公/2母");
@@ -64,11 +72,16 @@ public class TagChannelHandler implements ChannelHandler {
         body.put("earTagNo", Payloads.str(data, "earTagNo"));
         body.put("farmName", Payloads.str(data, "farmName"));
         body.put("breed", Payloads.str(data, "breed"));
-        body.put("birthDate", Payloads.str(data, "birthDate"));
+        // 出生日期统一规范成 yyyy-MM-dd 再下发：业务侧按 LocalDate 接收，
+        // 设备若带了时间部分（"2026-03-15 00:00:00"）直接下发会解析失败
+        LocalDateTime birthDate = Payloads.time(data, "birthDate");
+        body.put("birthDate", birthDate == null ? null : birthDate.toLocalDate().toString());
         body.put("gender", Payloads.integer(data, "gender"));
         body.put("penNo", Payloads.str(data, "penNo"));
         body.put("origin", Payloads.str(data, "origin"));
-        body.put("operator", Payloads.str(data, "operator") == null ? ctx.deviceLabel() : Payloads.str(data, "operator"));
+        // 建档操作人（现场饲养员）：生猪档案表当前不落该字段，仅原样透传，
+        // 不得用设备名兜底 —— 耳标识读器不是操作人。
+        body.put("operator", Payloads.str(data, "operator"));
         body.put("source", "DEVICE");
         body.put("sourceRef", ctx.sourceRef());
         body.put("rawPayload", ctx.rawPayload());

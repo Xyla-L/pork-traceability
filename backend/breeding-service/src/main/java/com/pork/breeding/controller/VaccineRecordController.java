@@ -6,6 +6,7 @@ import com.pork.breeding.service.VaccineRecordService;
 import com.pork.breeding.vo.VaccineRecordVO;
 import com.pork.core.result.PageResult;
 import com.pork.core.result.Result;
+import com.pork.web.source.VoidRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -33,28 +34,17 @@ public class VaccineRecordController {
     }
 
     @GetMapping("/list")
-    @Operation(summary = "查询生猪所有疫苗记录")
-    public Result<List<VaccineRecordVO>> listByPigId(@PathVariable Long pigId) {
-        List<VaccineRecordVO> list = vaccineRecordService.listByPigId(pigId);
+    @Operation(summary = "查询生猪所有疫苗记录（includeVoid=true 时含已作废记录并带作废痕迹）")
+    public Result<List<VaccineRecordVO>> listByPigId(
+            @PathVariable Long pigId,
+            @RequestParam(defaultValue = "false") boolean includeVoid) {
+        List<VaccineRecordVO> list = vaccineRecordService.listByPigId(pigId, includeVoid);
         return Result.success(list);
     }
 
-    @PostMapping
-    @Operation(summary = "记录疫苗注射")
-    public Result<Void> add(@PathVariable Long pigId, @Valid @RequestBody VaccineRecordDTO dto) {
-        dto.setPigId(pigId);
-        vaccineRecordService.addRecord(dto);
-        return Result.success();
-    }
+    /* 人工录入入口已删除：免疫注射由智能连续注射器设备通道自动记录
+       （/breeding/internal/ingest/vaccine），不再提供人工录入接口。 */
 
-    @PutMapping("/{id}")
-    @Operation(summary = "更新疫苗记录")
-    public Result<Void> update(@PathVariable Long pigId, @PathVariable Long id, @Valid @RequestBody VaccineRecordDTO dto) {
-        dto.setId(id);
-        dto.setPigId(pigId);
-        vaccineRecordService.updateRecord(dto);
-        return Result.success();
-    }
 
     @GetMapping("/{id}")
     @Operation(summary = "查询疫苗记录详情")
@@ -63,10 +53,11 @@ public class VaccineRecordController {
         return Result.success(vo);
     }
 
-    @DeleteMapping("/{id}")
-    @Operation(summary = "删除疫苗记录")
-    public Result<Void> remove(@PathVariable Long pigId, @PathVariable Long id) {
-        vaccineRecordService.removeRecord(pigId, id);
+    @PostMapping("/{id}/void")
+    @Operation(summary = "作废疫苗记录（原删除）：需填写作废理由，记录保留不物理删除")
+    public Result<Void> voidRecord(@PathVariable Long pigId, @PathVariable Long id,
+                                   @Valid @RequestBody VoidRequest request) {
+        vaccineRecordService.voidRecord(pigId, id, request.getReason());
         return Result.success();
     }
 }

@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 /** 设备报文取值工具：设备侧字段类型不严谨（数字可能带引号），统一在这里做宽松解析 */
@@ -18,6 +20,30 @@ public final class Payloads {
         if (value == null) return null;
         String text = value.toString().trim();
         return text.isEmpty() ? null : text;
+    }
+
+    /**
+     * 取字符串数组（如凭证照片 fileIds）。
+     * <p>
+     * 设备侧可能给数组、也可能给「逗号分隔的字符串」，一律在这里归一；
+     * 空白项与重复项直接剔掉，避免把脏 fileId 带进业务表。
+     */
+    public static List<String> strings(Map<String, Object> data, String key) {
+        Object value = data == null ? null : data.get(key);
+        if (value == null) return List.of();
+        List<String> result = new ArrayList<>();
+        if (value instanceof Iterable<?> iterable) {
+            for (Object item : iterable) {
+                String text = item == null ? null : item.toString().trim();
+                if (text != null && !text.isEmpty() && !result.contains(text)) result.add(text);
+            }
+        } else {
+            for (String part : value.toString().split(",")) {
+                String text = part.trim();
+                if (!text.isEmpty() && !result.contains(text)) result.add(text);
+            }
+        }
+        return result;
     }
 
     public static Integer integer(Map<String, Object> data, String key) {

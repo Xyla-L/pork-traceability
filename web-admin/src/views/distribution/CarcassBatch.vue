@@ -26,7 +26,8 @@
       </el-form>
     </div>
 
-    <div class="action-bar">
+    <!-- 操作栏：分拣台按「屠宰场 + 屠宰日」自动归集为主路径；未装分拣台的场可用人工建批补录 -->
+    <div class="toolbar">
       <el-button type="primary" @click="handleCreate"><el-icon><Plus /></el-icon>创建批次</el-button>
       <el-button type="success" @click="handleAppend">
         <el-icon><Connection /></el-icon>添加关联生猪
@@ -56,12 +57,35 @@
       <el-table-column prop="slaughterhouse" label="屠宰场" min-width="150" show-overflow-tooltip>
         <template #default="{ row }">{{ row.slaughterhouse || '--' }}</template>
       </el-table-column>
-      <el-table-column prop="operator" label="操作人" width="100" align="center" />
+      <el-table-column prop="operator" label="操作人" width="100" align="center">
+        <template #default="{ row }">
+          <span v-if="isDeviceBatch(row)" class="muted">--</span>
+          <span v-else>{{ row.operator || '未记录' }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="数据来源" width="130" align="center">
+        <template #default="{ row }">
+          <el-tooltip v-if="isDeviceBatch(row)" :content="deviceSourceHint(row)" placement="top">
+            <el-tag size="small" type="success" effect="plain">分拣台自动归集</el-tag>
+          </el-tooltip>
+          <el-tag v-else size="small" type="info" effect="plain">人工录入</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="归集状态" width="110" align="center">
+        <template #default="{ row }">
+          <el-tooltip v-if="isDeviceBatch(row)" :content="sealHint(row)" placement="top">
+            <el-tag size="small" :type="row.status === 1 ? 'warning' : 'info'" effect="plain">
+              {{ row.status === 1 ? '归集中' : '已封批' }}
+            </el-tag>
+          </el-tooltip>
+          <span v-else class="muted">--</span>
+        </template>
+      </el-table-column>
       <el-table-column prop="createTime" label="创建时间" width="170" align="center" />
-      <el-table-column label="操作" width="180" fixed="right" align="center">
+      <el-table-column label="操作" width="230" fixed="right" align="center">
         <template #default="{ row }">
           <el-button type="primary" link size="small" @click="handleView(row)">详情</el-button>
-          <el-button type="warning" link size="small" @click="handleEdit(row)">编辑</el-button>
+          <el-button v-if="canSeal(row)" type="danger" link size="small" @click="handleSeal(row)">封批</el-button>
           <el-button type="success" link size="small" @click="handleSplit(row)">
             <el-icon><Grid /></el-icon>分割
           </el-button>
@@ -75,8 +99,8 @@
         background @size-change="handleSizeChange" @current-change="handlePageChange" />
     </div>
 
-    <!-- 创建/编辑批次弹窗 -->
-    <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑胴体批次' : '创建胴体批次'" width="600px" destroy-on-close>
+    <!-- 创建批次弹窗 -->
+    <el-dialog v-model="dialogVisible" title="创建胴体批次" width="600px" destroy-on-close>
       <el-form ref="formRef" :model="batchForm" :rules="batchRules" label-width="100px">
         <el-form-item label="选择生猪" prop="pigIds">
           <el-select v-model="batchForm.pigIds" multiple filterable remote reserve-keyword
@@ -123,7 +147,7 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmit" :loading="submitting">{{ isEdit ? '保存修改' : '确认创建' }}</el-button>
+        <el-button type="primary" @click="handleSubmit" :loading="submitting">确认创建</el-button>
       </template>
     </el-dialog>
 
@@ -204,13 +228,56 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { Search, Refresh, Plus, Grid, MoreFilled, Connection } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { distributionApi } from '@/api/modules/distribution'
 import { pigApi } from '@/api/modules/breeding'
 import request from '@/utils/request'
 
 const router = useRouter()
+
+/** 该批次是不是分拣台按「屠宰场 + 屠宰日」自动归集出来的 */
+const isDeviceBatch = (row: any) => row?.source === 'DEVICE'
+
+/** 设备来源的 tooltip：说清它怎么来的、为什么操作人是空的 */
+function deviceSourceHint(row: any) {
+  const ref = row?.sourceRef ? `分拣台 ${row.sourceRef}` : '分拣台'
+  return `${ref}在白条下线时识读挂钩标签并过磅，系统按「屠宰场 + 屠宰日」自动归集；`
+    + '归集是机器行为、没有操作人，关联生猪与重量只能作废后由设备重推。'
+}
+
+/** 归集状态 tooltip：批次必须有边界，否则一天一场会攒出一个几千头的巨批，追溯就没有区分度了 */
+function sealHint(row: any) {
+  return row?.status === 1
+    ? '归集中：当日同一屠宰场、分拣台推来的白条都会并入本批次。达到头数上限会自动封批；'
+      + '换班或换圈时可以手动提前封批，让后一班的白条另开新批。'
+    : '已封批：不再并入当日白条，后续白条会另开一个新批次。'
+}
+
+/** 只有「仍归集中的设备批次」才需要封批 —— 人工批次本就不参与自动归集，已封的再封也没意义 */
+const canSeal = (row: any) => isDeviceBatch(row) && row?.status === 1
+
+async function handleSeal(row: any) {
+  try {
+    await ElMessageBox.confirm(
+      `封批后，分拣台不再把当日白条并入 ${row.batchNo}，后续白条会另开一个新批次。确定封批？`,
+      '封批确认',
+      { type: 'warning', confirmButtonText: '确认封批', cancelButtonText: '取消' },
+    )
+  } catch {
+    return
+  }
+  try {
+    await distributionApi.sealBatch(row.id)
+    ElMessage.success(`批次 ${row.batchNo} 已封批，后续白条将另开新批`)
+    fetchList()
+  } catch { /* 错误已由拦截器提示（如已封批） */ }
+}
+
+/**
+ * 人工建批：分拣台按「屠宰场 + 屠宰日」自动归集是主路径，未装分拣台的场用人工建批补录，
+ * 写入强制实名并上链留痕。
+ */
 const searchForm = reactive({ batchNo: '', operator: '' })
 const dateRange = ref<[string, string] | null>(null)
 const tableData = ref<any[]>([])
@@ -220,8 +287,6 @@ const pagination = reactive({ pageNum: 1, pageSize: 10, total: 0 })
 const dialogVisible = ref(false)
 const submitting = ref(false)
 const formRef = ref()
-const isEdit = ref(false)
-const editingId = ref<number | null>(null)
 const batchForm = reactive({ pigIds: [] as number[], totalWeightKg: 0, slaughterhouse: '', operator: '', note: '' })
 const batchRules = {
   pigIds: [{ required: true, message: '请至少选择一头生猪', trigger: 'change', type: 'array', min: 1 }],
@@ -265,7 +330,6 @@ async function fetchOccupancy() {
 
 function mergePigOptions(pigs: any[], excludePigIds: number[] = []) {
   pigs.forEach((p) => {
-    // 编辑场景下，本批次已有关联猪不视为被占用
     const occupied = excludePigIds.includes(p.id) ? '' : (occupancyMap.value[p.id] || '')
     const existing = pigOptions.value.find(o => o.value === p.id)
     if (existing) {
@@ -284,7 +348,7 @@ async function searchPigsForForm(keyword: string) {
   pigLoading.value = true
   try {
     const res: any = await pigApi.list({ pageNum: 1, pageSize: 50, earTagNo: keyword || undefined })
-    mergePigOptions(res?.records || res?.list || [], isEdit.value ? batchForm.pigIds : [])
+    mergePigOptions(res?.records || res?.list || [])
   } catch { /* 提示由拦截器处理 */ } finally { pigLoading.value = false }
 }
 
@@ -376,8 +440,6 @@ function showAllPigs(row: any) {
 }
 
 function resetForm() {
-  isEdit.value = false
-  editingId.value = null
   batchForm.pigIds = []
   batchForm.totalWeightKg = 0
   batchForm.slaughterhouse = ''
@@ -394,25 +456,6 @@ async function handleCreate() {
   nextTick(() => formRef.value?.clearValidate())
 }
 
-// 编辑批次：回填表单并预置本批次生猪选项（本批次已有猪不被视为占用）
-async function handleEdit(row: any) {
-  resetForm()
-  isEdit.value = true
-  editingId.value = row.id
-  batchForm.pigIds = Array.isArray(row.pigIds) ? [...row.pigIds] : []
-  batchForm.totalWeightKg = row.totalWeightKg ?? 0
-  batchForm.slaughterhouse = row.slaughterhouse || ''
-  batchForm.operator = row.operator || ''
-  batchForm.note = row.note || ''
-  dialogVisible.value = true
-  pigOptions.value = []
-  await fetchOccupancy()
-  // 先用行内 pigInfos 补齐本批次猪的选项（含耳标号标签），再加载搜索结果
-  mergePigOptions(row.pigInfos || [], batchForm.pigIds)
-  searchPigsForForm('')
-  nextTick(() => formRef.value?.clearValidate())
-}
-
 async function handleSubmit() {
   await formRef.value?.validate()
   submitting.value = true
@@ -424,13 +467,8 @@ async function handleSubmit() {
     note: batchForm.note
   }
   try {
-    if (isEdit.value && editingId.value != null) {
-      await distributionApi.updateBatch(editingId.value, payload)
-      ElMessage.success('胴体批次修改成功')
-    } else {
-      await distributionApi.createBatch(payload)
-      ElMessage.success('胴体批次创建成功，数据已上链')
-    }
+    await distributionApi.createBatch(payload)
+    ElMessage.success('胴体批次创建成功，数据已上链')
     dialogVisible.value = false
     fetchList()
   } catch { /* 错误已由拦截器提示 */ } finally { submitting.value = false }
@@ -498,10 +536,11 @@ onMounted(() => { fetchOccupancy(); fetchList(); fetchSlaughterhouseList() })
 
 <style lang="scss" scoped>
 .page-container { padding: 20px; background: #fff; border-radius: 4px; }
+.toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
 .search-panel { padding-bottom: 16px; border-bottom: 1px solid #ebeef5; margin-bottom: 16px;
   :deep(.el-form) { flex-wrap: nowrap; }
   :deep(.el-form-item) { margin-bottom: 12px; } }
-.action-bar { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-bottom: 16px; }
+
 .pagination-wrapper { display: flex; justify-content: center; padding-top: 16px; margin-top: 16px; border-top: 1px solid #ebeef5; }
 .unit-hint { margin-left: 6px; font-size: 13px; color: #909399; }
 .selected-pigs :deep(.el-form-item__content) { line-height: 2; }

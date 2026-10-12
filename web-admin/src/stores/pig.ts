@@ -44,9 +44,7 @@ export const usePigStore = defineStore('pig', () => {
     }
   }
 
-  async function createPig(data: Partial<PigIndividual>) {
-    await pigApi.create(data)
-  }
+  /* 人工建档 action 已删除（createPig）：养殖建档以耳标读写器自动建档为主路径。 */
 
   async function updatePig(id: number, data: Partial<PigIndividual>) {
     await pigApi.update(id, data)
@@ -56,9 +54,7 @@ export const usePigStore = defineStore('pig', () => {
     vaccineList.value = await pigApi.getVaccines(pigId)
   }
 
-  async function addVaccine(pigId: number, data: Partial<VaccineRecord>) {
-    await pigApi.addVaccine(pigId, data)
-  }
+  /* 人工免疫录入 action 已删除（addVaccine）：免疫记录由智能连续注射器自动上报。 */
 
   async function fetchApplies(params?: any) {
     const res: PageResult<SlaughterApply> = await pigApi.getApplies(params)
@@ -93,10 +89,8 @@ export const usePigStore = defineStore('pig', () => {
     loading,
     fetchPigList,
     fetchPigDetail,
-    createPig,
     updatePig,
     fetchVaccines,
-    addVaccine,
     fetchApplies,
     approveApply,
     fetchQuarantineCert,

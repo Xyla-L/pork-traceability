@@ -1,6 +1,7 @@
 package com.pork.ingest.vo;
 
 import com.pork.ingest.entity.IngestStaging;
+import com.pork.ingest.support.IngestChannel;
 import com.pork.ingest.support.IngestStatus;
 import lombok.Data;
 
@@ -33,7 +34,7 @@ public class IngestStagingVO {
         IngestStagingVO vo = new IngestStagingVO();
         vo.setId(entity.getId());
         vo.setChannel(entity.getChannel());
-        vo.setChannelLabel(channelLabel(entity.getChannel()));
+        vo.setChannelLabel(IngestChannel.labelOf(entity.getChannel()));
         vo.setDeviceNo(entity.getDeviceNo());
         vo.setDeviceName(deviceName);
         vo.setBizKey(entity.getBizKey());
@@ -51,17 +52,5 @@ public class IngestStagingVO {
         vo.setRemark(entity.getRemark());
         vo.setCreateTime(entity.getCreateTime());
         return vo;
-    }
-
-    private static String channelLabel(String channel) {
-        if (channel == null) return null;
-        return switch (channel) {
-            case "TEMPERATURE" -> "冷链温度采集";
-            case "ENTRY" -> "入场查验";
-            case "RACTOPAMINE" -> "瘦肉精检测";
-            case "SALE" -> "门店收银";
-            case "RECEIPT" -> "门店签收";
-            default -> channel;
-        };
     }
 }

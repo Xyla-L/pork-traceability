@@ -1,0 +1,454 @@
+﻿
+[INFO] Scanning for projects...
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Build Order:
+[INFO] 
+[INFO] pork-traceability-backend                                          [pom]
+[INFO] common-core                                                        [jar]
+[INFO] common-security                                                    [jar]
+[INFO] common-web                                                         [jar]
+[INFO] common-mq                                                          [jar]
+[INFO] gateway-service                                                    [jar]
+[INFO] auth-service                                                       [jar]
+[INFO] breeding-service                                                   [jar]
+[INFO] slaughter-service                                                  [jar]
+[INFO] distribution-service                                               [jar]
+[INFO] sales-service                                                      [jar]
+[INFO] ingest-service                                                     [jar]
+[INFO] trace-service                                                      [jar]
+[INFO] blockchain-service                                                 [jar]
+[INFO] file-service                                                       [jar]
+[INFO] 
+[INFO] Using the MultiThreadedBuilder implementation with a thread count of 18
+[INFO] 
+[INFO] --------------------------< com.pork:backend >--------------------------
+[INFO] Building pork-traceability-backend 1.0-SNAPSHOT                   [1/15]
+[INFO]   from pom.xml
+[INFO] --------------------------------[ pom ]---------------------------------
+[INFO] 
+[INFO] ------------------------< com.pork:common-core >------------------------
+[INFO] Building common-core 1.0-SNAPSHOT                                 [2/15]
+[INFO]   from common/common-core/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ common-core ---
+[INFO] skip non existing resourceDirectory /workspace/common/common-core/src/main/resources
+[INFO] skip non existing resourceDirectory /workspace/common/common-core/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ common-core ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] ----------------------< com.pork:common-security >----------------------
+[INFO] Building common-security 1.0-SNAPSHOT                             [3/15]
+[INFO]   from common/common-security/pom.xml
+[INFO] 
+[INFO] ------------------------< com.pork:common-web >-------------------------
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] Building common-web 1.0-SNAPSHOT                                  [4/15]
+[INFO]   from common/common-web/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] -------------------------< com.pork:common-mq >-------------------------
+[INFO] Building common-mq 1.0-SNAPSHOT                                   [5/15]
+[INFO]   from common/common-mq/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ common-mq ---
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ common-security ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ common-web ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ common-mq ---
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ common-security ---
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ common-web ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] ----------------------< com.pork:gateway-service >----------------------
+[INFO] Building gateway-service 1.0-SNAPSHOT                             [6/15]
+[INFO]   from gateway-service/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ gateway-service ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ gateway-service ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] -----------------------< com.pork:auth-service >------------------------
+[INFO] 
+[INFO] Building auth-service 1.0-SNAPSHOT                                [7/15]
+[INFO] ---------------------< com.pork:breeding-service >----------------------
+[INFO] Building breeding-service 1.0-SNAPSHOT                            [8/15]
+[INFO]   from auth-service/pom.xml
+[INFO]   from breeding-service/pom.xml
+[INFO] 
+[INFO] ---------------------< com.pork:slaughter-service >---------------------
+[INFO] Building slaughter-service 1.0-SNAPSHOT                           [9/15]
+[INFO]   from slaughter-service/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] -----------------------< com.pork:sales-service >-----------------------
+[INFO] Building sales-service 1.0-SNAPSHOT                              [10/15]
+[INFO]   from sales-service/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] -------------------< com.pork:distribution-service >--------------------
+[INFO] 
+[INFO] Building distribution-service 1.0-SNAPSHOT                       [11/15]
+[INFO]   from distribution-service/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] ----------------------< com.pork:ingest-service >-----------------------
+[INFO] Building ingest-service 1.0-SNAPSHOT                             [12/15]
+[INFO]   from ingest-service/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --------------------< com.pork:blockchain-service >---------------------
+[INFO] Building blockchain-service 1.0-SNAPSHOT                         [13/15]
+[INFO]   from blockchain-service/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] -----------------------< com.pork:trace-service >-----------------------
+[INFO] Building trace-service 1.0-SNAPSHOT                              [14/15]
+[INFO]   from trace-service/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] -----------------------< com.pork:file-service >------------------------
+[INFO] Building file-service 1.0-SNAPSHOT                               [15/15]
+[INFO]   from file-service/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ ingest-service ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ auth-service ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ trace-service ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ breeding-service ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ sales-service ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ distribution-service ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ slaughter-service ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ ingest-service ---
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ breeding-service ---
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ trace-service ---
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ sales-service ---
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ distribution-service ---
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ auth-service ---
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ slaughter-service ---
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/jcodec/jcodec/0.2.5/jcodec-0.2.5.pom
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/web3j/core/4.12.3/core-4.12.3.pom
+[INFO] Nothing to compile - all classes are up to date
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/jcodec/jcodec/0.2.5/jcodec-0.2.5.pom (4.8 kB at 3.8 kB/s)
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/web3j/core/4.12.3/core-4.12.3.pom (4.0 kB at 3.1 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/web3j/abi/4.12.3/abi-4.12.3.pom
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/jcodec/jcodec-javase/0.2.5/jcodec-javase-0.2.5.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/jcodec/jcodec-javase/0.2.5/jcodec-javase-0.2.5.pom (3.6 kB at 15 kB/s)
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/web3j/abi/4.12.3/abi-4.12.3.pom (1.7 kB at 5.8 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/web3j/utils/4.12.3/utils-4.12.3.pom
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/jcodec/jcodec/0.2.5/jcodec-0.2.5.jar
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/web3j/utils/4.12.3/utils-4.12.3.pom (1.6 kB at 5.9 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/bouncycastle/bcprov-jdk18on/1.78.1/bcprov-jdk18on-1.78.1.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/bouncycastle/bcprov-jdk18on/1.78.1/bcprov-jdk18on-1.78.1.pom (1.1 kB at 4.1 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/web3j/crypto/4.12.3/crypto-4.12.3.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/web3j/crypto/4.12.3/crypto-4.12.3.pom (2.9 kB at 10 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/web3j/rlp/4.12.3/rlp-4.12.3.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/web3j/rlp/4.12.3/rlp-4.12.3.pom (1.7 kB at 5.8 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/io/consensys/protocols/jc-kzg-4844/2.0.0/jc-kzg-4844-2.0.0.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/jcodec/jcodec/0.2.5/jcodec-0.2.5.jar (2.1 MB at 1.5 MB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/jcodec/jcodec-javase/0.2.5/jcodec-javase-0.2.5.jar
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/io/consensys/protocols/jc-kzg-4844/2.0.0/jc-kzg-4844-2.0.0.pom (1.5 kB at 5.1 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/io/tmio/tuweni-bytes/2.4.2/tuweni-bytes-2.4.2.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/jcodec/jcodec-javase/0.2.5/jcodec-javase-0.2.5.jar (14 kB at 58 kB/s)
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ file-service ---
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/io/tmio/tuweni-bytes/2.4.2/tuweni-bytes-2.4.2.pom (2.4 kB at 8.6 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/connid/framework/1.3.2/framework-1.3.2.pom
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ file-service ---
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/connid/framework/1.3.2/framework-1.3.2.pom (2.5 kB at 8.8 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/connid/connid/1.3.2/connid-1.3.2.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/connid/connid/1.3.2/connid-1.3.2.pom (10 kB at 35 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/connid/framework-internal/1.3.2/framework-internal-1.3.2.pom
+[INFO] Nothing to compile - all classes are up to date
+[INFO] Nothing to compile - all classes are up to date
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/connid/framework-internal/1.3.2/framework-internal-1.3.2.pom (5.8 kB at 21 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-stdlib-jdk8/1.9.23/kotlin-stdlib-jdk8-1.9.23.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-stdlib-jdk8/1.9.23/kotlin-stdlib-jdk8-1.9.23.pom (1.6 kB at 5.7 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-stdlib/1.9.23/kotlin-stdlib-1.9.23.pom
+[INFO] Nothing to compile - all classes are up to date
+[INFO] Nothing to compile - all classes are up to date
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-stdlib/1.9.23/kotlin-stdlib-1.9.23.pom (2.8 kB at 10 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/jetbrains/annotations/13.0/annotations-13.0.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/jetbrains/annotations/13.0/annotations-13.0.pom (4.9 kB at 18 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-stdlib-jdk7/1.9.23/kotlin-stdlib-jdk7-1.9.23.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-stdlib-jdk7/1.9.23/kotlin-stdlib-jdk7-1.9.23.pom (1.4 kB at 4.9 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/io/tmio/tuweni-units/2.4.2/tuweni-units-2.4.2.pom
+[INFO] Nothing to compile - all classes are up to date
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/io/tmio/tuweni-units/2.4.2/tuweni-units-2.4.2.pom (1.9 kB at 6.6 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/web3j/tuples/4.12.3/tuples-4.12.3.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/web3j/tuples/4.12.3/tuples-4.12.3.pom (1.4 kB at 5.0 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/com/github/jnr/jnr-unixsocket/0.38.22/jnr-unixsocket-0.38.22.pom
+[INFO] Nothing to compile - all classes are up to date
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/com/github/jnr/jnr-unixsocket/0.38.22/jnr-unixsocket-0.38.22.pom (11 kB at 38 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/com/github/jnr/jnr-ffi/2.2.16/jnr-ffi-2.2.16.pom
+[INFO] Changes detected - recompiling the module! :input tree
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/com/github/jnr/jnr-ffi/2.2.16/jnr-ffi-2.2.16.pom (10 kB at 36 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/com/github/jnr/jffi/1.3.13/jffi-1.3.13.pom
+[INFO] Nothing to compile - all classes are up to date
+[INFO] Compiling 8 source files with javac [debug release 17] to target/classes
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/com/github/jnr/jffi/1.3.13/jffi-1.3.13.pom (12 kB at 43 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/ow2/asm/asm/9.2/asm-9.2.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/ow2/asm/asm/9.2/asm-9.2.pom (2.4 kB at 8.5 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/ow2/ow2/1.5/ow2-1.5.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/ow2/ow2/1.5/ow2-1.5.pom (11 kB at 38 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/ow2/asm/asm-commons/9.2/asm-commons-9.2.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/ow2/asm/asm-commons/9.2/asm-commons-9.2.pom (3.0 kB at 10 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/ow2/asm/asm-tree/9.2/asm-tree-9.2.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/ow2/asm/asm-tree/9.2/asm-tree-9.2.pom (2.6 kB at 9.3 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/ow2/asm/asm-analysis/9.2/asm-analysis-9.2.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/ow2/asm/asm-analysis/9.2/asm-analysis-9.2.pom (2.6 kB at 9.1 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/ow2/asm/asm-util/9.2/asm-util-9.2.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/ow2/asm/asm-util/9.2/asm-util-9.2.pom (2.9 kB at 11 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/com/github/jnr/jnr-a64asm/1.0.0/jnr-a64asm-1.0.0.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/com/github/jnr/jnr-a64asm/1.0.0/jnr-a64asm-1.0.0.pom (2.5 kB at 9.1 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/com/github/jnr/jnr-x86asm/1.0.2/jnr-x86asm-1.0.2.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/com/github/jnr/jnr-x86asm/1.0.2/jnr-x86asm-1.0.2.pom (1.6 kB at 5.8 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/com/github/jnr/jnr-constants/0.10.4/jnr-constants-0.10.4.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/com/github/jnr/jnr-constants/0.10.4/jnr-constants-0.10.4.pom (4.4 kB at 15 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/com/github/jnr/jnr-enxio/0.32.17/jnr-enxio-0.32.17.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/com/github/jnr/jnr-enxio/0.32.17/jnr-enxio-0.32.17.pom (4.8 kB at 17 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/com/github/jnr/jnr-posix/3.1.19/jnr-posix-3.1.19.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/com/github/jnr/jnr-posix/3.1.19/jnr-posix-3.1.19.pom (7.6 kB at 27 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/com/squareup/okhttp3/okhttp/4.12.0/okhttp-4.12.0.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/com/squareup/okhttp3/okhttp/4.12.0/okhttp-4.12.0.pom (1.8 kB at 6.5 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/com/squareup/okio/okio/3.6.0/okio-3.6.0.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/com/squareup/okio/okio/3.6.0/okio-3.6.0.pom (1.7 kB at 6.0 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/com/squareup/okio/okio-jvm/3.6.0/okio-jvm-3.6.0.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/com/squareup/okio/okio-jvm/3.6.0/okio-jvm-3.6.0.pom (1.9 kB at 6.9 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-stdlib-common/1.9.23/kotlin-stdlib-common-1.9.23.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-stdlib-common/1.9.23/kotlin-stdlib-common-1.9.23.pom (1.8 kB at 6.3 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/com/squareup/okhttp3/logging-interceptor/4.12.0/logging-interceptor-4.12.0.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/com/squareup/okhttp3/logging-interceptor/4.12.0/logging-interceptor-4.12.0.pom (1.9 kB at 6.6 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/io/reactivex/rxjava2/rxjava/2.2.21/rxjava-2.2.21.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/io/reactivex/rxjava2/rxjava/2.2.21/rxjava-2.2.21.pom (2.4 kB at 8.3 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/java-websocket/Java-WebSocket/1.5.6/Java-WebSocket-1.5.6.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/java-websocket/Java-WebSocket/1.5.6/Java-WebSocket-1.5.6.pom (14 kB at 51 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/io/github/adraffy/ens-normalize/0.2.0/ens-normalize-0.2.0.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/io/github/adraffy/ens-normalize/0.2.0/ens-normalize-0.2.0.pom (1.5 kB at 5.2 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/kms/2.27.24/kms-2.27.24.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/kms/2.27.24/kms-2.27.24.pom (2.5 kB at 9.0 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/services/2.27.24/services-2.27.24.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/services/2.27.24/services-2.27.24.pom (24 kB at 84 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/aws-sdk-java-pom/2.27.24/aws-sdk-java-pom-2.27.24.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/aws-sdk-java-pom/2.27.24/aws-sdk-java-pom-2.27.24.pom (80 kB at 273 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/bom-internal/2.27.24/bom-internal-2.27.24.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/bom-internal/2.27.24/bom-internal-2.27.24.pom (21 kB at 16 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/aws-json-protocol/2.27.24/aws-json-protocol-2.27.24.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/aws-json-protocol/2.27.24/aws-json-protocol-2.27.24.pom (4.4 kB at 16 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/protocols/2.27.24/protocols-2.27.24.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/protocols/2.27.24/protocols-2.27.24.pom (1.6 kB at 5.7 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/core/2.27.24/core-2.27.24.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/core/2.27.24/core-2.27.24.pom (2.6 kB at 9.3 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/aws-core/2.27.24/aws-core-2.27.24.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/aws-core/2.27.24/aws-core-2.27.24.pom (8.8 kB at 31 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/annotations/2.27.24/annotations-2.27.24.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/annotations/2.27.24/annotations-2.27.24.pom (1.7 kB at 6.0 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/regions/2.27.24/regions-2.27.24.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/regions/2.27.24/regions-2.27.24.pom (5.6 kB at 20 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/utils/2.27.24/utils-2.27.24.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/utils/2.27.24/utils-2.27.24.pom (5.1 kB at 18 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/sdk-core/2.27.24/sdk-core-2.27.24.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/sdk-core/2.27.24/sdk-core-2.27.24.pom (13 kB at 46 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/http-client-spi/2.27.24/http-client-spi-2.27.24.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/http-client-spi/2.27.24/http-client-spi-2.27.24.pom (4.3 kB at 16 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/metrics-spi/2.27.24/metrics-spi-2.27.24.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/metrics-spi/2.27.24/metrics-spi-2.27.24.pom (3.7 kB at 13 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/endpoints-spi/2.27.24/endpoints-spi-2.27.24.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/endpoints-spi/2.27.24/endpoints-spi-2.27.24.pom (2.6 kB at 9.3 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/http-auth-spi/2.27.24/http-auth-spi-2.27.24.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/http-auth-spi/2.27.24/http-auth-spi-2.27.24.pom (3.7 kB at 13 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/identity-spi/2.27.24/identity-spi-2.27.24.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/identity-spi/2.27.24/identity-spi-2.27.24.pom (3.0 kB at 11 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/http-auth-aws/2.27.24/http-auth-aws-2.27.24.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/http-auth-aws/2.27.24/http-auth-aws-2.27.24.pom (6.1 kB at 22 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/checksums-spi/2.27.24/checksums-spi-2.27.24.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/checksums-spi/2.27.24/checksums-spi-2.27.24.pom (2.2 kB at 7.8 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/checksums/2.27.24/checksums-2.27.24.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/checksums/2.27.24/checksums-2.27.24.pom (2.5 kB at 9.1 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/profiles/2.27.24/profiles-2.27.24.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/profiles/2.27.24/profiles-2.27.24.pom (2.9 kB at 11 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/retries-spi/2.27.24/retries-spi-2.27.24.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/retries-spi/2.27.24/retries-spi-2.27.24.pom (2.5 kB at 9.1 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/retries/2.27.24/retries-2.27.24.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/retries/2.27.24/retries-2.27.24.pom (2.6 kB at 9.3 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/json-utils/2.27.24/json-utils-2.27.24.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/json-utils/2.27.24/json-utils-2.27.24.pom (3.5 kB at 13 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/third-party-jackson-core/2.27.24/third-party-jackson-core-2.27.24.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/third-party-jackson-core/2.27.24/third-party-jackson-core-2.27.24.pom (4.5 kB at 16 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/third-party/2.27.24/third-party-2.27.24.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/third-party/2.27.24/third-party-2.27.24.pom (2.5 kB at 8.9 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/auth/2.27.24/auth-2.27.24.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/auth/2.27.24/auth-2.27.24.pom (8.6 kB at 31 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/http-auth-aws-eventstream/2.27.24/http-auth-aws-eventstream-2.27.24.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/http-auth-aws-eventstream/2.27.24/http-auth-aws-eventstream-2.27.24.pom (3.0 kB at 11 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/software/amazon/eventstream/eventstream/1.0.1/eventstream-1.0.1.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/software/amazon/eventstream/eventstream/1.0.1/eventstream-1.0.1.pom (6.1 kB at 22 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/http-auth/2.27.24/http-auth-2.27.24.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/http-auth/2.27.24/http-auth-2.27.24.pom (3.3 kB at 12 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/protocol-core/2.27.24/protocol-core-2.27.24.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/protocol-core/2.27.24/protocol-core-2.27.24.pom (3.2 kB at 12 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/apache-client/2.27.24/apache-client-2.27.24.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/apache-client/2.27.24/apache-client-2.27.24.pom (4.1 kB at 13 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/http-clients/2.27.24/http-clients-2.27.24.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/http-clients/2.27.24/http-clients-2.27.24.pom (1.8 kB at 6.4 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/commons-logging/commons-logging/1.2/commons-logging-1.2.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/commons-logging/commons-logging/1.2/commons-logging-1.2.pom (19 kB at 67 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/apache/commons/commons-parent/34/commons-parent-34.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/apache/commons/commons-parent/34/commons-parent-34.pom (56 kB at 192 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/netty-nio-client/2.27.24/netty-nio-client-2.27.24.pom
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/software/amazon/awssdk/netty-nio-client/2.27.24/netty-nio-client-2.27.24.pom (8.3 kB at 30 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/web3j/core/4.12.3/core-4.12.3.jar
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/web3j/core/4.12.3/core-4.12.3.jar (426 kB at 380 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/web3j/abi/4.12.3/abi-4.12.3.jar
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/web3j/utils/4.12.3/utils-4.12.3.jar
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/bouncycastle/bcprov-jdk18on/1.78.1/bcprov-jdk18on-1.78.1.jar
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/web3j/crypto/4.12.3/crypto-4.12.3.jar
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/web3j/rlp/4.12.3/rlp-4.12.3.jar
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/web3j/abi/4.12.3/abi-4.12.3.jar (170 kB at 461 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/io/consensys/protocols/jc-kzg-4844/2.0.0/jc-kzg-4844-2.0.0.jar
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/web3j/rlp/4.12.3/rlp-4.12.3.jar (6.0 kB at 8.7 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/web3j/tuples/4.12.3/tuples-4.12.3.jar
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/web3j/utils/4.12.3/utils-4.12.3.jar (17 kB at 20 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/com/github/jnr/jnr-unixsocket/0.38.22/jnr-unixsocket-0.38.22.jar
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/bouncycastle/bcprov-jdk18on/1.78.1/bcprov-jdk18on-1.78.1.jar (8.3 MB at 9.7 MB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/com/github/jnr/jnr-ffi/2.2.16/jnr-ffi-2.2.16.jar
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/io/consensys/protocols/jc-kzg-4844/2.0.0/jc-kzg-4844-2.0.0.jar (522 kB at 575 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/com/github/jnr/jffi/1.3.13/jffi-1.3.13.jar
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/web3j/tuples/4.12.3/tuples-4.12.3.jar (46 kB at 48 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/ow2/asm/asm/9.2/asm-9.2.jar
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/com/github/jnr/jnr-unixsocket/0.38.22/jnr-unixsocket-0.38.22.jar (48 kB at 44 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/ow2/asm/asm-commons/9.2/asm-commons-9.2.jar
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/com/github/jnr/jffi/1.3.13/jffi-1.3.13.jar (162 kB at 134 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/ow2/asm/asm-analysis/9.2/asm-analysis-9.2.jar
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/ow2/asm/asm-commons/9.2/asm-commons-9.2.jar (73 kB at 55 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/ow2/asm/asm-tree/9.2/asm-tree-9.2.jar
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/ow2/asm/asm/9.2/asm-9.2.jar (122 kB at 84 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/ow2/asm/asm-util/9.2/asm-util-9.2.jar
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/ow2/asm/asm-analysis/9.2/asm-analysis-9.2.jar (34 kB at 23 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/com/github/jnr/jnr-a64asm/1.0.0/jnr-a64asm-1.0.0.jar
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/web3j/crypto/4.12.3/crypto-4.12.3.jar (544 kB at 354 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/com/github/jnr/jnr-x86asm/1.0.2/jnr-x86asm-1.0.2.jar
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/ow2/asm/asm-tree/9.2/asm-tree-9.2.jar (53 kB at 34 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/com/github/jnr/jnr-constants/0.10.4/jnr-constants-0.10.4.jar
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/com/github/jnr/jnr-a64asm/1.0.0/jnr-a64asm-1.0.0.jar (86 kB at 48 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/com/github/jnr/jnr-enxio/0.32.17/jnr-enxio-0.32.17.jar
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/com/github/jnr/jnr-x86asm/1.0.2/jnr-x86asm-1.0.2.jar (220 kB at 119 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/com/github/jnr/jnr-posix/3.1.19/jnr-posix-3.1.19.jar
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/com/github/jnr/jnr-constants/0.10.4/jnr-constants-0.10.4.jar (1.6 MB at 828 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/com/squareup/okhttp3/okhttp/4.12.0/okhttp-4.12.0.jar
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/ow2/asm/asm-util/9.2/asm-util-9.2.jar (85 kB at 43 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/com/squareup/okio/okio/3.6.0/okio-3.6.0.jar
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/com/github/jnr/jnr-enxio/0.32.17/jnr-enxio-0.32.17.jar (34 kB at 17 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/com/squareup/okio/okio-jvm/3.6.0/okio-jvm-3.6.0.jar
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/com/squareup/okhttp3/okhttp/4.12.0/okhttp-4.12.0.jar (790 kB at 361 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-stdlib-common/1.9.23/kotlin-stdlib-common-1.9.23.jar
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/com/github/jnr/jnr-posix/3.1.19/jnr-posix-3.1.19.jar (281 kB at 128 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-stdlib-jdk8/1.9.23/kotlin-stdlib-jdk8-1.9.23.jar
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/com/github/jnr/jnr-ffi/2.2.16/jnr-ffi-2.2.16.jar (730 kB at 332 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-stdlib/1.9.23/kotlin-stdlib-1.9.23.jar
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/com/squareup/okio/okio/3.6.0/okio-3.6.0.jar (26 kB at 12 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/jetbrains/annotations/13.0/annotations-13.0.jar
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/com/squareup/okio/okio-jvm/3.6.0/okio-jvm-3.6.0.jar (360 kB at 149 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-stdlib-jdk7/1.9.23/kotlin-stdlib-jdk7-1.9.23.jar
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-stdlib-common/1.9.23/kotlin-stdlib-common-1.9.23.jar (227 kB at 94 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/com/squareup/okhttp3/logging-interceptor/4.12.0/logging-interceptor-4.12.0.jar
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-stdlib-jdk8/1.9.23/kotlin-stdlib-jdk8-1.9.23.jar (968 B at 397 B/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/io/reactivex/rxjava2/rxjava/2.2.21/rxjava-2.2.21.jar
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/jetbrains/annotations/13.0/annotations-13.0.jar (18 kB at 7.1 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/java-websocket/Java-WebSocket/1.5.6/Java-WebSocket-1.5.6.jar
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/com/squareup/okhttp3/logging-interceptor/4.12.0/logging-interceptor-4.12.0.jar (16 kB at 5.9 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/io/github/adraffy/ens-normalize/0.2.0/ens-normalize-0.2.0.jar
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-stdlib-jdk7/1.9.23/kotlin-stdlib-jdk7-1.9.23.jar (961 B at 358 B/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/io/tmio/tuweni-bytes/2.4.2/tuweni-bytes-2.4.2.jar
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/io/github/adraffy/ens-normalize/0.2.0/ens-normalize-0.2.0.jar (62 kB at 21 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/connid/framework/1.3.2/framework-1.3.2.jar
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/io/tmio/tuweni-bytes/2.4.2/tuweni-bytes-2.4.2.jar (68 kB at 23 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/org/connid/framework-internal/1.3.2/framework-internal-1.3.2.jar
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/java-websocket/Java-WebSocket/1.5.6/Java-WebSocket-1.5.6.jar (140 kB at 46 kB/s)
+[INFO] Downloading from central: https://repo.maven.apache.org/maven2/io/tmio/tuweni-units/2.4.2/tuweni-units-2.4.2.jar
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/connid/framework/1.3.2/framework-1.3.2.jar (178 kB at 57 kB/s)
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/connid/framework-internal/1.3.2/framework-internal-1.3.2.jar (301 kB at 91 kB/s)
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/io/tmio/tuweni-units/2.4.2/tuweni-units-2.4.2.jar (62 kB at 19 kB/s)
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-stdlib/1.9.23/kotlin-stdlib-1.9.23.jar (1.7 MB at 462 kB/s)
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/io/reactivex/rxjava2/rxjava/2.2.21/rxjava-2.2.21.jar (2.4 MB at 569 kB/s)
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ blockchain-service ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 3 resources from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ blockchain-service ---
+[INFO] Changes detected - recompiling the module! :input tree
+[INFO] Compiling 14 source files with javac [debug release 17] to target/classes
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary for pork-traceability-backend 1.0-SNAPSHOT:
+[INFO] 
+[INFO] pork-traceability-backend .......................... SUCCESS [  0.033 s]
+[INFO] common-core ........................................ SUCCESS [  1.594 s]
+[INFO] common-security .................................... SUCCESS [  1.381 s]
+[INFO] common-web ......................................... SUCCESS [  2.978 s]
+[INFO] common-mq .......................................... SUCCESS [  1.406 s]
+[INFO] gateway-service .................................... SUCCESS [  2.601 s]
+[INFO] auth-service ....................................... SUCCESS [  5.141 s]
+[INFO] breeding-service ................................... SUCCESS [  7.253 s]
+[INFO] slaughter-service .................................. SUCCESS [  6.592 s]
+[INFO] distribution-service ............................... SUCCESS [  4.763 s]
+[INFO] sales-service ...................................... SUCCESS [  4.734 s]
+[INFO] ingest-service ..................................... SUCCESS [  6.124 s]
+[INFO] trace-service ...................................... SUCCESS [  5.203 s]
+[INFO] blockchain-service ................................. SUCCESS [ 48.041 s]
+[INFO] file-service ....................................... SUCCESS [ 17.292 s]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  53.698 s (Wall Clock)
+[INFO] Finished at: 2026-10-03T09:06:50Z
+[INFO] ------------------------------------------------------------------------
+EXIT=0

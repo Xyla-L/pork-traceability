@@ -15,7 +15,7 @@
  *   4 异常温度保留 —— 5℃ 超区间仍入账并标记 is_abnormal=1（不做降采样丢弃）
  *   5 高频降采样   —— 非异常值按最小间隔丢弃，但留档可查
  *   6 仪器未出结果 —— 瘦肉精只推耳标不推结果，必须拒绝（不得默认阴性）
- *   7 降级可用    —— 设备通道异常不影响人工录入入口（这里验证人工接口仍可达）
+ *   7 采集边界    —— 采集环节的人工新增端点已整条下线，只认设备通道
  *   8 入场查验    —— 检疫证核验未过不自动入账、转人工；人工确认后才写业务表
  *   9 门店收银    —— POS 扫码售出，零售记录来源标记为 DEVICE
  *  10 门店签收    —— PDA 签收生成签收单，并把运单推进到「已签收」
@@ -205,11 +205,30 @@ async function main() {
     }
   }
 
-  // ------------------------------------------------ 7 降级：人工入口仍然可用
+  // ---------------------------------------- 7 采集边界：人工新增入口已下线
+  // 设备通道是采集类数据的唯一写入路径：8 个采集环节的人工新增端点已整条删除，
+  // POST 到这些路径只会撞上 405（路径只剩 GET，写方法在方法匹配阶段就被排除）。
   {
-    const res = await api('/slaughter/entries?pageNum=1&pageSize=1')
-    record(7, '降级可用：设备通道异常时人工录入入口不受影响', res.code === 200,
-      `人工入口 GET /slaughter/entries → code=${res.code} total=${res.data?.total}（说明原有手工流程未被接入层改动波及）`)
+    const probes = [
+      ['/slaughter/entries', '入场查验'],
+      ['/slaughter/ractopamine', '瘦肉精'],
+      ['/slaughter/inspections', '屠宰检验'],
+      ['/slaughter/stamps', '胴体盖章'],
+      ['/breeding/pigs', '养殖建档'],
+      ['/distribution/splits', '分割批次'],
+    ]
+    const details = []
+    let allGone = true
+    for (const [path, label] of probes) {
+      const res = await api(path, { method: 'POST', body: JSON.stringify({}) })
+      // Spring 抛 405 语义的 HttpRequestMethodNotSupportedException，
+      // 但项目的全局异常处理器会把它包装成 HTTP 200 + code=5000，两种形态都算"端点已下线"
+      const gone = [404, 405].includes(Number(res.httpStatus)) || Number(res.code) === 5000
+      if (!gone) allGone = false
+      details.push(`${label}=${res.httpStatus}/${res.code}`)
+    }
+    record(7, '采集边界：采集环节的人工新增端点已下线（只认设备通道）', allGone,
+      `POST 探测 ${details.join('，')}（期望全部 405：路径只剩 GET，写方法已删除）`)
   }
 
   // ==========================================================================
@@ -242,10 +261,15 @@ async function main() {
         `${resp.data?.statusLabel}；entry_inspection ${before} → ${after}（须不变）；原因：${resp.data?.message}`)
 
       // 8b 人工确认放行——这一步才允许写业务表，且来源必须标成 DEVICE
+      // 注意：入场查验是设备独占环节，人工复核放行必须实名 + 写明放行理由（来源管控要求，
+      // 理由字段名是 remark），否则会被 code=1002/3001 拦下，这里必须一起传。
       if (resp.data?.stagingId) {
         const approve = await api(`/ingest/staging/${resp.data.stagingId}/approve`, {
           method: 'POST',
-          body: JSON.stringify({ handler: '验收测试' }),
+          body: JSON.stringify({
+            handler: '验收测试',
+            remark: '验收测试：设备上报的入场查验因检疫证核验未通过转人工，经核对纸质检疫证与生猪耳标一致，人工放行',
+          }),
         })
         const afterApprove = await entryTotal()
         const rows = firstPage(await api('/slaughter/entries?pageNum=1&pageSize=1'))
@@ -362,6 +386,8 @@ async function main() {
     } else {
       const resp = await report('dev-key-tag-001', 'TAG', bizKey('TAG'), {
         earTagNo, farmName, breed: '三元杂', gender: 1, penNo: '验收舍', origin: '自繁',
+        // 设备建档也要带上出生日期：留空会让档案出生日期缺失，列表只能显示占位符
+        birthDate: new Date(Date.now() - 180 * 86400000).toISOString().slice(0, 10),
       })
       const rows = firstPage(await api(`/breeding/pigs?pageNum=1&pageSize=20&earTagNo=${encodeURIComponent(earTagNo)}`))
       const row = rows[0]
@@ -371,11 +397,12 @@ async function main() {
         earTagNo, farmName, breed: '三元杂', gender: 1,
       })
       const archives = firstPage(await api(`/breeding/pigs?pageNum=1&pageSize=20&earTagNo=${encodeURIComponent(earTagNo)}`))
-      record(11, '养殖建档：佩戴即建档、来源标记 DEVICE、同耳标幂等',
+      record(11, '养殖建档：佩戴即建档、来源标记 DEVICE、同耳标幂等、出生日期落库',
         badFarm.data?.status === 1 && resp.data?.accepted === true && row?.dataSource === 'DEVICE'
-          && again.data?.accepted === true && archives.length === 1,
+          && again.data?.accepted === true && archives.length === 1 && !!row?.birthDate,
         `未登记场 → ${badFarm.data?.statusLabel}；建档 → ${resp.data?.statusLabel}；` +
-        `pig_individual.dataSource=${row?.dataSource}；重复上报 → ${again.data?.statusLabel}，` +
+        `pig_individual.dataSource=${row?.dataSource}；出生日期=${row?.birthDate || '空'}；` +
+        `重复上报 → ${again.data?.statusLabel}，` +
         `同耳标档案数=${archives.length}（期望 1）`)
     }
   }

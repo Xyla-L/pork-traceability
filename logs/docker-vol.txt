@@ -1,0 +1,23 @@
+﻿DRIVER    VOLUME NAME
+local     pork-m2
+local     pork-m2-cache
+local     pork-traceability_mysql-data
+local     pork-traceability_rabbitmq-data
+local     pork-traceability_redis-data
+pork-traceability-distribution-service:latest
+pork-traceability-gateway-service:latest
+pork-traceability-auth-service:latest
+pork-traceability-ingest-service:latest
+pork-traceability-slaughter-service:latest
+pork-traceability-breeding-service:latest
+pork-traceability-file-service:latest
+pork-traceability-blockchain-service:latest
+pork-traceability-trace-service:latest
+pork-traceability-sales-service:latest
+mysql:8.4
+redis:7.4-alpine
+rabbitmq:3.13-management-alpine
+nginx:1.27-alpine
+maven:3.9.9-eclipse-temurin-17
+nacos/nacos-server:v2.4.3
+trufflesuite/ganache:v7.9.2

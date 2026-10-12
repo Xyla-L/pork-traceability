@@ -64,7 +64,8 @@ public class ReceiptChannelHandler implements ChannelHandler {
         body.put("transportId", Payloads.integer(data, "transportId"));
         body.put("storeId", Payloads.integer(data, "storeId"));
         body.put("storeName", Payloads.str(data, "storeName"));
-        body.put("receiver", receiver == null ? ctx.deviceLabel() : receiver);
+        // 人工放行（force）时同样拿不到签收人姓名，如实记「未记录」——签收人只能是人，不能用设备名顶替
+        body.put("receiver", receiver == null ? "未记录" : receiver);
         body.put("receiverPhone", Payloads.str(data, "receiverPhone"));
         body.put("qtyCheck", Payloads.flag(data, "qtyCheck", 1));
         body.put("qtyDiffNote", Payloads.str(data, "qtyDiffNote"));

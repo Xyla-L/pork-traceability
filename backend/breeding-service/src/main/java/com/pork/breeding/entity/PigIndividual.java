@@ -83,9 +83,9 @@ public class PigIndividual {
     private String rawPayload;
 
     /**
-     * 逻辑删除标记 (0-未删除, 1-已删除)
+     * 历史逻辑删除标记。已由 void_flag 统一承接「不再生效」语义（见 16-void-and-fallback.sql），
+     * 本列保留仅为兼容历史数据，新代码一律使用 voidFlag。
      */
-    @TableLogic
     private Integer deleted;
 
     /**
@@ -97,4 +97,14 @@ public class PigIndividual {
      * 更新时间
      */
     private LocalDateTime updateTime;
+
+    /** 作废标记：0=有效 1=已作废（同时是 MyBatis-Plus 逻辑删除标记，查询默认只取有效记录） */
+    @TableLogic(value = "0", delval = "1")
+    private Integer voidFlag;
+    /** 作废理由（必填），随作废事件一并上链 */
+    private String voidReason;
+    /** 作废操作人（实名） */
+    private String voidOperator;
+    /** 作废时间 */
+    private LocalDateTime voidTime;
 }

@@ -30,6 +30,9 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/login", "/auth/register", "/auth/refresh", "/actuator/health", "/doc.html/**", "/v3/api-docs/**", "/swagger-ui/**").permitAll()
+                        // 服务间内部接口：仅供业务服务容器内直连调用（如养殖场档案同步登记机构）。
+                        // 网关侧已显式屏蔽 /api/v1/auth/internal/**，外部无法从这里越权登记机构。
+                        .requestMatchers("/auth/internal/**").permitAll()
                         // 机构树是各业务页面的公共基础数据（养殖场/门店下拉），登录即可读
                         .requestMatchers("/system/orgs/tree").authenticated()
                         .requestMatchers("/system/**").hasRole("ADMIN")

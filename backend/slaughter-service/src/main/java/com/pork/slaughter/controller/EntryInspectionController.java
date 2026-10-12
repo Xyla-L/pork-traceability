@@ -6,6 +6,7 @@ import com.pork.core.result.Result;
 import com.pork.slaughter.dto.EntryInspectionDTO;
 import com.pork.slaughter.service.EntryInspectionService;
 import com.pork.slaughter.vo.EntryInspectionVO;
+import com.pork.web.source.VoidRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,28 +19,16 @@ public class EntryInspectionController {
 
     private final EntryInspectionService entryInspectionService;
 
-    /**
-     * 新增入场查验记录
-     */
-    @PostMapping
-    public Result<Boolean> addEntry(@Valid @RequestBody EntryInspectionDTO dto) {
-        return Result.success(entryInspectionService.addEntry(dto));
-    }
+    /* 人工新增入口已删除：入场查验为设备独占环节，数据只接受闸口设备通道上报，
+       设备报文异常走「设备接入 → 待人工处理」实名复核，不再提供人工补录接口。 */
+
 
     /**
-     * 修改入场查验记录
+     * 作废入场查验记录：不再提供物理删除——链上已有哈希，删掉记录等于让追溯链断在这里
      */
-    @PutMapping("/{id}")
-    public Result<Boolean> updateEntry(@PathVariable Long id, @Valid @RequestBody EntryInspectionDTO dto) {
-        return Result.success(entryInspectionService.updateEntry(id, dto));
-    }
-
-    /**
-     * 删除入场查验记录
-     */
-    @DeleteMapping("/{id}")
-    public Result<Boolean> deleteEntry(@PathVariable Long id) {
-        return Result.success(entryInspectionService.deleteEntry(id));
+    @PostMapping("/{id}/void")
+    public Result<Boolean> voidEntry(@PathVariable Long id, @Valid @RequestBody VoidRequest request) {
+        return Result.success(entryInspectionService.voidEntry(id, request.getReason()));
     }
 
     /**

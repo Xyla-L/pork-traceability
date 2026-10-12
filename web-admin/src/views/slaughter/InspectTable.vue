@@ -16,7 +16,9 @@
         </template>
       </el-table-column>
       <el-table-column prop="inspectTime" label="检验时间" min-width="160" align="center" />
-      <el-table-column prop="veterinary" label="检验员" min-width="100" align="center" />
+      <el-table-column prop="veterinary" label="检验员" min-width="100" align="center">
+        <template #default="{ row }">{{ row.veterinary || '未记录' }}</template>
+      </el-table-column>
       <el-table-column prop="temperature" label="体温(°C)" min-width="100" align="center">
         <template #default="{ row }">
           {{ row.temperature === null || row.temperature === undefined || row.temperature === '' ? '--' : row.temperature }}
@@ -27,10 +29,10 @@
           <el-tag :type="inspectStatusTag(row.status)" size="small">{{ inspectStatusLabel(row.status) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="source" label="数据来源" min-width="120" align="center">
+      <el-table-column prop="source" label="采集设备" min-width="140" align="center">
         <template #default="{ row }">
-          <el-tooltip :content="row.source === 'DEVICE' ? `工位终端录入：${row.sourceRef || '--'}` : '人工录入'" placement="top">
-            <el-tag :type="sourceTag(row.source)" size="small" effect="plain">{{ sourceLabel(row.source) }}</el-tag>
+          <el-tooltip :content="row.source === 'DEVICE' ? `工位终端录入：${row.sourceRef || '--'}` : sourceLabel(row.source)" placement="top">
+            <el-tag :type="sourceTag(row.source)" size="small" effect="plain">{{ deviceText(row) }}</el-tag>
           </el-tooltip>
         </template>
       </el-table-column>
@@ -55,7 +57,8 @@
         <el-descriptions-item label="检验类型">{{ inspectTypeLabel(currentView.inspectType) }}</el-descriptions-item>
         <el-descriptions-item label="检验时间">{{ currentView.inspectTime }}</el-descriptions-item>
         <el-descriptions-item label="体温(°C)">{{ currentView.temperature ?? '--' }}</el-descriptions-item>
-        <el-descriptions-item label="官方兽医">{{ currentView.veterinary }}</el-descriptions-item>
+        <el-descriptions-item label="官方兽医">{{ currentView.veterinary || '未记录' }}</el-descriptions-item>
+        <el-descriptions-item label="采集设备">{{ deviceText(currentView) }}</el-descriptions-item>
         <el-descriptions-item label="状态">
           <el-tag :type="inspectStatusTag(currentView.status)" size="small">{{ inspectStatusLabel(currentView.status) }}</el-tag>
         </el-descriptions-item>
@@ -78,7 +81,9 @@
 <script setup>
 import { ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { sourceLabel, sourceTag } from '@/api/modules/ingest'
+import { deviceText, sourceLabel, sourceTag } from '@/api/modules/ingest'
+import { slaughterApi } from '@/api/modules/slaughter'
+import { confirmVoid } from '@/composables/useVoidAction'
 import request from '@/utils/request'
 
 defineProps({
@@ -110,31 +115,23 @@ const handleView = async (row) => {
   }
 }
 
-// 检验类型：1=宰前 2=宰后
-const inspectTypeLabel = (t) => ({ 1: '宰前检验', 2: '宰后检验' }[t] ?? t ?? '--')
+// 检验类型：1=宰前 2=宰后 3=宰后（同步）
+// 2 和 3 按法规口径是同一个环节——《动物检疫管理办法》第二十条「动物屠宰过程实行全流程同步检疫」，
+// 宰后检疫的标准做法就是同步检疫，3 只是记录上标明「这次按同步方式做」
+const inspectTypeLabel = (t) => ({ 1: '宰前检验', 2: '宰后检验', 3: '宰后检验（同步）' }[t] ?? t ?? '--')
 // 状态：0=待检验 1=合格 2=不合格 3=已作废
 const inspectStatusLabel = (s) => ({ 0: '待检验', 1: '合格', 2: '不合格', 3: '已作废' }[s] ?? '--')
 const inspectStatusTag = (s) => ({ 0: 'info', 1: 'success', 2: 'danger', 3: 'info' }[s] ?? 'info')
 
 // 作废：检验记录已上链，不支持物理删除，输错信息请作废后重新录入
-const emit = defineEmits(['voided', 'edit'])
+const emit = defineEmits(['voided'])
 const handleVoid = async (row) => {
-  try {
-    await ElMessageBox.confirm(
-      `确认作废检验记录 ${row.inspectNo || ''} 吗？作废动作将上链存证，且不可恢复。如信息录入有误，请作废后重新新增。`,
-      '作废确认',
-      { confirmButtonText: '确认作废', cancelButtonText: '取消', type: 'warning' }
-    )
-  } catch {
-    return
-  }
-  try {
-    await request.put(`/slaughter/inspections/${row.id}/void`)
-    ElMessage.success('已作废，作废存证已上链')
-    emit('voided')
-  } catch (e) {
-    console.error('作废失败:', e)
-  }
+  const ok = await confirmVoid({
+    title: '作废屠宰检验记录',
+    message: `确认作废检验记录 ${row.inspectNo || ''} 吗？作废后该结论不再生效，作废凭据上链且不可撤销；录入有误请作废后重新录入。`,
+    onConfirm: (reason) => slaughterApi.voidInspection(row.id, reason),
+  })
+  if (ok) emit('voided')
 }
 </script>
 

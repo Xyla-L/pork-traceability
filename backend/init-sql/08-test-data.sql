@@ -109,22 +109,25 @@ INSERT INTO slaughter_apply (pig_id, apply_no, apply_time, weight_kg, target_sla
 ON DUPLICATE KEY UPDATE approval_status=VALUES(approval_status);
 
 -- 产地检疫证明：已有1条，新增15条
+-- 注意：valid_until 曾用「+1~3 天」，库初始化一段时间后这些证会全部过期，
+-- 导致「入场查验」因检疫证核验不通过而永远走不到自动入账（演示链路断掉）。
+-- 这里给足效期（+180 天）；已建库的存量数据用 19-refresh-demo-certs.sql 顺延。
 INSERT INTO quarantine_certificate (pig_id, cert_no, issue_org, issue_time, valid_until, inspector, file_id, ca_signature, content_hash) VALUES
-(@pig1, 'QC-TEST-0001', '顺义区动物卫生监督所', DATE_SUB(NOW(), INTERVAL 19 DAY), DATE_ADD(CURDATE(), INTERVAL 1 DAY), '王兽医', 'test-cert-001', 'TEST-SIG-001', SHA2(CONCAT('QC-TEST-0001', @pig1), 256)),
-(@pig2, 'QC-TEST-0002', '顺义区动物卫生监督所', DATE_SUB(NOW(), INTERVAL 17 DAY), DATE_ADD(CURDATE(), INTERVAL 1 DAY), '王兽医', 'test-cert-002', 'TEST-SIG-002', SHA2(CONCAT('QC-TEST-0002', @pig2), 256)),
-(@pig3, 'QC-TEST-0003', '三河市动物卫生监督所', DATE_SUB(NOW(), INTERVAL 15 DAY), DATE_ADD(CURDATE(), INTERVAL 2 DAY), '赵兽医', 'test-cert-003', 'TEST-SIG-003', SHA2(CONCAT('QC-TEST-0003', @pig3), 256)),
-(@pig4, 'QC-TEST-0004', '顺义区动物卫生监督所', DATE_SUB(NOW(), INTERVAL 14 DAY), DATE_ADD(CURDATE(), INTERVAL 1 DAY), '王兽医', 'test-cert-004', 'TEST-SIG-004', SHA2(CONCAT('QC-TEST-0004', @pig4), 256)),
-(@pig5, 'QC-TEST-0005', '三河市动物卫生监督所', DATE_SUB(NOW(), INTERVAL 13 DAY), DATE_ADD(CURDATE(), INTERVAL 1 DAY), '赵兽医', 'test-cert-005', 'TEST-SIG-005', SHA2(CONCAT('QC-TEST-0005', @pig5), 256)),
-(@pig6, 'QC-TEST-0006', '武清区动物卫生监督所', DATE_SUB(NOW(), INTERVAL 11 DAY), DATE_ADD(CURDATE(), INTERVAL 3 DAY), '李兽医', 'test-cert-006', 'TEST-SIG-006', SHA2(CONCAT('QC-TEST-0006', @pig6), 256)),
-(@pig7, 'QC-TEST-0007', '密云区动物卫生监督所', DATE_SUB(NOW(), INTERVAL 9 DAY), DATE_ADD(CURDATE(), INTERVAL 3 DAY), '张兽医', 'test-cert-007', 'TEST-SIG-007', SHA2(CONCAT('QC-TEST-0007', @pig7), 256)),
-(@pig8, 'QC-TEST-0008', '香河县动物卫生监督所', DATE_SUB(NOW(), INTERVAL 8 DAY), DATE_ADD(CURDATE(), INTERVAL 2 DAY), '刘兽医', 'test-cert-008', 'TEST-SIG-008', SHA2(CONCAT('QC-TEST-0008', @pig8), 256)),
-(@pig9, 'QC-TEST-0009', '平谷区动物卫生监督所', DATE_SUB(NOW(), INTERVAL 6 DAY), DATE_ADD(CURDATE(), INTERVAL 3 DAY), '孙兽医', 'test-cert-009', 'TEST-SIG-009', SHA2(CONCAT('QC-TEST-0009', @pig9), 256)),
-(@pig10, 'QC-TEST-0010', '延庆区动物卫生监督所', DATE_SUB(NOW(), INTERVAL 5 DAY), DATE_ADD(CURDATE(), INTERVAL 2 DAY), '周兽医', 'test-cert-010', 'TEST-SIG-010', SHA2(CONCAT('QC-TEST-0010', @pig10), 256)),
-(@pig11, 'QC-TEST-0011', '涿州市动物卫生监督所', DATE_SUB(NOW(), INTERVAL 4 DAY), DATE_ADD(CURDATE(), INTERVAL 3 DAY), '吴兽医', 'test-cert-011', 'TEST-SIG-011', SHA2(CONCAT('QC-TEST-0011', @pig11), 256)),
-(@pig12, 'QC-TEST-0012', '蓟州区动物卫生监督所', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_ADD(CURDATE(), INTERVAL 2 DAY), '郑兽医', 'test-cert-012', 'TEST-SIG-012', SHA2(CONCAT('QC-TEST-0012', @pig12), 256)),
-(@pig13, 'QC-TEST-0013', '丰润区动物卫生监督所', DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_ADD(CURDATE(), INTERVAL 3 DAY), '王兽医', 'test-cert-013', 'TEST-SIG-013', SHA2(CONCAT('QC-TEST-0013', @pig13), 256)),
-(@pig14, 'QC-TEST-0014', '宝坻区动物卫生监督所', DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_ADD(CURDATE(), INTERVAL 2 DAY), '韩兽医', 'test-cert-014', 'TEST-SIG-014', SHA2(CONCAT('QC-TEST-0014', @pig14), 256)),
-(@pig15, 'QC-TEST-0015', '南口区动物卫生监督所', NOW(), DATE_ADD(CURDATE(), INTERVAL 3 DAY), '杨兽医', 'test-cert-015', 'TEST-SIG-015', SHA2(CONCAT('QC-TEST-0015', @pig15), 256))
+(@pig1, 'QC-TEST-0001', '顺义区动物卫生监督所', DATE_SUB(NOW(), INTERVAL 19 DAY), DATE_ADD(CURDATE(), INTERVAL 180 DAY), '王兽医', 'test-cert-001', 'TEST-SIG-001', SHA2(CONCAT('QC-TEST-0001', @pig1), 256)),
+(@pig2, 'QC-TEST-0002', '顺义区动物卫生监督所', DATE_SUB(NOW(), INTERVAL 17 DAY), DATE_ADD(CURDATE(), INTERVAL 180 DAY), '王兽医', 'test-cert-002', 'TEST-SIG-002', SHA2(CONCAT('QC-TEST-0002', @pig2), 256)),
+(@pig3, 'QC-TEST-0003', '三河市动物卫生监督所', DATE_SUB(NOW(), INTERVAL 15 DAY), DATE_ADD(CURDATE(), INTERVAL 180 DAY), '赵兽医', 'test-cert-003', 'TEST-SIG-003', SHA2(CONCAT('QC-TEST-0003', @pig3), 256)),
+(@pig4, 'QC-TEST-0004', '顺义区动物卫生监督所', DATE_SUB(NOW(), INTERVAL 14 DAY), DATE_ADD(CURDATE(), INTERVAL 180 DAY), '王兽医', 'test-cert-004', 'TEST-SIG-004', SHA2(CONCAT('QC-TEST-0004', @pig4), 256)),
+(@pig5, 'QC-TEST-0005', '三河市动物卫生监督所', DATE_SUB(NOW(), INTERVAL 13 DAY), DATE_ADD(CURDATE(), INTERVAL 180 DAY), '赵兽医', 'test-cert-005', 'TEST-SIG-005', SHA2(CONCAT('QC-TEST-0005', @pig5), 256)),
+(@pig6, 'QC-TEST-0006', '武清区动物卫生监督所', DATE_SUB(NOW(), INTERVAL 11 DAY), DATE_ADD(CURDATE(), INTERVAL 180 DAY), '李兽医', 'test-cert-006', 'TEST-SIG-006', SHA2(CONCAT('QC-TEST-0006', @pig6), 256)),
+(@pig7, 'QC-TEST-0007', '密云区动物卫生监督所', DATE_SUB(NOW(), INTERVAL 9 DAY), DATE_ADD(CURDATE(), INTERVAL 180 DAY), '张兽医', 'test-cert-007', 'TEST-SIG-007', SHA2(CONCAT('QC-TEST-0007', @pig7), 256)),
+(@pig8, 'QC-TEST-0008', '香河县动物卫生监督所', DATE_SUB(NOW(), INTERVAL 8 DAY), DATE_ADD(CURDATE(), INTERVAL 180 DAY), '刘兽医', 'test-cert-008', 'TEST-SIG-008', SHA2(CONCAT('QC-TEST-0008', @pig8), 256)),
+(@pig9, 'QC-TEST-0009', '平谷区动物卫生监督所', DATE_SUB(NOW(), INTERVAL 6 DAY), DATE_ADD(CURDATE(), INTERVAL 180 DAY), '孙兽医', 'test-cert-009', 'TEST-SIG-009', SHA2(CONCAT('QC-TEST-0009', @pig9), 256)),
+(@pig10, 'QC-TEST-0010', '延庆区动物卫生监督所', DATE_SUB(NOW(), INTERVAL 5 DAY), DATE_ADD(CURDATE(), INTERVAL 180 DAY), '周兽医', 'test-cert-010', 'TEST-SIG-010', SHA2(CONCAT('QC-TEST-0010', @pig10), 256)),
+(@pig11, 'QC-TEST-0011', '涿州市动物卫生监督所', DATE_SUB(NOW(), INTERVAL 4 DAY), DATE_ADD(CURDATE(), INTERVAL 180 DAY), '吴兽医', 'test-cert-011', 'TEST-SIG-011', SHA2(CONCAT('QC-TEST-0011', @pig11), 256)),
+(@pig12, 'QC-TEST-0012', '蓟州区动物卫生监督所', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_ADD(CURDATE(), INTERVAL 180 DAY), '郑兽医', 'test-cert-012', 'TEST-SIG-012', SHA2(CONCAT('QC-TEST-0012', @pig12), 256)),
+(@pig13, 'QC-TEST-0013', '丰润区动物卫生监督所', DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_ADD(CURDATE(), INTERVAL 180 DAY), '王兽医', 'test-cert-013', 'TEST-SIG-013', SHA2(CONCAT('QC-TEST-0013', @pig13), 256)),
+(@pig14, 'QC-TEST-0014', '宝坻区动物卫生监督所', DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_ADD(CURDATE(), INTERVAL 180 DAY), '韩兽医', 'test-cert-014', 'TEST-SIG-014', SHA2(CONCAT('QC-TEST-0014', @pig14), 256)),
+(@pig15, 'QC-TEST-0015', '南口区动物卫生监督所', NOW(), DATE_ADD(CURDATE(), INTERVAL 180 DAY), '杨兽医', 'test-cert-015', 'TEST-SIG-015', SHA2(CONCAT('QC-TEST-0015', @pig15), 256))
 ON DUPLICATE KEY UPDATE content_hash=VALUES(content_hash);
 
 -- ========== db_slaughter ==========

@@ -20,10 +20,8 @@ export const useSlaughterStore = defineStore('slaughter', () => {
     }
   }
 
-  async function createEntry(data: Partial<EntryInspection>) {
-    const { slaughterApi } = await import('@/api/modules/slaughter')
-    await slaughterApi.createEntry(data)
-  }
+  /* 人工新增 action 已删除（createEntry / createInspect / createRactopamine / createStamp）：
+     屠宰四环节全部为设备独占，写入只走设备通道。 */
 
   async function updateEntry(id: number, data: Partial<EntryInspection>) {
     const { slaughterApi } = await import('@/api/modules/slaughter')
@@ -41,11 +39,6 @@ export const useSlaughterStore = defineStore('slaughter', () => {
     }
   }
 
-  async function createInspect(data: Partial<SlaughterInspection>) {
-    const { slaughterApi } = await import('@/api/modules/slaughter')
-    await slaughterApi.createInspection(data)
-  }
-
   async function updateInspect(id: number, data: Partial<SlaughterInspection>) {
     const { slaughterApi } = await import('@/api/modules/slaughter')
     await slaughterApi.updateInspection(id, data)
@@ -57,11 +50,6 @@ export const useSlaughterStore = defineStore('slaughter', () => {
     ractopamineList.value = res.records || res.list || []
   }
 
-  async function createRactopamine(data: Partial<RactopamineTest>) {
-    const { slaughterApi } = await import('@/api/modules/slaughter')
-    await slaughterApi.createRactopamine(data)
-  }
-
   async function updateRactopamine(id: number, data: Partial<RactopamineTest>) {
     const { slaughterApi } = await import('@/api/modules/slaughter')
     await slaughterApi.updateRactopamine(id, data)
@@ -71,11 +59,6 @@ export const useSlaughterStore = defineStore('slaughter', () => {
     const { slaughterApi } = await import('@/api/modules/slaughter')
     const res = await slaughterApi.getStamps(params)
     stampList.value = res.records || res.list || []
-  }
-
-  async function createStamp(data: Partial<CarcassStamp>) {
-    const { slaughterApi } = await import('@/api/modules/slaughter')
-    await slaughterApi.createStamp(data)
   }
 
   async function updateStamp(id: number, data: Partial<CarcassStamp>) {
@@ -90,16 +73,12 @@ export const useSlaughterStore = defineStore('slaughter', () => {
     stampList,
     loading,
     fetchEntryList,
-    createEntry,
     updateEntry,
     fetchInspectList,
-    createInspect,
     updateInspect,
     fetchRactopamineList,
-    createRactopamine,
     updateRactopamine,
     fetchStampList,
-    createStamp,
     updateStamp,
   }
 })

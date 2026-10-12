@@ -3,6 +3,7 @@
     <el-table
       v-loading="loading"
       :data="data"
+      :row-class-name="rowClassName"
       border
       stripe
       style="width: 100%"
@@ -12,20 +13,37 @@
       <el-table-column prop="batchNo" label="疫苗批次号" min-width="140" show-overflow-tooltip />
       <el-table-column prop="injectTime" label="注射时间" min-width="160" align="center" />
       <el-table-column prop="dosage" label="剂量" min-width="100" align="center" />
-      <el-table-column prop="operator" label="操作人" min-width="100" show-overflow-tooltip />
-      <el-table-column prop="source" label="数据来源" min-width="120" align="center">
+      <el-table-column prop="operator" label="操作人" min-width="100" show-overflow-tooltip>
+        <template #default="{ row }">{{ row.operator || '未记录' }}</template>
+      </el-table-column>
+      <el-table-column prop="source" label="采集设备" min-width="140" align="center">
         <template #default="{ row }">
-          <el-tooltip :content="row.source === 'DEVICE' ? `设备采集：${row.sourceRef || '--'}` : '人工录入'" placement="top">
-            <el-tag :type="sourceTag(row.source)" size="small" effect="plain">{{ sourceLabel(row.source) }}</el-tag>
+          <el-tooltip :content="row.source === 'DEVICE' ? `设备采集：${row.sourceRef || '--'}` : sourceLabel(row.source)" placement="top">
+            <el-tag :type="sourceTag(row.source)" size="small" effect="plain">{{ deviceText(row) }}</el-tag>
           </el-tooltip>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="150" fixed="right" align="center">
+      <el-table-column label="状态" width="110" align="center">
+        <template #default="{ row }">
+          <el-tooltip v-if="row.voidFlag === 1" placement="top">
+            <template #content>
+              <div>作废理由：{{ row.voidReason || '未填写' }}</div>
+              <div>作废操作人：{{ row.voidOperator || '未记录' }}</div>
+              <div>作废时间：{{ row.voidTime || '--' }}</div>
+            </template>
+            <el-tag type="info" size="small" effect="plain">已作废</el-tag>
+          </el-tooltip>
+          <span v-else class="status-normal">有效</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" width="220" fixed="right" align="center">
         <template #default="{ row }">
           <el-button type="primary" link size="small" @click="handleViewCert(row)">
             查看凭证
           </el-button>
-          <el-button type="warning" link size="small" @click="$emit('edit', row)">编辑</el-button>
+          <template v-if="row.voidFlag !== 1">
+            <el-button type="danger" link size="small" @click="handleVoid(row)">作废</el-button>
+          </template>
         </template>
       </el-table-column>
     </el-table>
@@ -44,7 +62,8 @@
           <el-descriptions-item label="疫苗批次号">{{ currentCert.batchNo }}</el-descriptions-item>
           <el-descriptions-item label="注射时间">{{ currentCert.injectTime }}</el-descriptions-item>
           <el-descriptions-item label="剂量">{{ currentCert.dosage }}</el-descriptions-item>
-          <el-descriptions-item label="操作人">{{ currentCert.operator }}</el-descriptions-item>
+          <el-descriptions-item label="操作人">{{ currentCert.operator || '未记录' }}</el-descriptions-item>
+          <el-descriptions-item label="采集设备">{{ currentCert.deviceText }}</el-descriptions-item>
         </el-descriptions>
         <div v-if="photoUrls.length > 0" class="cert-photo">
           <p class="photo-label">凭证照片：</p>
@@ -71,7 +90,9 @@
 
 <script setup>
 import { ref, reactive } from 'vue'
-import { sourceLabel, sourceTag } from '@/api/modules/ingest'
+import { deviceText, sourceLabel, sourceTag } from '@/api/modules/ingest'
+import { pigApi } from '@/api/modules/breeding'
+import { confirmVoid } from '@/composables/useVoidAction'
 import request from '@/utils/request'
 
 defineProps({
@@ -85,7 +106,20 @@ defineProps({
   }
 })
 
-defineEmits(['edit'])
+const emit = defineEmits(['voided'])
+
+/** 已作废的记录置灰但仍列出：作废=不再生效，记录本身保留可追溯，不做视觉消失 */
+const rowClassName = ({ row }) => (row.voidFlag === 1 ? 'row-voided' : '')
+
+// 作废：免疫记录已上链，删掉记录会让链上哈希无法溯源，因此只允许作废（需填理由）
+const handleVoid = async (row) => {
+  const ok = await confirmVoid({
+    title: '作废免疫记录',
+    message: `确认作废 ${row.vaccineName || ''}${row.batchNo ? '（批号 ' + row.batchNo + '）' : ''} 的免疫记录吗？作废后该记录不再生效，但仍保留在库中并可追溯。`,
+    onConfirm: (reason) => pigApi.voidVaccine(row.pigId, row.id, reason),
+  })
+  if (ok) emit('voided')
+}
 
 const certVisible = ref(false)
 const certLoading = ref(false)
@@ -98,7 +132,8 @@ const currentCert = reactive({
   batchNo: '',
   injectTime: '',
   dosage: '',
-  operator: ''
+  operator: '',
+  deviceText: ''
 })
 
 /** 释放上一次生成的 blob 临时地址，避免内存泄漏 */
@@ -114,7 +149,8 @@ const handleViewCert = async (row) => {
     batchNo: row.batchNo || '',
     injectTime: row.injectTime || '',
     dosage: row.dosage || '',
-    operator: row.operator || ''
+    operator: row.operator || '',
+    deviceText: deviceText(row)
   })
   revokePhotoUrls()
   certLoadError.value = false
@@ -159,7 +195,20 @@ const handleCertClose = () => {
       color: #606266;
       font-weight: 600;
     }
+
+    // 已作废行置灰：仍列在原位（可追溯），但一眼能看出「这条不算了」
+    .row-voided {
+      --el-table-tr-bg-color: var(--el-fill-color-lighter);
+
+      td.el-table__cell {
+        color: #a8abb2;
+      }
+    }
   }
+}
+
+.status-normal {
+  color: #909399;
 }
 
 .cert-preview {

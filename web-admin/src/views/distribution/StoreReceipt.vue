@@ -22,6 +22,15 @@
           <el-table-column prop="vehicleNo" label="配送车辆" width="120" align="center" />
           <el-table-column prop="origin" label="发货地" min-width="120" />
           <el-table-column prop="destination" label="目的地" min-width="120" />
+          <!-- 一车多店：一趟车要停好几站，签完一站运单仍是「待签收」 -->
+          <el-table-column label="站点" width="110" align="center">
+            <template #default="{ row }">
+              <el-tag v-if="row.stopCount > 1" type="warning" size="small" effect="plain">
+                途经 {{ row.stopCount }} 站
+              </el-tag>
+              <span v-else class="sub-text">单站</span>
+            </template>
+          </el-table-column>
           <el-table-column prop="driverName" label="司机" width="100" align="center" />
           <el-table-column prop="arriveTime" label="到店时间" width="170" align="center" />
           <el-table-column label="状态" width="100" align="center">
@@ -81,11 +90,13 @@
           <el-table-column prop="receiptNo" label="签收单号" width="180" />
           <el-table-column prop="transportNo" label="关联运单" width="160" />
           <el-table-column prop="storeName" label="签收门店" min-width="150" />
-          <el-table-column prop="receiver" label="签收人" width="100" align="center" />
-          <el-table-column prop="source" label="数据来源" width="120" align="center">
+          <el-table-column prop="receiver" label="签收人" width="100" align="center">
+            <template #default="{ row }">{{ row.receiver || '未记录' }}</template>
+          </el-table-column>
+          <el-table-column prop="source" label="采集设备" width="140" align="center">
             <template #default="{ row }">
-              <el-tooltip :content="row.source === 'DEVICE' ? `PDA/探头自动采集：${row.sourceRef || '--'}` : '人工录入'" placement="top">
-                <el-tag :type="sourceTag(row.source)" size="small" effect="plain">{{ sourceLabel(row.source) }}</el-tag>
+              <el-tooltip :content="row.source === 'DEVICE' ? `PDA/探头自动采集：${row.sourceRef || '--'}` : sourceLabel(row.source)" placement="top">
+                <el-tag :type="sourceTag(row.source)" size="small" effect="plain">{{ deviceText(row) }}</el-tag>
               </el-tooltip>
             </template>
           </el-table-column>
@@ -138,10 +149,28 @@
       </el-descriptions>
 
       <el-form :model="receiptForm" label-width="90px" size="default" style="margin-bottom: 16px">
+        <!-- 站点状态：**单站运单也要说清「这一站车到了没」** ——
+             签收的前置是「该站已到达」，而到达是站点级的事实（与车厢里装了几批货无关）。
+             多站运单下面还会多一个下拉，让操作员指明这次签的是哪一站。 -->
+        <div v-if="receiptStops.length" class="form-tip" style="margin-bottom: 14px">
+          {{ receiptStopTip }}
+        </div>
+        <!-- 一车多店：这一车要停好几站，必须指明「这次签的是哪一站」——
+             签收按 (运单, 门店) 记账，签完一站运单仍是「待签收」，全部签完才算已签收。 -->
+        <el-form-item v-if="needsStopChoice" label="卸货门店">
+          <el-select v-model="selectedStopIndex" style="width: 100%" :loading="stopLoading" @change="applyStopToForm">
+            <el-option
+              v-for="(s, idx) in receiptStops"
+              :key="idx"
+              :label="`第 ${s.seq != null ? s.seq : idx + 1} 站 · ${s.storeName || '未记录'}（${s.batchCount} 批）${s.received ? ' · 已签收' : (s.arrived ? ' · 等签收' : ' · 车未到')}`"
+              :value="idx"
+              :disabled="s.received || !s.arrived" />
+          </el-select>
+        </el-form-item>
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="门店" prop="storeName">
-              <el-input v-model="receiptForm.storeName" placeholder="请输入门店名称" />
+              <el-input v-model="receiptForm.storeName" :disabled="needsStopChoice" placeholder="请输入门店名称" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -207,7 +236,8 @@
     <el-dialog v-model="detailVisible" title="门店签收详情" width="560px">
       <el-descriptions :column="2" border>
         <el-descriptions-item label="门店">{{ detailData.storeName }}</el-descriptions-item>
-        <el-descriptions-item label="签收人">{{ detailData.receiver }}</el-descriptions-item>
+        <el-descriptions-item label="签收人">{{ detailData.receiver || '未记录' }}</el-descriptions-item>
+        <el-descriptions-item label="采集设备">{{ deviceText(detailData) }}</el-descriptions-item>
         <el-descriptions-item label="联系电话">{{ detailData.receiverPhone || '--' }}</el-descriptions-item>
         <el-descriptions-item label="签收时间">{{ detailData.receiptTime }}</el-descriptions-item>
         <el-descriptions-item label="到货温度(℃)">{{ detailData.tempValue ?? '--' }}</el-descriptions-item>
@@ -229,7 +259,7 @@ import { Search, Refresh } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import BlockchainVerifyBadge from '@/components/common/BlockchainVerifyBadge.vue'
 import { distributionApi } from '@/api/modules/distribution'
-import { sourceLabel, sourceTag } from '@/api/modules/ingest'
+import { deviceText, sourceLabel, sourceTag } from '@/api/modules/ingest'
 import { useAuthStore } from '@/stores/auth'
 import request from '@/utils/request'
 
@@ -354,7 +384,7 @@ const submitting = ref(false)
 const receiptData = reactive({ transportNo: '', vehicleNo: '', origin: '', destination: '', driverName: '', driverPhone: '' })
 const receiptForm = reactive({
   transportId: null as number | null,
-  storeId: 1,
+  storeId: null as number | null,
   storeName: '',
   receiver: '',
   receiverPhone: '',
@@ -366,7 +396,77 @@ const receiptForm = reactive({
   receiptPhoto: [] as string[],
 })
 
-function openConfirmDialog(row: any) {
+// ========== 途经站点（一车多店） ==========
+/**
+ * 签收按 (运单, 门店) 记账：一趟车装多家门店的货，就要一站一签。
+ * 站点清单来自运单装载明细（按卸货门店聚合），站点顺序 = 装车扫码顺序。
+ */
+const receiptStops = ref<any[]>([])
+const stopLoading = ref(false)
+/** 选中的站点下标（-1 = 未选） */
+const selectedStopIndex = ref(-1)
+/** 多站时才需要签收人挑一站：单站运单直接按目的地门店签 */
+const needsStopChoice = computed(() => receiptStops.value.length > 1)
+const receivedStopCount = computed(() => receiptStops.value.filter((s: any) => s.received).length)
+/** 已到达站点数：到达与签收分开 —— 车到了不等于货交出去了 */
+const arrivedStopCount = computed(() => receiptStops.value.filter((s: any) => s.arrived).length)
+const selectedStop = computed(() => (selectedStopIndex.value >= 0 ? receiptStops.value[selectedStopIndex.value] : null))
+
+/**
+ * 站点状态提示：**单站运单也显示**。
+ * <p>
+ * 到达是站点级的事实（车在不在这个卸货点），签收的前置就是「该站已到达」。
+ * 单站运单如果什么都不显示，使用者就完全看不出「到达是按门店逐站记的」——
+ * 而且单站时下拉被隐藏，这句提示是页面上唯一的落点。
+ */
+const receiptStopTip = computed(() => {
+  const list = receiptStops.value
+  if (!list.length) return ''
+  const n = list.length
+  const arrived = arrivedStopCount.value
+  const received = receivedStopCount.value
+  const head = n > 1
+    ? `本车途经 ${n} 站`
+    : `本单 1 站（${list[0].storeName || '未记录门店'}）`
+  if (received >= n) {
+    return `${head}：${n} 站已全部签收，运单已转为「已签收」`
+  }
+  if (arrived >= n) {
+    return n > 1
+      ? `${head}：已到达 ${arrived} 站、已签收 ${received} 站，可签收；全部签完运单才转为「已签收」`
+      : `${head}：车已到达，待签收 —— 签收是货权转移的凭证，到达只是车到了`
+  }
+  return `${head}：已到达 ${arrived}/${n} 站。签收的前置是「该站已到达」：车没到的站点不能签收（避免给还没卸货的门店签了）`
+})
+
+/** 把选中站点回填到表单：门店 id 是权威（重名门店靠 id 区分），门店名仅供展示 */
+function applyStopToForm() {
+  const stop = selectedStop.value
+  if (!stop) return
+  receiptForm.storeId = stop.storeId ?? null
+  receiptForm.storeName = stop.storeName || ''
+}
+
+async function loadReceiptStops(transportId: number) {
+  stopLoading.value = true
+  try {
+    const list: any = await distributionApi.getTransportStops(transportId)
+    receiptStops.value = Array.isArray(list) ? list : []
+  } catch {
+    receiptStops.value = []
+  } finally {
+    stopLoading.value = false
+  }
+  // 默认落在第一个「已到达且待签收」的站点 —— 这是当下真能签的那一站。
+  // 若一站都还没到（车在路上），退回第一个待签收站点：让操作员看得见全貌，
+  // 提交时服务端会以「第 N 站的车还没到」拦下，比页面上直接空着更说得清。
+  let idx = receiptStops.value.findIndex((s: any) => s.arrived && !s.received)
+  if (idx < 0) idx = receiptStops.value.findIndex((s: any) => !s.received)
+  selectedStopIndex.value = idx >= 0 ? idx : (receiptStops.value.length ? 0 : -1)
+  applyStopToForm()
+}
+
+async function openConfirmDialog(row: any) {
   receiptData.transportNo = row.transportNo
   receiptData.vehicleNo = row.vehicleNo
   receiptData.origin = row.origin
@@ -374,19 +474,32 @@ function openConfirmDialog(row: any) {
   receiptData.driverName = row.driverName
   receiptData.driverPhone = row.driverPhone
   receiptForm.transportId = row.id
-  receiptForm.storeName = row.destination || ''
+  receiptForm.storeId = null
+  receiptForm.storeName = ''
   receiptForm.receiver = ''
   receiptForm.qtyCheck = 1
   receiptForm.qtyDiffNote = ''
   receiptForm.tempCheck = 1
   receiptForm.tempValue = -12
   receiptForm.packageIntact = 1
+  receiptStops.value = []
+  selectedStopIndex.value = -1
   dialogVisible.value = true
+  await loadReceiptStops(row.id)
+  // 兜底：老运单没有装载明细、站点取不到时，退回按运单目的地签（多站运单的
+  // destination 已被写成「途经 N 站」，不是门店名，不能拿来当门店填进去）
+  if (!receiptStops.value.length && !(row.stopCount > 1)) {
+    receiptForm.storeName = row.destination || ''
+  }
 }
 
 async function confirmReceipt() {
   if (!receiptForm.transportId) {
     ElMessage.warning('运输单信息缺失')
+    return
+  }
+  if (needsStopChoice.value && !selectedStop.value) {
+    ElMessage.warning('请选择本次签收的卸货门店（本车途经多个站点）')
     return
   }
   if (!receiptForm.storeName.trim()) {
@@ -414,7 +527,7 @@ async function confirmReceipt() {
     })
     ElMessage.success('门店签收确认成功，数据已上链')
     dialogVisible.value = false
-    activeTab.value = 'done'
+    // 签完一站运单可能仍是「待签收」（还有别的站点没签），所以两个列表都刷
     fetchList()
     fetchPendingList()
   } catch (error) {
@@ -436,5 +549,7 @@ onMounted(() => fetchPendingList())
 .check-card { border: 1px solid #ebeef5; }
 .check-title { font-size: 14px; font-weight: 600; }
 .unit-hint { font-size: 13px; color: #909399; }
+.sub-text { font-size: 12px; color: #909399; }
+.form-tip { font-size: 12px; color: #909399; line-height: 1.5; margin-top: 4px; }
 .hash-text { font-family: 'Courier New', monospace; font-size: 12px; color: #909399; word-break: break-all; }
 </style>

@@ -21,4 +21,11 @@ public class SlaughterApply {
     private String approver;
     private String rejectReason;
     private LocalDateTime createTime;
+
+    /** 数据来源：MANUAL 人工申报 / DEVICE 出栏口地磅自动登记 */
+    private String source;
+    /** 来源标识：设备采集时为设备编号（如 EXITSCALE-001），人工录入时为操作人实名 */
+    private String sourceRef;
+    /** 设备原始报文，人工复核时逐字段核对用 */
+    private String rawPayload;
 }

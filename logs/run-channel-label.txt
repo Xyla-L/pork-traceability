@@ -1,0 +1,36 @@
+① 登录成功
+
+—— 待确认队列 /ingest/staging（300 条，涉及 13 种通道）
+   TAG          → 养殖建档（耳标）
+   ENTRY        → 入场查验
+   SPLIT        → 分割批次（扫码称重）
+   INSPECTION   → 屠宰检验（工位终端）
+   BATCH        → 胴体批次（分拣台）
+   STAMP        → 胴体自动盖章
+   RACTOPAMINE  → 瘦肉精检测
+   EXIT_APPLY   → 出栏称重登记
+   QUARANTINE   → 产地检疫出证
+   VACCINE      → 免疫注射
+   SALE         → 门店收银
+   RECEIPT      → 门店签收
+   TEMPERATURE  → 冷链温度采集
+✅ 待确认队列 /ingest/staging：全部通道标签为中文
+
+—— 设备台账 /ingest/devices（18 条，涉及 13 种通道）
+   BATCH        → 胴体批次（分拣台）
+   ENTRY        → 入场查验
+   EXIT_APPLY   → 出栏称重登记
+   VACCINE      → 免疫注射
+   RECEIPT      → 门店签收
+   SALE         → 门店收银
+   QUARANTINE   → 产地检疫出证
+   RACTOPAMINE  → 瘦肉精检测
+   SPLIT        → 分割批次（扫码称重）
+   STAMP        → 胴体自动盖章
+   INSPECTION   → 屠宰检验（工位终端）
+   TAG          → 养殖建档（耳标）
+   TEMPERATURE  → 冷链温度采集
+✅ 设备台账 /ingest/devices：全部通道标签为中文
+✅ 历史数据出现过的通道都在期望表内
+
+全部通过 ✅

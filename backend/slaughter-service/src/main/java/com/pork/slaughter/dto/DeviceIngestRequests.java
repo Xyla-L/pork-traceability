@@ -59,7 +59,7 @@ public final class DeviceIngestRequests {
         private String abnormalNote;
         private String remark;
 
-        /** 采集设备名，落库到查验人字段，例如「门禁-001 自动采集」 */
+        /** 现场查验员姓名（人，不是设备）：闸口只负责读卡，查验责任落到人 */
         private String inspector;
 
         private String source;
@@ -123,7 +123,7 @@ public final class DeviceIngestRequests {
         @NotBlank(message = "批次号不能为空")
         private String batchNo;
 
-        /** 1宰前检验 2宰后检验 3同步检验；缺省按宰后检验 */
+        /** 1宰前检验 2宰后检验 3宰后同步检验；缺省按宰后检验 */
         private Integer inspectType;
 
         /** 1合格 0不合格；null=终端未给出结论，禁止入库 */

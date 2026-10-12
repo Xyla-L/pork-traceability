@@ -1,0 +1,38 @@
+-- MySQL dump 10.13  Distrib 8.4.11, for Linux (x86_64)
+--
+-- Host: localhost    Database: db_slaughter
+-- ------------------------------------------------------
+-- Server version	8.4.11
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!50503 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+--
+-- Dumping data for table `entry_inspection`
+--
+-- WHERE:  id >= 101
+
+LOCK TABLES `entry_inspection` WRITE;
+/*!40000 ALTER TABLE `entry_inspection` DISABLE KEYS */;
+INSERT INTO `entry_inspection` (`id`, `pig_id`, `batch_no`, `ear_tag_no`, `source_farm`, `arrive_time`, `weight`, `quarantine_cert`, `vehicle_no`, `health_check`, `cert_verified`, `abnormal_note`, `status`, `remark`, `content_hash`, `inspector`, `source`, `source_ref`, `raw_payload`, `file_ids`, `create_time`, `void_flag`, `void_reason`, `void_operator`, `void_time`) VALUES (101,99,'B-GATE-1791464273791-D','ET-GATE-1791464273791','宏图养殖公司','2026-10-08 20:57:54',116.50,'QC-GATE-1791464273791',NULL,1,1,NULL,1,NULL,NULL,'张查验','DEVICE','GATE-001','{\"weight\": 116.5, \"batchNo\": \"B-GATE-1791464273791-D\", \"earTagNo\": \"ET-GATE-1791464273791\", \"inspector\": \"张查验\", \"quarantineCert\": \"QC-GATE-1791464273791\"}',NULL,'2026-10-08 20:57:54',0,NULL,NULL,NULL);
+/*!40000 ALTER TABLE `entry_inspection` ENABLE KEYS */;
+UNLOCK TABLES;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+-- Dump completed on 2026-10-08 20:58:49

@@ -59,6 +59,12 @@ instance.interceptors.response.use(
       return Promise.reject(new Error(message))
     }
 
+    // 允许调用方声明「预期内的失败」（例如探测某条记录是否存在、列表逐条取可选关联数据），
+    // 这类失败由调用方按 null 处理，不应弹无意义的错误提示。
+    if ((response.config as any).silentError) {
+      return Promise.reject(new Error(message))
+    }
+
     ElMessage.error(message || '请求失败')
     return Promise.reject(new Error(message))
   },

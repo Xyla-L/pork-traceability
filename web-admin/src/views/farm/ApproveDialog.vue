@@ -34,6 +34,17 @@
         :rules="rules"
         label-width="80px"
       >
+        <el-form-item label="审批人">
+          <span v-if="approverName" class="approver-name">{{ approverName }}</span>
+          <span v-else class="approver-missing">当前登录账号未登记真实姓名</span>
+          <el-tooltip
+            v-if="!approverName"
+            content="审批是实名责任行为，审批人取自登录人的真实姓名。请先到「个人中心」补全真实姓名，否则审批会被系统拒绝"
+            placement="top"
+          >
+            <span class="approver-hint">需先补全实名</span>
+          </el-tooltip>
+        </el-form-item>
         <el-form-item label="审批结果">
           <el-radio-group v-model="approveForm.approvalStatus">
             <el-radio :value="1">
@@ -59,10 +70,10 @@
 
     <template #footer>
       <el-button @click="handleClose">取 消</el-button>
-      <el-button type="danger" :disabled="approveForm.approvalStatus !== 2" @click="handleReject">
+      <el-button type="danger" :disabled="approveForm.approvalStatus !== 2 || !approverName" @click="handleReject">
         驳 回
       </el-button>
-      <el-button type="success" :disabled="approveForm.approvalStatus !== 1" @click="handleApprove">
+      <el-button type="success" :disabled="approveForm.approvalStatus !== 1 || !approverName" @click="handleApprove">
         通 过
       </el-button>
     </template>
@@ -70,7 +81,8 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch } from 'vue'
+import { computed, ref, reactive, watch } from 'vue'
+import { useAuthStore } from '@/stores/auth'
 
 const props = defineProps({
   visible: {
@@ -84,6 +96,14 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:visible', 'submit'])
+
+const authStore = useAuthStore()
+
+/**
+ * 审批人 = 当前登录人的真实姓名（后端从令牌的姓名声明取，前端只做展示与前置提示）。
+ * 没有真实姓名时后端会拒绝审批，所以这里提前把按钮置灰，避免点下去才报错。
+ */
+const approverName = computed(() => (authStore.user?.realName || '').trim())
 
 const formRef = ref(null)
 
@@ -189,6 +209,22 @@ watch(
 
   :deep(.el-form-item) {
     margin-bottom: 16px;
+  }
+
+  .approver-name {
+    font-weight: 500;
+    color: #303133;
+  }
+
+  .approver-missing {
+    color: #e6a23c;
+  }
+
+  .approver-hint {
+    margin-left: 8px;
+    font-size: 12px;
+    color: #909399;
+    cursor: help;
   }
 }
 </style>

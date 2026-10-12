@@ -146,8 +146,13 @@ public class AuthServiceImpl implements AuthService {
 
     private LoginVO tokensFor(SysUser user) {
         String subject = user.getId().toString();
+        // 姓名声明取「真实姓名」而不是登录账号：账号名（如 farm_user、admin）不是人，
+        // 落到审批人、出证人这类字段上读不出责任主体。未填实名时该声明缺省，
+        // 网关会退回用户ID，下游据此识别「这个人还没实名」并拦下关键结论动作。
+        String operatorName = StringUtils.hasText(user.getRealName()) ? user.getRealName() : null;
         return LoginVO.builder()
-                .token(JwtUtil.generateToken(subject, user.getRole()))
+                // 令牌主体是用户ID（下游 X-User-Id 依赖），姓名作为独立声明供审计/来源标记展示
+                .token(JwtUtil.generateToken(subject, user.getRole(), operatorName))
                 .refreshToken(JwtUtil.generateRefreshToken(subject, user.getRole()))
                 .expiresIn(ACCESS_EXPIRES_IN_SECONDS)
                 .user(toUserInfo(user))

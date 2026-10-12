@@ -20,7 +20,7 @@ export interface SlaughterInspection {
   inspectNo: string // 检验编号
   batchNo: string // 批次号
   earTagNo: string // 耳标号
-  inspectType: string // 宰前检验 | 宰后检验 | 同步检验
+  inspectType: string // 宰前检验 | 宰后检验 | 宰后检验（同步）
   inspectTime: string // 检验时间
   inspector: string // 检验员
   temperature: number // 体温(°C)
