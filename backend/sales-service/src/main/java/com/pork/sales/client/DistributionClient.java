@@ -59,8 +59,7 @@ public class DistributionClient {
         }
     }
 
-    public Map<String, Object> requireTransport(Long transportId) {
-        try {
+    public Map<String, Object> requireTransport(Long transportId) {        try {
             Map<String, Object> envelope = client.get()
                     .uri(distributionUrl + "/distribution/transports/{id}", transportId)
                     .retrieve().body(new ParameterizedTypeReference<Map<String, Object>>() { });
@@ -75,6 +74,32 @@ public class DistributionClient {
             throw e;
         } catch (RestClientException e) {
             throw new BusinessException(ErrorCode.REMOTE_CALL_ERROR, "配送服务不可用，无法校验运输单");
+        }
+    }
+
+    /**
+     * 召回登记（内部接口）：把召回单涉及的「门店 × 批次」写进配送的待收运池。
+     * <p>
+     * 不吞异常，但也不让调用方把召回整单回滚 —— 由 SalesServiceImpl 决定「尽力而为 + 留痕」：
+     * 池子写失败时召回本身仍然有效（召回是既成事实），只是收运得人工补录。
+     */
+    public Map<String, Object> registerRecallCollect(Map<String, Object> body) {
+        try {
+            Map<String, Object> envelope = client.post()
+                    .uri(distributionUrl + "/distribution/internal/recall-collect")
+                    .body(body)
+                    .retrieve().body(new ParameterizedTypeReference<Map<String, Object>>() { });
+            if (envelope == null || !Integer.valueOf(200).equals(envelope.get("code"))
+                    || !(envelope.get("data") instanceof Map<?, ?> data)) {
+                throw new BusinessException(ErrorCode.REMOTE_CALL_ERROR, "配送服务未返回召回登记结果");
+            }
+            @SuppressWarnings("unchecked")
+            Map<String, Object> result = (Map<String, Object>) data;
+            return result;
+        } catch (BusinessException e) {
+            throw e;
+        } catch (RestClientException e) {
+            throw new BusinessException(ErrorCode.REMOTE_CALL_ERROR, "配送服务不可用，召回待收运未登记");
         }
     }
 }

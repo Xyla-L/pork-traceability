@@ -74,6 +74,9 @@ public class AdminBootstrap implements ApplicationRunner {
                 "010-87654321", "slaughter@porktrace.com");
         createBusinessUser("distribution_user", password, "DISTRIBUTOR", "陈经理", 4L,
                 "010-55667788", "distributor@porktrace.com");
+        // 无害化处理中心账号（机构 id=2001 由 49-return-leg.sql 幂等插入）
+        createBusinessUser("disposal_user", password, "DISPOSAL", "钱主任", 2001L,
+                "010-99887766", "disposal@porktrace.com");
 
         // 为 14 个零售门店各创建 1 个 RETAILER 用户（org_id=1001..1014）
         String[][] retailUsers = {

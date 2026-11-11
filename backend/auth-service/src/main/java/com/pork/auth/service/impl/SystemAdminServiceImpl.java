@@ -22,6 +22,7 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -229,6 +230,39 @@ public class SystemAdminServiceImpl implements SystemAdminService {
         if (userMapper.selectCount(Wrappers.<SysUser>lambdaQuery().eq(SysUser::getOrgId, row.getId())) > 0) return false;
         orgMapper.deleteById(row.getId());
         return true;
+    }
+
+    /**
+     * 按角色 / 机构查活跃用户的收件人清单（内部接口，业务服务发通知用）。
+     * <p>
+     * 只回 {@code status=1} 的账号：给停用账号发召回通知等于没发，还会让人以为已经通知过了。
+     * 机构名一并带出：调用方写通知正文时要用它说清「哪家店」，不让各服务自己拼一份口径。
+     */
+    @Override
+    public List<Map<String, Object>> internalRecipients(String role, List<Long> orgIds) {
+        List<SysUser> users = userMapper.selectList(Wrappers.<SysUser>lambdaQuery()
+                .eq(StringUtils.hasText(role), SysUser::getRole, role)
+                .in(orgIds != null && !orgIds.isEmpty(), SysUser::getOrgId, orgIds)
+                .eq(SysUser::getStatus, 1)
+                .orderByAsc(SysUser::getId));
+        if (users.isEmpty()) return List.of();
+        Set<Long> orgIdSet = users.stream().map(SysUser::getOrgId).filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, String> orgNames = orgIdSet.isEmpty() ? Map.of()
+                : orgMapper.selectBatchIds(orgIdSet).stream()
+                        .collect(Collectors.toMap(SysOrg::getId, SysOrg::getName, (a, b) -> a));
+        List<Map<String, Object>> rows = new ArrayList<>(users.size());
+        for (SysUser user : users) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("userId", user.getId());
+            row.put("username", user.getUsername());
+            row.put("realName", user.getRealName());
+            row.put("role", user.getRole());
+            row.put("orgId", user.getOrgId());
+            row.put("orgName", user.getOrgId() == null ? null : orgNames.get(user.getOrgId()));
+            rows.add(row);
+        }
+        return rows;
     }
 
     /** 按 (type, name) 取唯一机构，取不到返回 null（LIMIT 1 防止重名时 TooManyResultsException） */

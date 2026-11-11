@@ -49,6 +49,13 @@ blockchain:
     contract-address: ${EVM_CONTRACT_ADDRESS:}
     gas-limit: ${EVM_GAS_LIMIT:2000000}
     deploy-gas-limit: ${EVM_DEPLOY_GAS_LIMIT:4000000}
+    # 区块浏览器地址（如 http://localhost:8545 无浏览器则留空）；有值时页面才给「在链上查看」链接
+    explorer-url: ${EVM_EXPLORER_URL:}
+  # 存证对账：启动 60 秒后体检一次，之后每小时一次（间隔毫秒）
+  reconcile-initial-delay-ms: ${CHAIN_RECONCILE_INITIAL_DELAY_MS:60000}
+  reconcile-interval-ms: ${CHAIN_RECONCILE_INTERVAL_MS:3600000}
+  # 重试补偿间隔（毫秒），失败记录 1 分钟后才会被重扫
+  retry-interval-ms: ${CHAIN_RETRY_INTERVAL_MS:300000}
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true

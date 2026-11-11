@@ -36,6 +36,7 @@
         <module>trace-service</module>
         <module>blockchain-service</module>
         <module>file-service</module>
+        <module>agent-service</module>
     </modules>
 
     <!-- 统一版本号管理 -->

@@ -96,7 +96,22 @@ public class QuarantineChannelHandler implements ChannelHandler {
             return DispatchResult.manual(table, "缺少官方兽医（inspector），检疫证必须落到签发人，请补录后入账");
         }
 
-        // 3) 扫描件：报了就得是真的，编一个 fileId 过不了这一关；没报（只有扫码枪的形态）不拦
+        // 3) 证面时间必须自洽：有效期早于签发时间、或签发时间跑到未来，都说明报文本身不成立。
+        //    这类不是「条件没到位」而是「数据不成立」，拒绝入库 —— 一条自相矛盾的证进了链，
+        //    下游入场查验就会拿它当有效凭据放行。
+        LocalDateTime issueTime = Payloads.time(data, "issueTime");
+        LocalDateTime validUntil = Payloads.time(data, "validUntil");
+        if (validUntil != null && issueTime != null
+                && validUntil.toLocalDate().isBefore(issueTime.toLocalDate())) {
+            return DispatchResult.rejected(table, "检疫证有效期 " + validUntil.toLocalDate()
+                    + " 早于签发时间 " + issueTime.toLocalDate() + "，证面数据不成立，禁止入库");
+        }
+        if (issueTime != null && issueTime.isAfter(LocalDateTime.now().plusDays(1))) {
+            return DispatchResult.rejected(table, "检疫证签发时间 " + issueTime.toString().replace('T', ' ')
+                    + " 晚于当前时间，疑似扫码终端时钟错误或报文串号，禁止入库");
+        }
+
+        // 4) 扫描件：报了就得是真的，编一个 fileId 过不了这一关；没报（只有扫码枪的形态）不拦
         List<String> fileIds = Payloads.strings(data, "fileIds");
         for (String fileId : fileIds) {
             try {
@@ -109,9 +124,7 @@ public class QuarantineChannelHandler implements ChannelHandler {
             }
         }
 
-        // 4) 落业务表：签发时间取证面值，缺失时用上报时刻兜底（证是当场扫的，两者等价）
-        LocalDateTime issueTime = Payloads.time(data, "issueTime");
-        LocalDateTime validUntil = Payloads.time(data, "validUntil");
+        // 5) 落业务表：签发时间取证面值，缺失时用上报时刻兜底（证是当场扫的，两者等价）
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("pigId", pigId);
         body.put("earTagNo", earTagNo);

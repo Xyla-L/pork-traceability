@@ -19,8 +19,8 @@ function toBackendParams(params: any = {}) {
 }
 
 export const pigApi = {
-  // ========== 生猪档案 ==========
-  // 人工建档接口已删除：耳标佩戴由读写器设备通道自动建档（/breeding/internal/ingest/tag）
+  // ========== 生猪档案（批次成员行，只读） ==========
+  // 个体行由批次按耳标区间自动展开（/pigs/batches），不存在人工逐头建档入口
   list(params: any) {
     return request.get('/breeding/pigs', { params: toBackendParams(params) })
   },
@@ -85,5 +85,43 @@ export const pigApi = {
   },
   voidQuarantineCert(pigId: number, id: number, reason: string) {
     return request.post(`/breeding/pigs/${pigId}/quarantine-cert/${id}/void`, { reason })
+  },
+}
+
+/**
+ * 记录的分组视图：把逐头存储的免疫 / 检疫 / 申报按批次收成「一次操作一行」。
+ *
+ * 只是换一种读法——写操作（作废、出证、审批）仍走上面的逐头接口，
+ * 分组视图本身不带任何写能力，免得「聚合展示」变成「聚合越权」。
+ */
+export const recordGroupApi = {
+  vaccines(params: any) {
+    return request.get('/breeding/records/vaccines', { params: toBackendParams(params) })
+  },
+  certs(params: any) {
+    return request.get('/breeding/records/certs', { params: toBackendParams(params) })
+  },
+  applies(params: any) {
+    return request.get('/breeding/records/applies', { params: toBackendParams(params) })
+  },
+}
+
+/**
+ * 生猪批次档案：养殖端档案的登记单位。
+ * 现实中商品猪按批次管理（同场、同批进、同批出），人工登记一张批次表单，
+ * 耳标起止号之间的每头猪自动成为批次成员——不存在逐头录入个体信息的入口。
+ */
+export const pigBatchApi = {
+  list(params: any) {
+    return request.get('/breeding/pigs/batches', { params: toBackendParams(params) })
+  },
+  create(data: any) {
+    return request.post('/breeding/pigs/batches', data)
+  },
+  detail(id: number) {
+    return request.get(`/breeding/pigs/batches/${id}`)
+  },
+  voidBatch(id: number, reason: string) {
+    return request.post(`/breeding/pigs/batches/${id}/void`, { reason })
   },
 }

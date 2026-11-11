@@ -3,6 +3,7 @@ package com.pork.breeding.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pork.breeding.dto.VaccineRecordDTO;
 import com.pork.breeding.service.VaccineRecordService;
+import com.pork.breeding.support.FarmScope;
 import com.pork.breeding.vo.VaccineRecordVO;
 import com.pork.core.result.PageResult;
 import com.pork.core.result.Result;
@@ -22,6 +23,7 @@ import java.util.List;
 public class VaccineRecordController {
 
     private final VaccineRecordService vaccineRecordService;
+    private final FarmScope farmScope;
 
     @GetMapping
     @Operation(summary = "分页查询疫苗记录列表")
@@ -29,6 +31,8 @@ public class VaccineRecordController {
             @PathVariable Long pigId,
             @RequestParam(defaultValue = "1") Long current,
             @RequestParam(defaultValue = "10") Long size) {
+        // 机构隔离：养殖角色只能看自己场的猪（列表过滤挡不住「拿别家猪的 id 调详情」）
+        farmScope.requirePigOfFarm(pigId, "该免疫记录");
         Page<VaccineRecordVO> page = vaccineRecordService.pageQuery(current, size, pigId);
         return Result.success(PageResult.of(page));
     }
@@ -38,6 +42,7 @@ public class VaccineRecordController {
     public Result<List<VaccineRecordVO>> listByPigId(
             @PathVariable Long pigId,
             @RequestParam(defaultValue = "false") boolean includeVoid) {
+        farmScope.requirePigOfFarm(pigId, "该免疫记录");
         List<VaccineRecordVO> list = vaccineRecordService.listByPigId(pigId, includeVoid);
         return Result.success(list);
     }
@@ -49,6 +54,7 @@ public class VaccineRecordController {
     @GetMapping("/{id}")
     @Operation(summary = "查询疫苗记录详情")
     public Result<VaccineRecordVO> getDetail(@PathVariable Long pigId, @PathVariable Long id) {
+        farmScope.requirePigOfFarm(pigId, "该免疫记录");
         VaccineRecordVO vo = vaccineRecordService.getDetail(pigId, id);
         return Result.success(vo);
     }
@@ -57,6 +63,7 @@ public class VaccineRecordController {
     @Operation(summary = "作废疫苗记录（原删除）：需填写作废理由，记录保留不物理删除")
     public Result<Void> voidRecord(@PathVariable Long pigId, @PathVariable Long id,
                                    @Valid @RequestBody VoidRequest request) {
+        farmScope.requirePigOfFarm(pigId, "该免疫记录");
         vaccineRecordService.voidRecord(pigId, id, request.getReason());
         return Result.success();
     }

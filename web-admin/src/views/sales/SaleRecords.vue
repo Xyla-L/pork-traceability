@@ -10,7 +10,7 @@
           <el-form-item label="批次号">
             <el-input v-model="searchForm.batchNo" placeholder="请输入" clearable @keyup.enter="handleSearch" />
           </el-form-item>
-          <el-form-item label="门店">
+          <el-form-item v-if="!isRetailer" label="门店">
             <el-input v-model="searchForm.storeName" placeholder="请输入" clearable @keyup.enter="handleSearch" />
           </el-form-item>
           <el-form-item label="状态">
@@ -31,6 +31,7 @@
           </el-form-item>
         </el-form>
         <div class="header-actions">
+          <StoreScopeTag />
           <el-button type="success" @click="openSellDialog"><el-icon><ShoppingCart /></el-icon>扫码销售</el-button>
         </div>
       </div>
@@ -130,13 +131,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { Search, Refresh, ShoppingCart } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import type { EpTagType } from '@/types/common'
 import { salesApi } from '@/api/modules/sales'
 import { deviceText, sourceLabel, sourceTag } from '@/api/modules/ingest'
 import type { FormInstance, FormRules } from 'element-plus'
+import StoreScopeTag from '@/components/common/StoreScopeTag.vue'
+import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
+/** 零售商的「门店」不是筛选条件而是数据边界：服务端已只返回本门店，再给一个门店输入框只会误导 */
+const isRetailer = computed(() => authStore.role === 'RETAILER')
 
 const dateRange = ref(null)
 const searchForm = reactive({ productName: '', batchNo: '', storeName: '', status: null as number | null })

@@ -1,0 +1,1 @@
+import{r}from"./request-BUG2J4wM.js";import"./index-BQcn-L4K.js";const o={login(t){return r.post("/auth/login",t)},logout(){return r.post("/auth/logout")},refreshToken(t){return r.post("/auth/refresh",t)},getMe(){return r.get("/auth/me")},updateProfile(t){return r.put("/auth/me",t)},updatePassword(t){return r.put("/auth/password",t)}};export{o as authApi};

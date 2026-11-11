@@ -23,14 +23,23 @@
             <span class="hash-cell">{{ cert.contentHash || '--' }}</span>
           </el-descriptions-item>
         </el-descriptions>
-        <el-alert
-          class="cert-sub"
-          type="warning"
-          :closable="false"
-          show-icon
-          title="一头猪同一时间只能有一张有效证"
-          description="如需换发，请先作废当前证再重新出具——作废与重出会各自上链，链上留下的是一条作废 + 一条新证，责任清楚，而不是把同一张证悄悄改掉。"
-        />
+
+        <!-- 检疫证扫描件：真 fileId 才有图可拉；演示占位（CERT-SCAN-xxx）没有对应文件 -->
+        <div class="scan-block">
+          <p class="scan-title">检疫证扫描件：</p>
+          <div v-if="scanLoading" v-loading="scanLoading" class="scan-holder" />
+          <el-image
+            v-else-if="scanUrl"
+            :src="scanUrl"
+            :preview-src-list="[scanUrl]"
+            fit="contain"
+            class="scan-img"
+          />
+          <div v-else-if="scanError" class="scan-holder scan-failed">扫描件加载失败</div>
+          <div v-else class="scan-holder scan-placeholder">
+            演示环境未接入扫描件（ fileId 为占位串，正式环境由官方平台回传电子证照 ）
+          </div>
+        </div>
       </template>
 
       <!-- 无证：出具 -->
@@ -80,10 +89,11 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch } from 'vue'
+import { ref, reactive, computed, watch, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import { pigApi } from '@/api/modules/breeding'
 import { confirmVoid } from '@/composables/useVoidAction'
+import request from '@/utils/request'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -156,10 +166,15 @@ function resetForm() {
 
 async function loadCert() {
   cert.value = null
+  releaseScan()
+  scanUrl.value = ''
+  scanError.value = false
   if (!props.pig?.id) return
   loading.value = true
   try {
-    cert.value = await pigApi.getQuarantineCert(props.pig.id)
+    const data = await pigApi.getQuarantineCert(props.pig.id)
+    cert.value = data
+    await loadScan(data?.fileId)
   } catch {
     // 无证时后端返回业务异常，属正常态——按「未出证」渲染
     cert.value = null
@@ -168,12 +183,44 @@ async function loadCert() {
   }
 }
 
+/**
+ * 检疫证扫描件：与疫苗凭证同法，blob 拉取（预览接口需登录鉴权，<img src> 带不了头）。
+ * 演示环境的 fileId 是 CERT-SCAN-xxx 占位串，不是真实文件，不请求、给说明文案。
+ */
+const scanUrl = ref('')
+const scanLoading = ref(false)
+const scanError = ref(false)
+
+const releaseScan = () => {
+  if (scanUrl.value) URL.revokeObjectURL(scanUrl.value)
+}
+
+const loadScan = async (fileId) => {
+  if (!fileId || !/^[0-9a-f]{32}$/i.test(String(fileId))) return
+  scanLoading.value = true
+  try {
+    const blob = await request.get(`/file/${fileId}`, { responseType: 'blob' })
+    scanUrl.value = URL.createObjectURL(blob)
+  } catch {
+    scanError.value = true
+  } finally {
+    scanLoading.value = false
+  }
+}
+
+watch(
+  () => props.modelValue,
+  (open) => {
+    if (!open) releaseScan()
+  },
+)
+onBeforeUnmount(releaseScan)
+
 watch(
   () => props.modelValue,
   (open) => {
     if (!open) return
     resetForm()
-    refreshTicket()
     loadCert()
   },
 )
@@ -223,7 +270,6 @@ async function handleVoid() {
 
 function refresh() {
   resetForm()
-  refreshTicket()
   loadCert()
 }
 
@@ -231,12 +277,39 @@ defineExpose({ refresh })
 </script>
 
 <style lang="scss" scoped>
-.cert-sub {
-  margin-top: 12px;
-}
-
 .cert-body {
   min-height: 80px;
+}
+
+.scan-block {
+  margin-top: 12px;
+
+  .scan-title {
+    margin: 0 0 6px;
+    font-size: 13px;
+    color: #606266;
+  }
+
+  .scan-holder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 90px;
+    border: 1px dashed #dcdfe6;
+    border-radius: 4px;
+    color: #909399;
+    font-size: 13px;
+  }
+
+  .scan-failed {
+    color: #f56c6c;
+  }
+
+  .scan-img {
+    width: 100%;
+    max-height: 260px;
+    cursor: zoom-in;
+  }
 }
 
 .cert-expired {

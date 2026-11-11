@@ -72,8 +72,10 @@
             <div class="card-header">
               <span class="card-title">溯源关系图</span>
               <el-space>
-                <el-tag size="small" type="success" v-if="verifyResult?.allVerified">全链路已验证</el-tag>
-                <el-tag size="small" type="danger" v-else>存在验证失败</el-tag>
+                <el-tag size="small" type="success" v-if="verifyResult?.allVerified">
+                  {{ verifyResult.onChain ? '全链路已验证' : '全链路存证已核对' }}
+                </el-tag>
+                <el-tag size="small" type="danger" v-else-if="verifyResult">存在核对失败</el-tag>
               </el-space>
             </div>
           </template>
@@ -84,9 +86,9 @@
         <el-card class="verify-panel">
           <template #header>
             <div class="card-header">
-              <span class="card-title">区块链验真</span>
+              <span class="card-title">{{ chainMode.onChain ? '区块链验真' : '存证核对' }}</span>
               <el-button size="small" type="primary" @click="handleVerify" :loading="verifying">
-                <el-icon><Refresh /></el-icon>重新验真
+                <el-icon><Refresh /></el-icon>重新核对
               </el-button>
             </div>
           </template>
@@ -96,9 +98,19 @@
             <div class="verify-summary" :class="verifyResult.allVerified ? 'verify-pass' : 'verify-fail'">
               <el-icon :size="36"><component :is="verifyResult.allVerified ? 'CircleCheckFilled' : 'WarningFilled'" /></el-icon>
               <div>
-                <div class="verify-summary-title">{{ verifyResult.allVerified ? '全链路验证通过' : '部分验证失败' }}</div>
+                <div class="verify-summary-title">
+                  {{ verifyResult.allVerified
+                    ? (verifyResult.onChain ? '全链路验证通过' : '全链路存证核对通过')
+                    : '部分核对失败' }}
+                </div>
                 <div class="verify-summary-desc">
-                  {{ verifyResult.allVerified ? '该产品溯源数据与区块链存证完全一致，可放心使用' : '部分环节数据与链上记录不匹配，请谨慎处理' }}
+                  {{ verifyResult.allVerified
+                    ? (verifyResult.onChain
+                        ? '该产品溯源数据与区块链存证完全一致，可放心使用'
+                        : '该产品溯源数据与平台存证记录一致（当前为本地存证模式，存证未写入区块链，仅供平台内核对）')
+                    : (verifyResult.onChain
+                        ? '部分环节数据与链上记录不匹配，请谨慎处理'
+                        : '部分环节数据与平台存证记录不匹配，请谨慎处理') }}
                 </div>
               </div>
             </div>
@@ -118,7 +130,7 @@
                     <code class="vd-code">{{ item.localHash?.substring(0, 20) }}...</code>
                   </div>
                   <div class="vd-hash-row">
-                    <span class="vd-label">链上哈希</span>
+                    <span class="vd-label">{{ verifyResult.onChain ? '链上哈希' : '存证哈希' }}</span>
                     <code class="vd-code" :class="{ 'hash-mismatch': !item.matched }">{{ item.onChainHash?.substring(0, 20) }}...</code>
                   </div>
                 </div>
@@ -126,11 +138,11 @@
             </div>
           </div>
 
-          <el-empty v-else description='点击"重新验真"开始区块链验证' :image-size="60" />
+          <el-empty v-else :description="chainMode.onChain ? '点击“重新核对”开始区块链验证' : '点击“重新核对”核对平台存证记录'" :image-size="60" />
 
-          <!-- 链上存证记录 -->
+          <!-- 存证记录 -->
           <div class="chain-records" v-if="traceData?.traceChain?.blockchain?.records?.length">
-            <div class="vd-biz" style="margin-bottom: 8px;">链上存证记录</div>
+            <div class="vd-biz" style="margin-bottom: 8px;">{{ chainMode.onChain ? '链上存证记录' : '存证记录' }}</div>
             <div v-for="rec in traceData.traceChain.blockchain.records" :key="rec.txHash" class="chain-record-item">
               <span class="cr-type">{{ rec.type }}</span>
               <code class="cr-hash" :title="rec.txHash">{{ rec.txHash?.substring(0, 16) }}...</code>
@@ -151,7 +163,7 @@
           <el-table-column prop="keyInfo" label="关键信息" min-width="200" show-overflow-tooltip />
           <el-table-column prop="chainStatus" label="链上状态" width="100" align="center">
             <template #default="{ row }">
-              <BlockchainVerifyBadge :status="row.chainStatus" />
+              <BlockchainVerifyBadge :status="row.chainStatus" :mode="chainMode" />
             </template>
           </el-table-column>
         </el-table>
@@ -173,6 +185,8 @@ import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import BlockchainVerifyBadge from '@/components/common/BlockchainVerifyBadge.vue'
 import { traceApi } from '@/api/modules/trace'
+import { chainMode, loadChainMode } from '@/utils/chainMode'
+import { chainBizTypeLabel } from '@/utils/chainBizType'
 
 const route = useRoute()
 
@@ -364,32 +378,8 @@ async function handleSearch() {
   }
 }
 
-const bizTypeMap: Record<string, string> = {
-  QUARANTINE_CERT: '检疫证明',
-  PIG_INDIVIDUAL: '生猪档案',
-  VACCINE_RECORD: '疫苗记录',
-  ENTRY_INSPECTION: '入场查验',
-  SLAUGHTER_INSPECT: '屠宰检验',
-  RACTOPAMINE_TEST: '瘦肉精检测',
-  CARCASS_STAMP: '检疫盖章',
-  CARCASS_BATCH: '胴体批次',
-  SPLIT_BATCH: '批次拆分',
-  COLD_CHAIN_TRANSPORT: '冷链运输',
-  STORE_RECEIPT: '门店签收',
-  RETAIL_SALE: '销售激活',
-  RECALL_ORDER: '产品召回',
-  SLAUGHTER_INSPECT_VOID: '检验作废',
-  CARCASS_STAMP_VOID: '盖章作废',
-  CARCASS_BATCH_VOID: '胴体批次作废',
-  SPLIT_BATCH_VOID: '分割批次作废',
-  RETAIL_SALE_VOID: '销售作废',
-  PIG_INDIVIDUAL_VOID: '生猪档案作废',
-  VACCINE_RECORD_VOID: '免疫记录作废',
-  RACTOPAMINE_VOID: '瘦肉精检测作废',
-  QUARANTINE_CERT_VOID: '检疫证明作废',
-  RECALL_ORDER_PROGRESS: '召回进度',
-}
-const bizTypeLabel = (t: string) => bizTypeMap[t] || t
+// 类型字典统一在 @/utils/chainBizType：链上出现什么类型，这里就必须叫得出名字
+const bizTypeLabel = chainBizTypeLabel
 
 async function handleVerify(silent: unknown = false) {
   const productQr = traceData.value?.product?.qrCode
@@ -410,6 +400,8 @@ async function handleVerify(silent: unknown = false) {
     }
     verifyResult.value = {
       allVerified: !!res.allVerified,
+      // 后端自报的载体优先：这一页说「区块链已验证」的前提是真的 evm 上链
+      onChain: res.onChain === true || res.chainMode === 'evm',
       details: (Array.isArray(res.details) ? res.details : []).map((d: any) => ({
         bizType: bizTypeLabel(d?.type),
         bizName: `存证记录 #${pick(d?.bizId)}`,
@@ -521,6 +513,8 @@ function handleResize() { graphChart?.resize() }
 
 onMounted(() => {
   window.addEventListener('resize', handleResize)
+  // 存证载体决定这一页能说多重的话：本地账本不能显示成「区块链已验证」
+  loadChainMode()
   // 自动搜索默认关键词
   handleSearch()
 })

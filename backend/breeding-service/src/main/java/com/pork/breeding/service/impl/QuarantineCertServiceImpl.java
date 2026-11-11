@@ -9,6 +9,7 @@ import com.pork.breeding.entity.PigIndividual;
 import com.pork.breeding.mapper.PigIndividualMapper;
 import com.pork.breeding.mapper.QuarantineCertMapper;
 import com.pork.breeding.service.QuarantineCertService;
+import com.pork.breeding.support.ImmunityGate;
 import com.pork.breeding.vo.QuarantineCertVO;
 import com.pork.core.enums.ErrorCode;
 import com.pork.core.exception.BusinessException;
@@ -31,9 +32,14 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class QuarantineCertServiceImpl extends ServiceImpl<QuarantineCertMapper, QuarantineCertificate> implements QuarantineCertService {
+
+    /** 生猪状态：3 已屠宰（已屠宰的猪不存在「调运」这件事，再出证就是凭空造凭据） */
+    private static final int PIG_STATUS_SLAUGHTERED = 3;
+
     private final PigIndividualMapper pigMapper;
     private final ChainEventPublisher chainEvents;
     private final SourceGuard sourceGuard;
+    private final ImmunityGate immunityGate;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -44,6 +50,26 @@ public class QuarantineCertServiceImpl extends ServiceImpl<QuarantineCertMapper,
         ManualOperator operator = sourceGuard.requireManualAllowed(TraceStage.QUARANTINE);
         PigIndividual pig = pigMapper.selectById(dto.getPigId());
         if (pig == null) throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, "生猪档案不存在");
+
+        // 前置一：证面时间必须自洽 —— 有效期早于签发日的证是自相矛盾的，
+        // 下游入场查验会拿它当有效凭据放行，必须在落库前挡住
+        if (dto.getValidUntil() != null && dto.getIssueTime() != null
+                && dto.getValidUntil().isBefore(dto.getIssueTime().toLocalDate())) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR,
+                    "检疫证有效期 " + dto.getValidUntil() + " 早于签发时间 " + dto.getIssueTime().toLocalDate()
+                            + "，证面数据不成立");
+        }
+        // 前置二：已屠宰的猪不再有「调运」这件事，给它出产地检疫证等于凭空造凭据
+        if (pig.getStatus() != null && pig.getStatus() == PIG_STATUS_SLAUGHTERED) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR,
+                    "该生猪已屠宰，不能再签发产地检疫证（产地检疫是调运前置，猪已不在场）");
+        }
+        // 前置三：产地检疫须查验强制免疫档案 —— 判定口径见 ImmunityGate
+        String immunityBlock = immunityGate.blockReason(pig.getId(), dto.getIssueTime());
+        if (immunityBlock != null) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR, immunityBlock);
+        }
+
         long count = this.count(Wrappers.<QuarantineCertificate>lambdaQuery()
                 .eq(QuarantineCertificate::getPigId, dto.getPigId())
                 .or().eq(QuarantineCertificate::getCertNo, dto.getCertNo()));

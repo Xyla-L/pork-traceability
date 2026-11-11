@@ -14,9 +14,15 @@ public enum TraceStage {
     // `SourcePolicyRegistry.list()` 直接按 values() 遍历输出，因此这份顺序决定了
     // 前端「来源策略」表格的展示次序——调整前请先确认与侧边栏一致。
 
-    /** 养殖建档：耳标读写器，佩戴即建档 */
-    TAG("TAG", "养殖建档（耳标）", "pig_individual", SourcePolicy.DEVICE_ONLY,
-            "耳标佩戴由读写器自动建档，人工建档入口已删除——数据只认设备"),
+    /**
+     * 养殖建档：耳标读写器 + 人工建档。
+     * <p>
+     * 2026-10-24 由 DEVICE_ONLY 放开为 MANUAL_ALLOWED：耳标芯片里只有一个编号，
+     * 读写器读不出养殖场/品种/性别/出生日期（那是人的知识）——设备上报新耳标转待人工，
+     * 档案由人工建档录入，两路合流。设备通道没有后门，人工通道有真实入口。
+     */
+    TAG("TAG", "养殖建档（耳标）", "pig_individual", SourcePolicy.MANUAL_ALLOWED,
+            "读写器只提供耳标号；档案信息（养殖场、品种等）由人工建档录入"),
 
     /** 免疫注射：智能连续注射器 */
     VACCINE("VACCINE", "免疫注射", "vaccine_record", SourcePolicy.DEVICE_ONLY,

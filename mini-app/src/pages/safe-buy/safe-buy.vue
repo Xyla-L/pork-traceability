@@ -10,8 +10,9 @@
     <template v-else-if="data">
       <!-- 顶部徽章 -->
       <view class="sb-top">
-        <BlockchainBadge :verified="data.blockchain.verified" />
-        <text class="sb-top-count">共 {{ data.blockchain.recordCount }} 条链上记录</text>
+        <BlockchainBadge :verified="data.blockchain.verified" :on-chain="data.blockchain.onChain === true"
+                         :count="data.blockchain.recordCount" />
+        <text class="sb-top-count">共 {{ data.blockchain.recordCount }} 条存证记录</text>
       </view>
 
       <!-- 检疫合格章画廊 -->
@@ -36,9 +37,9 @@
         <ReportSummary :reports="data.reports" />
       </view>
 
-      <!-- 区块链存证时间轴 -->
+      <!-- 存证时间轴：只有真上链时才叫「区块链存证」 -->
       <view class="card">
-        <view class="section-title">区块链存证时间轴</view>
+        <view class="section-title">{{ data.blockchain?.onChain === true ? '区块链存证时间轴' : '存证时间轴' }}</view>
         <view class="chain-timeline">
           <view v-for="(rec, idx) in data.chainRecords" :key="idx" class="ct-node">
             <view class="ct-rail">
@@ -48,7 +49,9 @@
             <view class="ct-content">
               <view class="ct-desc">{{ rec.desc }}</view>
               <view class="ct-time">{{ rec.time }}</view>
-              <view class="ct-tx">{{ rec.txHash }} · 区块 {{ rec.blockNumber }}</view>
+              <view class="ct-tx">
+                {{ shortHash(rec.txHash) }} · {{ data.blockchain?.onChain === true ? '区块' : '序号' }} {{ rec.blockNumber }}
+              </view>
             </view>
           </view>
         </view>
@@ -68,6 +71,7 @@ import { useProductStore } from '@/stores/product'
 import BlockchainBadge from '@/components/BlockchainBadge.vue'
 import ReportSummary from '@/components/ReportSummary.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import { shortHash } from '@/utils/bizType'
 
 const productStore = useProductStore()
 const loading = ref(false)

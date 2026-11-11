@@ -35,6 +35,15 @@ x-app-environment: &app-environment
   # 机构登记同步用（breeding → auth 的 /auth/internal/orgs，容器内直连，网关不转发）
   AUTH_SERVICE_URL: http://auth-service:8081
   SERVICES_AUTH_URL: http://auth-service:8081
+  # 智能助手只读取数：追溯问答走 trace，异常诊断走 ingest
+  SERVICES_TRACE_URL: http://trace-service:8086
+  SERVICES_INGEST_URL: http://ingest-service:8089
+  # 模型：默认智谱免费模型 glm-4-flash；不填 key 则走本地归纳，不产生任何调用费用
+  AGENT_LLM_BASE_URL: ${AGENT_LLM_BASE_URL:-https://open.bigmodel.cn/api/paas/v4}
+  AGENT_LLM_API_KEY: ${AGENT_LLM_API_KEY:-}
+  AGENT_LLM_MODEL: ${AGENT_LLM_MODEL:-glm-4-flash}
+  # 空=不传该字段；通义千问设 false 可关闭思考、显著缩短等待
+  AGENT_LLM_ENABLE_THINKING: ${AGENT_LLM_ENABLE_THINKING:-}
 
 x-app-defaults: &app-defaults
   restart: unless-stopped
@@ -233,7 +242,11 @@ services:
   ganache:
     image: trufflesuite/ganache:v7.9.2
     restart: unless-stopped
-    command: --chain.chainId 1337 --wallet.deterministic --miner.blockTime 2
+    # dbPath 落盘：链上数据与已部署合约要能跨容器重启存活，否则每次重启合约地址就变了
+    # blockTime 0 = 交易即时出块（演练/演示环境不需要 2 秒出块，迁移几百条时差别是几十分钟）
+    command: --chain.chainId 1337 --wallet.deterministic --miner.blockTime 0 --database.dbPath /data
+    volumes:
+      - ganache-data:/data
     ports: ["8545:8545"]
     networks: [pork-net]
     healthcheck:
@@ -253,13 +266,18 @@ services:
       MAIN_CLASS: com.pork.blockchain.BlockchainApplication
       SERVICE_PORT: 8087
       DB_URL: jdbc:mysql://mysql:3306/db_common?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-      # local=数据库模拟账本（补录的历史数据可直接验真）；evm=真实上链到本地 Ganache
-      BLOCKCHAIN_TYPE: ${BLOCKCHAIN_TYPE:-local}
+      # local=数据库模拟账本；evm=真实上链到本地 Ganache（2026-11-08 已切，历史 962 条已补写链上）
+      BLOCKCHAIN_TYPE: ${BLOCKCHAIN_TYPE:-evm}
       EVM_RPC_URL: ${EVM_RPC_URL:-http://ganache:8545}
       EVM_CHAIN_ID: ${EVM_CHAIN_ID:-1337}
       # Ganache --wallet.deterministic 首个账户（仅本地开发链，勿用于公网）
       EVM_PRIVATE_KEY: ${EVM_PRIVATE_KEY:-0x4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d}
-      EVM_CONTRACT_ADDRESS: ${EVM_CONTRACT_ADDRESS:-}
+      # 合约地址固定：ganache 数据已落卷（ganache-data），重启后合约仍在；换链/清卷时才需要改
+      EVM_CONTRACT_ADDRESS: ${EVM_CONTRACT_ADDRESS:-0xe78a0f7e598cc8b0bb87894b0f60dd2a88d6a8ab}
+      # 存证对账出问题时推管理员收件箱（trace 通知中心内部接口）
+      SERVICES_TRACE_URL: http://trace-service:8086
+      # 本地 ganache 即时出块，回执 300ms 就够；默认 2s 会让批量补写历史存证慢一个数量级
+      SPRING_APPLICATION_JSON: '{"blockchain":{"evm":{"receipt-interval-ms":300}}}'
     depends_on:
       mysql: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -279,6 +297,22 @@ services:
       DB_URL: jdbc:mysql://mysql:3306/db_common?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
       FILE_STORAGE_ROOT: /app/data/trace-files
     volumes: ["${FILE_STORAGE_PATH:-./data/trace-files}:/app/data/trace-files"]
+
+  # 智能助手：只读问答 + 异常归纳，不承载任何业务判定
+  agent-service:
+    <<: *app-defaults
+    build:
+      context: .
+      args: { SERVICE: agent-service }
+    environment:
+      <<: *app-environment
+      MAIN_CLASS: com.pork.agent.AgentApplication
+      SERVICE_PORT: 8090
+      DB_URL: jdbc:mysql://mysql:3306/db_common?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    depends_on:
+      mysql: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      nacos: { condition: service_healthy }
 
   nginx:
     image: nginx:1.27-alpine
@@ -307,3 +341,4 @@ volumes:
   mysql-data:
   redis-data:
   rabbitmq-data:
+  ganache-data:

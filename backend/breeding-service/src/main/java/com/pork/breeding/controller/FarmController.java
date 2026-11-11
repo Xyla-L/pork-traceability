@@ -3,6 +3,7 @@ package com.pork.breeding.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pork.breeding.dto.FarmDTO;
 import com.pork.breeding.service.FarmService;
+import com.pork.breeding.support.FarmScope;
 import com.pork.breeding.vo.FarmVO;
 import com.pork.core.result.PageResult;
 import com.pork.core.result.Result;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 public class FarmController {
 
     private final FarmService farmService;
+    private final FarmScope farmScope;
 
     @GetMapping({"", "/page"})
     @Operation(summary = "分页查询养殖场列表")
@@ -26,7 +28,8 @@ public class FarmController {
             @RequestParam(defaultValue = "1") Long current,
             @RequestParam(defaultValue = "10") Long size,
             @RequestParam(required = false) String farmName) {
-        Page<FarmVO> page = farmService.pageQuery(current, size, farmName);
+        // 机构隔离：养殖角色的场下拉只有自己那家场（restrict 换算不出直接 403，不放全量）
+        Page<FarmVO> page = farmService.pageQuery(current, size, farmName, farmScope.scopedFarmId());
         return Result.success(PageResult.of(page));
     }
 

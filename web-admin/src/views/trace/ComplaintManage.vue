@@ -129,6 +129,7 @@ import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import type { EpTagType } from '@/types/common'
 import { traceApi } from '@/api/modules/trace'
+import { useKeywordQuery } from '@/composables/useKeywordQuery'
 
 const router = useRouter()
 const searchForm = reactive({ reportNo: '', reporterName: '', targetBatch: '', status: null as number | null })
@@ -208,6 +209,15 @@ async function fetchList() {
     loading.value = false
   }
 }
+
+// 顶部通知带举报编号过来：先把状态筛选清掉再按编号查 —— 否则那条记录
+// 可能正被「待受理」这类筛选挡在列表外，跳过来仍是空的。
+useKeywordQuery((kw) => {
+  statusTab.value = -1
+  searchForm.status = null
+  searchForm.reportNo = kw
+  handleSearch()
+})
 
 onMounted(() => fetchList())
 </script>

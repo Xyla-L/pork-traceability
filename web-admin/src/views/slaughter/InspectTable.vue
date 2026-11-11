@@ -1,49 +1,94 @@
 <template>
   <div class="inspect-table">
+    <!--
+      主行 = 一个批次的检验进展（一批猪陆续宰，跨天是常态），展开 = 逐头检验明细。
+      折叠不改口径：合格/不合格、作废入口都在逐头那一层 —— 一头不合格只扣这一头。
+    -->
     <el-table
       v-loading="loading"
       :data="data"
+      row-key="groupKey"
       border
       stripe
       style="width: 100%"
     >
-      <el-table-column prop="inspectNo" label="检验编号" min-width="140" show-overflow-tooltip />
-      <el-table-column prop="batchNo" label="批次号" min-width="140" show-overflow-tooltip />
-      <el-table-column prop="earTagNo" label="耳标号" min-width="140" show-overflow-tooltip />
-      <el-table-column prop="inspectType" label="检验类型" min-width="120" align="center">
+      <el-table-column type="expand">
         <template #default="{ row }">
-          {{ inspectTypeLabel(row.inspectType) }}
+          <div class="member-panel">
+            <div class="member-panel__title">{{ memberTitle(row) }}</div>
+            <el-table :data="row.members" size="small" border>
+              <el-table-column prop="inspectNo" label="检验编号" min-width="150" show-overflow-tooltip />
+              <el-table-column prop="earTagNo" label="耳标号" min-width="140" show-overflow-tooltip />
+              <el-table-column label="检验类型" min-width="130" align="center">
+                <template #default="{ row: m }">{{ inspectTypeLabel(m.inspectType) }}</template>
+              </el-table-column>
+              <el-table-column prop="inspectTime" label="检验时间" min-width="160" align="center" />
+              <el-table-column label="检验员" width="100" align="center">
+                <template #default="{ row: m }">{{ m.veterinary || '未记录' }}</template>
+              </el-table-column>
+              <el-table-column label="体温(°C)" width="95" align="center">
+                <template #default="{ row: m }">
+                  {{ m.temperature === null || m.temperature === undefined || m.temperature === '' ? '--' : m.temperature }}
+                </template>
+              </el-table-column>
+              <el-table-column label="采集设备" min-width="140" align="center">
+                <template #default="{ row: m }">
+                  <el-tooltip :content="m.source === 'DEVICE' ? `工位终端录入：${m.sourceRef || '--'}` : sourceLabel(m.source)" placement="top">
+                    <el-tag :type="sourceTag(m.source)" size="small" effect="plain">{{ deviceText(m) }}</el-tag>
+                  </el-tooltip>
+                </template>
+              </el-table-column>
+              <el-table-column label="状态" width="100" align="center">
+                <template #default="{ row: m }">
+                  <el-tag :type="inspectStatusTag(m.status)" size="small">{{ inspectStatusLabel(m.status) }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="150" fixed="right" align="center">
+                <template #default="{ row: m }">
+                  <el-button type="primary" link size="small" @click="handleView(m)">查看</el-button>
+                  <el-button v-if="m.status !== 3" type="danger" link size="small" @click="handleVoid(m)">
+                    作废
+                  </el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
         </template>
       </el-table-column>
-      <el-table-column prop="inspectTime" label="检验时间" min-width="160" align="center" />
-      <el-table-column prop="veterinary" label="检验员" min-width="100" align="center">
-        <template #default="{ row }">{{ row.veterinary || '未记录' }}</template>
-      </el-table-column>
-      <el-table-column prop="temperature" label="体温(°C)" min-width="100" align="center">
+
+      <el-table-column label="批次号" min-width="190" show-overflow-tooltip>
         <template #default="{ row }">
-          {{ row.temperature === null || row.temperature === undefined || row.temperature === '' ? '--' : row.temperature }}
-        </template>
-      </el-table-column>
-      <el-table-column prop="status" label="状态" min-width="100" align="center">
-        <template #default="{ row }">
-          <el-tag :type="inspectStatusTag(row.status)" size="small">{{ inspectStatusLabel(row.status) }}</el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column prop="source" label="采集设备" min-width="140" align="center">
-        <template #default="{ row }">
-          <el-tooltip :content="row.source === 'DEVICE' ? `工位终端录入：${row.sourceRef || '--'}` : sourceLabel(row.source)" placement="top">
-            <el-tag :type="sourceTag(row.source)" size="small" effect="plain">{{ deviceText(row) }}</el-tag>
+          <template v-if="row.batchNo">
+            <span class="batch-no">{{ row.batchNo }}</span>
+            <span class="batch-count">{{ row.headCount }} 头</span>
+          </template>
+          <el-tooltip v-else content="这头猪没有批次号（外购零星补栏等），按头独立成行" placement="top">
+            <el-tag type="info" size="small" effect="plain">未归批</el-tag>
           </el-tooltip>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="170" fixed="right" align="center">
+      <el-table-column label="耳标区间" min-width="230" show-overflow-tooltip>
         <template #default="{ row }">
-          <el-button type="primary" link size="small" @click="handleView(row)">
-            查看
-          </el-button>
-          <el-button v-if="row.status !== 3" type="danger" link size="small" @click="handleVoid(row)">
-            作废
-          </el-button>
+          <span v-if="row.tagStart" class="tag-range">{{ tagRange(row) }}</span>
+          <span v-else class="empty-cell">--</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="检验环节" min-width="170" align="center">
+        <template #default="{ row }">{{ typeSummary(row) }}</template>
+      </el-table-column>
+      <el-table-column label="检验时间" min-width="200" align="center">
+        <template #default="{ row }">{{ timeRange(row) }}</template>
+      </el-table-column>
+      <el-table-column label="检验员" min-width="120" show-overflow-tooltip>
+        <template #default="{ row }">{{ veterinarySummary(row) }}</template>
+      </el-table-column>
+      <el-table-column label="检验结论" min-width="150" align="center">
+        <template #default="{ row }">
+          <el-tooltip :content="row.statusDetail || row.statusSummary" placement="top">
+            <el-tag :type="statusTagType(row.statusSummary)" size="small" effect="plain">
+              {{ row.statusSummary }}
+            </el-tag>
+          </el-tooltip>
         </template>
       </el-table-column>
     </el-table>
@@ -80,7 +125,6 @@
 
 <script setup>
 import { ref } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
 import { deviceText, sourceLabel, sourceTag } from '@/api/modules/ingest'
 import { slaughterApi } from '@/api/modules/slaughter'
 import { confirmVoid } from '@/composables/useVoidAction'
@@ -100,6 +144,42 @@ defineProps({
 const viewVisible = ref(false)
 const currentView = ref({})
 const vaccineRecords = ref([])
+
+const tagRange = (row) => {
+  if (!row.tagStart) return '--'
+  return row.tagStart === row.tagEnd ? row.tagStart : `${row.tagStart} ~ ${row.tagEnd}`
+}
+
+const timeRange = (row) => {
+  if (!row.firstTime) return '--'
+  return row.firstTime === row.lastTime ? row.firstTime : `${row.firstTime} ~ ${row.lastTime}`
+}
+
+/** 检验环节：一批里可能既有宰前也有宰后（同步检疫），只报一个环节会误导 */
+const typeSummary = (row) => {
+  const types = [...new Set((row.members || []).map((m) => inspectTypeLabel(m.inspectType)).filter((t) => t && t !== '--'))]
+  if (types.length === 0) return '--'
+  return types.length === 1 ? types[0] : `${types[0]} 等 ${types.length} 个环节`
+}
+
+/** 检验员：一个人报名，多个人报「首位 等N人」——不留「系统」这种假名 */
+const veterinarySummary = (row) => {
+  const names = [...new Set((row.members || []).map((m) => m.veterinary).filter(Boolean))]
+  if (names.length === 0) return '未记录'
+  return names.length === 1 ? names[0] : `${names[0]} 等${names.length}人`
+}
+
+const memberTitle = (row) => (row.batchNo
+  ? `批次 ${row.batchNo}：本次共 ${row.headCount} 头的检验明细`
+  : `未归批：${row.headCount} 头的检验明细`)
+
+/** 结论配色：全合格绿、不合格红、待检验/部分黄 */
+const statusTagType = (s) => {
+  if (s === '全部合格') return 'success'
+  if (s === '全部不合格' || s === '含不合格') return 'danger'
+  if (s === '全部作废') return 'info'
+  return 'warning'
+}
 
 const handleView = async (row) => {
   currentView.value = row
@@ -144,5 +224,27 @@ const handleVoid = async (row) => {
   font-size: 12px;
   color: #909399;
   word-break: break-all;
+}
+.batch-no { font-weight: 600; color: #303133; }
+.batch-count {
+  margin-left: 8px;
+  padding: 0 6px;
+  font-size: 12px;
+  color: #606266;
+  background: #f4f4f5;
+  border-radius: 9px;
+}
+.tag-range { font-family: 'Courier New', monospace; font-size: 12px; color: #606266; }
+.empty-cell { color: #c0c4cc; }
+.member-panel {
+  padding: 8px 12px 12px 48px;
+  background: #fafafa;
+
+  &__title {
+    margin-bottom: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #606266;
+  }
 }
 </style>

@@ -1,154 +1,147 @@
 <template>
-  <div class="dashboard">
-    <!-- ========== 统计卡片 ========== -->
+  <div v-loading="loading" class="dashboard">
+    <!-- 角色与数据范围：同一张工作台，不同角色看到的是自己那一环 -->
+    <div class="dashboard-head">
+      <div class="head-main">
+        <span class="head-title">{{ overview?.roleLabel || '工作台' }}</span>
+        <el-tag v-if="overview?.scopeLabel" size="small" effect="plain" type="info">
+          {{ overview.scopeLabel }}
+        </el-tag>
+      </div>
+      <span v-if="degradedText" class="head-degraded">{{ degradedText }}</span>
+    </div>
+
+    <!-- ========== 指标卡片 ========== -->
     <div class="stat-cards">
       <el-card v-for="card in statCards" :key="card.key" class="stat-card" shadow="hover">
-        <div class="stat-icon" :style="{ background: card.gradient }">
-          <el-icon :size="24"><component :is="card.icon" /></el-icon>
+        <div class="stat-icon" :style="{ background: gradientOf(card.key) }">
+          <el-icon :size="24"><component :is="iconOf(card.key)" /></el-icon>
         </div>
         <div class="stat-info">
-          <div class="stat-value">{{ card.value }}</div>
+          <div class="stat-value">
+            {{ cardText(card) }}<span v-if="card.unit" class="stat-unit">{{ card.unit }}</span>
+          </div>
           <div class="stat-label">{{ card.label }}</div>
         </div>
-        <div class="stat-trend" v-if="card.trend">
-          <el-icon :color="card.trend > 0 ? '#67c23a' : '#f56c6c'">
-            <component :is="card.trend > 0 ? 'CaretTop' : 'CaretBottom'" />
-          </el-icon>
-          <span :style="{ color: card.trend > 0 ? '#67c23a' : '#f56c6c' }">{{ Math.abs(card.trend) }}%</span>
-          <span class="trend-label">较昨日</span>
+      </el-card>
+    </div>
+
+    <!-- ========== 图表 / 明细区块 ========== -->
+    <div class="block-grid">
+      <el-card
+        v-for="block in blocks"
+        :key="block.key"
+        class="chart-card"
+        :class="{ 'span-2': block.span === 2 }"
+      >
+        <template #header>
+          <div class="chart-header">
+            <span class="chart-title">{{ block.title }}</span>
+            <el-button v-if="block.link" type="primary" link size="small" @click="go(block.link.path)">
+              {{ block.link.text }} →
+            </el-button>
+          </div>
+        </template>
+
+        <el-table
+          v-if="block.type === 'table'"
+          :data="block.rows || []"
+          stripe
+          border
+          style="width: 100%"
+          :empty-text="block.emptyText || '暂无记录'"
+          max-height="320"
+        >
+          <el-table-column
+            v-for="col in block.columns || []"
+            :key="col.prop"
+            :prop="col.prop"
+            :label="col.label"
+            :min-width="col.width"
+            show-overflow-tooltip
+          />
+        </el-table>
+
+        <div v-else-if="isEmpty(block)" class="chart-empty">暂无可展示的数据</div>
+
+        <div
+          v-else
+          :ref="(el) => setChartEl(block.key, el)"
+          class="chart-container"
+          :class="{ sankey: block.type === 'sankey' }"
+        ></div>
+      </el-card>
+    </div>
+
+    <!-- ========== 待办 ========== -->
+    <el-card v-if="todoList.length" class="table-card todo-card">
+      <template #header>
+        <div class="chart-header">
+          <span class="chart-title">待办事项</span>
+          <el-badge :value="todoList.length" type="danger" />
         </div>
-      </el-card>
-    </div>
-
-    <!-- ========== 图表行：桑基图 + 临期分布饼图 ========== -->
-    <div class="chart-row">
-      <el-card class="chart-card">
-        <template #header>
-          <div class="chart-header">
-            <span class="chart-title">全链路数据流通统计</span>
-            <el-tooltip content="桑基图：养殖→屠宰→分割→配送→销售各环节数据流转量" placement="top">
-              <el-icon class="chart-hint"><QuestionFilled /></el-icon>
-            </el-tooltip>
-          </div>
-        </template>
-        <div ref="sankeyChartRef" class="chart-container sankey-chart"></div>
-      </el-card>
-
-      <el-card class="chart-card">
-        <template #header>
-          <div class="chart-header">
-            <span class="chart-title">临期/过期产品分布</span>
-            <el-tag size="small" type="warning">实时</el-tag>
-          </div>
-        </template>
-        <div ref="expirePieRef" class="chart-container"></div>
-      </el-card>
-    </div>
-
-    <!-- ========== 图表行：每日上链量柱状图 + 预警级别分布 ========== -->
-    <div class="chart-row">
-      <el-card class="chart-card">
-        <template #header>
-          <div class="chart-header">
-            <span class="chart-title">区块链每日上链量</span>
-            <el-tag size="small" type="success">近30天</el-tag>
-          </div>
-        </template>
-        <div ref="chainTxBarRef" class="chart-container"></div>
-      </el-card>
-
-      <el-card class="chart-card">
-        <template #header>
-          <div class="chart-header">
-            <span class="chart-title">预警级别分布</span>
-          </div>
-        </template>
-        <div ref="warningChartRef" class="chart-container"></div>
-      </el-card>
-    </div>
-
-    <!-- ========== 底部：最近预警 + 待办事项 ========== -->
-    <div class="bottom-row">
-      <el-card class="table-card">
-        <template #header>
-          <div class="table-header">
-            <span>最近预警</span>
-            <el-button type="primary" link @click="goToWarnings">查看全部 →</el-button>
-          </div>
-        </template>
-        <el-table :data="recentWarnings" stripe border style="width: 100%">
-          <el-table-column prop="productName" label="产品名称" min-width="150" />
-          <el-table-column prop="batchNo" label="产品二维码" min-width="120" />
-          <el-table-column prop="warningLevel" label="预警级别" width="100" align="center">
-            <template #default="{ row }">
-              <el-tag :type="warningTagType(row.warningLevel)" size="small">{{ row.warningLevel }}</el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="expireDate" label="过期日期" width="120" />
-          <el-table-column prop="storeName" label="门店" width="120" />
-          <el-table-column label="操作" width="80" align="center">
-            <template #default>
-              <el-button type="primary" link size="small">处理</el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-card>
-
-      <el-card class="table-card">
-        <template #header>
-          <div class="table-header">
-            <span>待办事项</span>
-            <el-badge :value="todoList.length" type="danger" />
-          </div>
-        </template>
-        <el-table :data="todoList" stripe border style="width: 100%">
-          <el-table-column prop="title" label="事项" min-width="200" />
-          <el-table-column prop="type" label="类型" width="100" align="center">
-            <template #default="{ row }">
-              <el-tag size="small" :type="todoTagType(row.type)">{{ row.type }}</el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="time" label="时间" width="120" />
-          <el-table-column prop="status" label="状态" width="80" align="center">
-            <template #default="{ row }">
-              <el-tag size="small" :type="row.status === '待审批' ? 'warning' : row.status === '进行中' ? 'primary' : 'info'">
-                {{ row.status }}
-              </el-tag>
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-card>
-    </div>
+      </template>
+      <el-table :data="todoList" stripe border style="width: 100%" max-height="300">
+        <el-table-column prop="title" label="事项" min-width="260" show-overflow-tooltip />
+        <el-table-column prop="type" label="类型" width="140" align="center">
+          <template #default="{ row }">
+            <el-tag size="small" :type="todoTagType(row.type)">{{ row.type }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="time" label="时间" width="150" />
+        <el-table-column prop="status" label="状态" width="110" align="center">
+          <template #default="{ row }">
+            <el-tag size="small" :type="row.status === '待处理' || row.status === '待发车' ? 'warning' : 'info'">
+              {{ row.status }}
+            </el-tag>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onUnmounted, nextTick, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   User, KnifeFork, Box, Warning, ChatLineRound, Coin,
-  CaretTop, CaretBottom, QuestionFilled,
+  Van, Search, Stamp, Money, ShoppingCart, Goods,
+  AlarmClock, DocumentChecked, Select, Right, Position,
+  Location, CircleCheck,
 } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import { dashboardApi } from '@/api/modules/dashboard'
+import type { DashboardOverview, DashboardBlock } from '@/types/dashboard'
 
 const router = useRouter()
 
-// ==================== 统计卡片数据 ====================
-interface StatCard {
-  key: string
-  icon: any
-  label: string
-  value: number | string
-  gradient: string
-  trend?: number
-}
+const overview = ref<DashboardOverview | null>(null)
+const loading = ref(true)
+const statCards = computed(() => overview.value?.statCards || [])
+const blocks = computed(() => overview.value?.blocks || [])
+const todoList = computed(() => overview.value?.todoList || [])
+const degradedText = computed(() => {
+  const list = overview.value?.degraded || []
+  return list.length ? `部分数据暂不可用：${list.join('、')}` : ''
+})
 
-// 后端只返回 key/value/trend，图标与渐变色由前端按 key 映射
+// 后端只给 key，图标与配色由前端按 key 映射；未知 key 用兜底样式
 const ICON_MAP: Record<string, any> = {
+  // 管理员 / 监管
   pigCount: User, slaughterCount: KnifeFork, transportCount: Box,
   expireCount: Warning, complaintCount: ChatLineRound, chainCount: Coin,
+  expiredCount: AlarmClock,
+  // 养殖户
+  raisingCount: User, pendingApply: DocumentChecked, approvedApply: Select, exitedCount: Right,
+  // 屠宰岗
+  entryToday: Van, inspectToday: Search, stampToday: Stamp, batchTotal: Box,
+  // 配送
+  waitingTransport: Van, movingTransport: Position, arrivingTransport: Location, receivedTransport: CircleCheck,
+  // 零售
+  salesAmount: Money, salesWeight: ShoppingCart, soldCount: Goods, expiringCount: Warning,
 }
+
 const GRADIENT_MAP: Record<string, string> = {
   pigCount: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
   slaughterCount: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
@@ -156,189 +149,202 @@ const GRADIENT_MAP: Record<string, string> = {
   expireCount: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
   complaintCount: 'linear-gradient(135deg, #f5576c 0%, #ff6b6b 100%)',
   chainCount: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+  expiredCount: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)',
+  raisingCount: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+  pendingApply: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+  approvedApply: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+  exitedCount: 'linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)',
+  entryToday: 'linear-gradient(135deg, #f6d365 0%, #fda085 100%)',
+  inspectToday: 'linear-gradient(135deg, #5ee7df 0%, #b490ca 100%)',
+  stampToday: 'linear-gradient(135deg, #d299c2 0%, #fef9d7 100%)',
+  batchTotal: 'linear-gradient(135deg, #89f7fe 0%, #66a6ff 100%)',
+  waitingTransport: 'linear-gradient(135deg, #fddb92 0%, #d1fdff 100%)',
+  movingTransport: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+  arrivingTransport: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+  receivedTransport: 'linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%)',
+  salesAmount: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+  salesWeight: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+  soldCount: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+  expiringCount: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
 }
 
-const statCards = reactive<StatCard[]>([])
+function iconOf(key: string) {
+  return ICON_MAP[key] || Warning
+}
 
-// ==================== 最近预警数据 ====================
-const recentWarnings = ref<any[]>([])
+function gradientOf(key: string) {
+  return GRADIENT_MAP[key] || 'linear-gradient(135deg,#909399,#606266)'
+}
 
-const warningTagType = (level: string) => {
-  if (level === '已过期') return 'danger'
-  if (level === '临期1天') return 'warning'
+function cardText(card: { value: number | string; unit?: string }) {
+  const value = card.value
+  if (typeof value !== 'number') return value ?? 0
+  // 金额固定两位，数量按是否为整数：避免「1,432.5 元」和「27.75 kg」混着看不出量级
+  if (card.unit === '元') return value.toFixed(2)
+  return Number.isInteger(value) ? String(value) : value.toFixed(2)
+}
+
+const todoTagType = (type: string): 'warning' | 'danger' | 'info' | 'primary' | 'success' => {
+  if (type.includes('举报') || type.includes('召回')) return 'danger'
+  if (type.includes('审批') || type.includes('驳回') || type.includes('临期')) return 'warning'
+  if (type.includes('发车') || type.includes('签收')) return 'primary'
   return 'info'
 }
 
-// ==================== 待办事项 ====================
-const todoList = ref<any[]>([])
+// ==================== 图表实例 ====================
+const chartEls = new Map<string, HTMLElement>()
+const charts = new Map<string, echarts.ECharts>()
 
-const todoTagType = (type: string): 'warning' | 'danger' | 'info' | 'primary' | 'success' => {
-  const map: Record<string, 'warning' | 'danger' | 'info' | 'primary' | 'success'> = { '出栏审批': 'warning', '举报处理': 'danger', '检测审核': 'info', '配送签收': 'primary', '产品召回': 'danger' }
-  return map[type] || 'info'
+function setChartEl(key: string, el: any) {
+  if (el) chartEls.set(key, el as HTMLElement)
+  else chartEls.delete(key)
 }
 
-// ==================== ECharts 实例 ====================
-const sankeyChartRef = ref<HTMLElement>()
-const expirePieRef = ref<HTMLElement>()
-const chainTxBarRef = ref<HTMLElement>()
-const warningChartRef = ref<HTMLElement>()
+function isEmpty(block: DashboardBlock) {
+  if (block.type === 'sankey') {
+    const data = block.data as { nodes?: unknown[] } | undefined
+    return !data?.nodes?.length
+  }
+  const data = block.data as any[] | undefined
+  if (!data || data.length === 0) return true
+  // 全是 0 与「没有数据」是一回事：画出来是个空圆环，不如直接说暂无数据
+  if (block.type === 'pie' || block.type === 'bar' || block.type === 'barH') {
+    return data.every((item) => !Number(item.value))
+  }
+  return false
+}
 
-let sankeyChart: echarts.ECharts | null = null
-let expirePieChart: echarts.ECharts | null = null
-let chainTxBarChart: echarts.ECharts | null = null
-let warningChart: echarts.ECharts | null = null
+const PALETTE = ['#5470c6', '#ee6666', '#73c0de', '#9a60b4', '#67c23a', '#e6a23c', '#909399', '#409eff']
+const COLOR_BY_NAME: Record<string, string> = {
+  '安全（>7天）': '#67c23a', '临期3天': '#e6a23c', '临期1天': '#f56c6c', '已过期': '#909399',
+  '在养': '#67c23a', '已出栏': '#409eff', '已屠宰': '#909399', '异常': '#f56c6c',
+  '合格': '#67c23a', '不合格': '#f56c6c', '未出结论': '#e6a23c',
+  '待发车': '#e6a23c', '运输中': '#409eff', '待签收': '#9a60b4', '已签收': '#67c23a',
+  '养殖免疫': '#5470c6', '屠宰检疫': '#ee6666', '分割配送': '#73c0de',
+  '市场销售': '#9a60b4', '消费者': '#67c23a',
+}
 
-// ==================== 初始化桑基图 ====================
-function initSankeyChart(data: any) {
-  if (!sankeyChartRef.value) return
-  sankeyChart = echarts.init(sankeyChartRef.value)
+function colorOf(name: string, index: number) {
+  return COLOR_BY_NAME[name] || PALETTE[index % PALETTE.length]
+}
 
-  const nodes = (data?.nodes || []).map((n: any) => ({ name: n.name, value: n.value }))
-  const links = (data?.links || []).map((l: any) => ({ source: l.source, target: l.target, value: l.value }))
-  const colorMap: Record<string, string> = {
-    '养殖免疫': '#5470c6', '屠宰检疫': '#ee6666', '分割配送': '#73c0de',
-    '市场销售': '#9a60b4', '消费者': '#67c23a',
+function buildOption(block: DashboardBlock) {
+  if (block.type === 'sankey') {
+    const data = block.data as { nodes: any[]; links: any[] } | undefined
+    return {
+      tooltip: { trigger: 'item', triggerOn: 'mousemove' },
+      series: [{
+        type: 'sankey',
+        layoutIterations: 32,
+        emphasis: { focus: 'adjacency' },
+        nodeWidth: 24,
+        nodeGap: 16,
+        data: (data?.nodes || []).map((n: any, i: number) => ({
+          name: n.name, value: n.value, itemStyle: { color: colorOf(n.name, i) },
+        })),
+        links: data?.links || [],
+        lineStyle: { color: 'gradient', curveness: 0.5, opacity: 0.3 },
+        label: { show: true, fontSize: 13, fontWeight: 'bold' },
+      }],
+    }
   }
 
-  sankeyChart.setOption({
-    tooltip: {
-      trigger: 'item',
-      triggerOn: 'mousemove',
-      formatter: (params: any) => {
-        if (params.dataType === 'node') {
-          return `<b>${params.name}</b><br/>节点总量: ${params.value} 批次`
-        }
-        return `${params.data.source} → ${params.data.target}<br/>流转量: <b>${params.data.value}</b> 批次`
-      },
+  const rows = (block.data as any[] | undefined) || []
+  const names = rows.map((item) => item.name)
+  const values = rows.map((item) => item.value)
+
+  if (block.type === 'pie') {
+    return {
+      tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+      legend: { bottom: 0, type: 'scroll', textStyle: { fontSize: 12 } },
+      series: [{
+        type: 'pie',
+        radius: ['45%', '72%'],
+        center: ['50%', '44%'],
+        avoidLabelOverlap: true,
+        itemStyle: { borderRadius: 8, borderColor: '#fff', borderWidth: 3 },
+        label: { fontSize: 12, formatter: '{b}\n{c}' },
+        data: rows.map((item, index) => ({
+          name: item.name, value: item.value, itemStyle: { color: colorOf(item.name, index) },
+        })),
+      }],
+    }
+  }
+
+  if (block.type === 'barH') {
+    return {
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: (v: any) => `${v} ${block.unit || ''}` },
+      grid: { left: '3%', right: '10%', bottom: '3%', top: '6%', containLabel: true },
+      xAxis: { type: 'value', name: block.unit || '' },
+      yAxis: { type: 'category', data: names, inverse: true, axisLabel: { fontSize: 12 } },
+      series: [{
+        type: 'bar',
+        data: values,
+        barMaxWidth: 22,
+        itemStyle: { borderRadius: [0, 4, 4, 0], color: '#409eff' },
+        label: { show: true, position: 'right', fontSize: 11 },
+      }],
+    }
+  }
+
+  // bar：垂直柱状
+  return {
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: (v: any) => `${v} ${block.unit || ''}` },
+    grid: { left: '3%', right: '4%', bottom: '3%', top: '12%', containLabel: true },
+    xAxis: {
+      type: 'category',
+      data: names,
+      axisLabel: { fontSize: 10, rotate: names.length > 12 ? 45 : 0 },
     },
-    series: [{
-      type: 'sankey',
-      layoutIterations: 32,
-      emphasis: { focus: 'adjacency' },
-      nodeWidth: 24,
-      nodeGap: 16,
-      data: nodes.map((n: any) => ({ ...n, itemStyle: { color: colorMap[n.name] || '#5470c6' } })),
-      links,
-      lineStyle: { color: 'gradient', curveness: 0.5, opacity: 0.3 },
-      label: { show: true, fontSize: 13, fontWeight: 'bold' },
-    }],
-  })
-}
-
-// ==================== 初始化临期分布饼图 ====================
-function initExpirePieChart(data: any[]) {
-  if (!expirePieRef.value) return
-  expirePieChart = echarts.init(expirePieRef.value)
-  const colorMap: Record<string, string> = {
-    '安全（>7天）': '#67c23a', '临期3天': '#e6a23c', '临期1天': '#f56c6c', '已过期': '#909399',
-  }
-  expirePieChart.setOption({
-    tooltip: { trigger: 'item', formatter: '{b}: {c} 件 ({d}%)' },
-    legend: { bottom: 0, textStyle: { fontSize: 12 } },
-    series: [{
-      type: 'pie',
-      radius: ['45%', '75%'],
-      center: ['50%', '45%'],
-      avoidLabelOverlap: false,
-      itemStyle: { borderRadius: 8, borderColor: '#fff', borderWidth: 3 },
-      emphasis: { label: { show: true, fontSize: 16, fontWeight: 'bold' } },
-      data: (data || []).map((d: any) => ({ value: d.value, name: d.name, itemStyle: { color: colorMap[d.name] || '#909399' } })),
-    }],
-  })
-}
-
-// ==================== 初始化每日上链量柱状图 ====================
-function initChainTxBarChart(data: any[]) {
-  if (!chainTxBarRef.value) return
-  chainTxBarChart = echarts.init(chainTxBarRef.value)
-
-  const dates = (data || []).map((d: any) => d.date)
-  const txData = (data || []).map((d: any) => d.count)
-
-  chainTxBarChart.setOption({
-    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-    grid: { left: '3%', right: '4%', bottom: '3%', top: '8%', containLabel: true },
-    xAxis: { type: 'category', data: dates, axisLabel: { rotate: 45, fontSize: 10 } },
-    yAxis: { type: 'value', name: '上链笔数' },
+    yAxis: { type: 'value', name: block.unit || '' },
     series: [{
       type: 'bar',
-      data: txData,
+      data: values,
+      barMaxWidth: 28,
       itemStyle: {
+        borderRadius: [4, 4, 0, 0],
         color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
           { offset: 0, color: '#409eff' },
           { offset: 1, color: '#79bbff' },
         ]),
-        borderRadius: [4, 4, 0, 0],
-      },
-      emphasis: {
-        itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: '#337ecc' },
-          { offset: 1, color: '#409eff' },
-        ])},
-      },
-      markLine: {
-        silent: true,
-        data: [{ type: 'average', name: '平均值', label: { fontSize: 10 } }],
-        lineStyle: { color: '#e6a23c', type: 'dashed' },
       },
     }],
-  })
-}
-
-// ==================== 初始化预警级别饼图 ====================
-function initWarningChart(data: any[]) {
-  if (!warningChartRef.value) return
-  warningChart = echarts.init(warningChartRef.value)
-  const colorMap: Record<string, string> = {
-    '临期3天': '#e6a23c', '临期1天': '#f56c6c', '已过期': '#909399', '已召回': '#409eff',
   }
-  warningChart.setOption({
-    tooltip: { trigger: 'item' },
-    legend: { bottom: 0, textStyle: { fontSize: 12 } },
-    series: [{
-      type: 'pie',
-      radius: ['50%', '80%'],
-      center: ['50%', '45%'],
-      roseType: 'area',
-      itemStyle: { borderRadius: 6 },
-      data: (data || []).map((d: any) => ({ value: d.value, name: d.name, itemStyle: { color: colorMap[d.name] || '#909399' } })),
-    }],
-  })
 }
 
-// ==================== 数据加载 ====================
+function renderCharts() {
+  charts.forEach((chart) => chart.dispose())
+  charts.clear()
+  for (const block of blocks.value) {
+    if (block.type === 'table' || isEmpty(block)) continue
+    const el = chartEls.get(block.key)
+    if (!el) continue
+    const chart = echarts.init(el)
+    chart.setOption(buildOption(block))
+    charts.set(block.key, chart)
+  }
+}
+
 async function loadOverview() {
+  loading.value = true
   try {
     const data = await dashboardApi.getOverview()
-    statCards.length = 0
-    const cards = (data.statCards || []).map((c: any) => ({
-      key: c.key, label: c.label, value: c.value, trend: c.trend,
-      icon: ICON_MAP[c.key] || Warning, gradient: GRADIENT_MAP[c.key] || 'linear-gradient(135deg,#909399,#606266)',
-    }))
-    statCards.push(...cards)
-    recentWarnings.value = data.recentWarnings || []
-    todoList.value = data.todoList || []
-
+    overview.value = data
     await nextTick()
-    initSankeyChart(data.sankey)
-    initExpirePieChart(data.expireDistribution)
-    initChainTxBarChart(data.chainTxTrend)
-    initWarningChart(data.warningDistribution)
+    renderCharts()
   } catch (e) {
     console.error('加载工作台数据失败:', e)
+  } finally {
+    loading.value = false
   }
 }
 
-// ==================== 生命周期 ====================
-function goToWarnings() {
-  router.push('/admin/sales/warnings')
+function go(path: string) {
+  router.push(path)
 }
 
 function handleResize() {
-  sankeyChart?.resize()
-  expirePieChart?.resize()
-  chainTxBarChart?.resize()
-  warningChart?.resize()
+  charts.forEach((chart) => chart.resize())
 }
 
 onMounted(() => {
@@ -348,10 +354,8 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
-  sankeyChart?.dispose()
-  expirePieChart?.dispose()
-  chainTxBarChart?.dispose()
-  warningChart?.dispose()
+  charts.forEach((chart) => chart.dispose())
+  charts.clear()
 })
 </script>
 
@@ -360,16 +364,39 @@ onUnmounted(() => {
   padding: 20px;
 }
 
-// ========== 统计卡片 ==========
+// ========== 角色头 ==========
+.dashboard-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.head-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.head-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.head-degraded {
+  font-size: 12px;
+  color: #e6a23c;
+}
+
+// ========== 指标卡片 ==========
 .stat-cards {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: 16px;
   margin-bottom: 20px;
-
-  @media screen and (max-width: 1400px) {
-    grid-template-columns: repeat(3, 1fr);
-  }
 }
 
 .stat-card {
@@ -402,6 +429,14 @@ onUnmounted(() => {
   font-weight: 700;
   color: #303133;
   line-height: 1.2;
+  white-space: nowrap;
+}
+
+.stat-unit {
+  font-size: 13px;
+  font-weight: 400;
+  color: #909399;
+  margin-left: 4px;
 }
 
 .stat-label {
@@ -410,28 +445,23 @@ onUnmounted(() => {
   margin-top: 2px;
 }
 
-.stat-trend {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  font-size: 12px;
-  flex-shrink: 0;
-
-  .trend-label {
-    color: #909399;
-    margin-left: 2px;
-  }
-}
-
-// ========== 图表行 ==========
-.chart-row {
+// ========== 区块网格 ==========
+.block-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
   margin-bottom: 20px;
 
   @media screen and (max-width: 1200px) {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.span-2 {
+  grid-column: span 2;
+
+  @media screen and (max-width: 1200px) {
+    grid-column: span 1;
   }
 }
 
@@ -439,6 +469,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
 }
 
 .chart-title {
@@ -447,41 +478,25 @@ onUnmounted(() => {
   color: #303133;
 }
 
-.chart-hint {
-  color: #909399;
-  cursor: help;
-  font-size: 14px;
-}
-
 .chart-container {
-  height: 320px;
+  height: 300px;
 
-  &.sankey-chart {
+  &.sankey {
     height: 360px;
   }
 }
 
-// ========== 底部表格 ==========
-.bottom-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-
-  @media screen and (max-width: 1200px) {
-    grid-template-columns: 1fr;
-  }
-}
-
-.table-header {
+.chart-empty {
+  height: 300px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  font-size: 15px;
-  font-weight: 600;
-  color: #303133;
+  justify-content: center;
+  color: #c0c4cc;
+  font-size: 13px;
 }
 
-.table-card {
+// ========== 待办 ==========
+.todo-card {
   :deep(.el-table) {
     th.el-table__cell { background-color: #f5f7fa; }
   }

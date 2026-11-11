@@ -19,6 +19,7 @@ import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Slf4j
@@ -48,6 +49,15 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
             "/api/v1/ingest/device/"
     );
 
+    /**
+     * 需要「属于某家机构」才能正常工作的角色。
+     * <p>
+     * 零售商的数据边界就是他所在的门店：令牌里没有机构声明，服务端就只能给全平台数据或空数据，
+     * 两种都是错的（前者越权，后者让人以为没生意）。所以这类角色的令牌缺 orgId 时**直接拒登**，
+     * 让用户重新登录换一张带机构的令牌，而不是放行后靠每个接口各自兜底。
+     */
+    private static final Set<String> ORG_REQUIRED_ROLES = Set.of("RETAILER");
+
     private final ReactiveStringRedisTemplate redis;
 
     @Override
@@ -64,6 +74,7 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
                 headers.remove("X-User-Id");
                 headers.remove("X-User-Role");
                 headers.remove("X-User-Name");
+                headers.remove("X-User-Org");
             }).build();
             return chain.filter(exchange.mutate().request(stripped).build());
         }
@@ -81,12 +92,21 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
                     String userId = JwtUtil.getUsername(token);
                     String role = JwtUtil.getRole(token);
                     if (userId == null || role == null) return unauthorized(exchange, "令牌声明不完整");
+                    String orgId = JwtUtil.getOrgId(token);
+                    if (ORG_REQUIRED_ROLES.contains(role) && (orgId == null || orgId.isBlank())) {
+                        log.warn("gateway_org_missing role={} userId={} path={}", role, userId, path);
+                        return unauthorized(exchange, "登录信息缺少所属门店，请重新登录");
+                    }
                     ServerHttpRequest forwarded = request.mutate().headers(headers -> {
                         headers.remove("X-User-Id");
                         headers.remove("X-User-Role");
                         headers.remove("X-User-Name");
+                        headers.remove("X-User-Org");
                         headers.set("X-User-Id", userId);
                         headers.set("X-User-Role", role);
+                        // 机构来自令牌而不是请求：调用方自己填的门店ID 一律丢弃，
+                        // 否则「换个数字就能看别家门店」——那不是隔离，只是页面不显示。
+                        if (orgId != null && !orgId.isBlank()) headers.set("X-User-Org", orgId);
                         // 关键环节人工动作要落到具体人头上：姓名单独透传（老令牌无该声明时退回用户ID）。
                         // 姓名可能是中文，HTTP 头只安全承载 ASCII（否则会被按 ISO-8859-1 编成 '?'，
                         // 业务表里就变成「?????」），所以这里先 URL 编码，各服务读头后解码。

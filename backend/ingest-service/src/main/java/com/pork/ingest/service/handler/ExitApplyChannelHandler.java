@@ -112,6 +112,12 @@ public class ExitApplyChannelHandler implements ChannelHandler {
 
         BigDecimal weight = Payloads.decimal(data, "weightKg");
         LocalDateTime weighTime = Payloads.time(data, "weighTime");
+        // 称重时间跑到未来：地磅时钟错乱会让出栏时刻早于/晚于实际，而出栏时间决定「检疫证是否在有效期内」，
+        // 错一条就让人拿着过期的证过闸
+        if (weighTime != null && weighTime.isAfter(LocalDateTime.now().plusDays(1))) {
+            return DispatchResult.rejected(table, "称重时间 " + weighTime.toString().replace('T', ' ')
+                    + " 晚于当前时间，疑似地磅时钟错误或报文串号，禁止入库");
+        }
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("pigId", pigId);
         body.put("earTagNo", earTagNo);

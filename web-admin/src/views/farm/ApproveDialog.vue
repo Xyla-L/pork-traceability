@@ -54,6 +54,9 @@
               <span style="color: #f56c6c">驳回</span>
             </el-radio>
           </el-radio-group>
+          <div v-if="approveForm.approvalStatus === 2" class="reject-hint">
+            驳回后本单即为终态，不能再改。请填写清楚驳回原因；养殖端整改后生猪重新出栏过磅，申报会重新进入审批。
+          </div>
         </el-form-item>
         <el-form-item label="备注" prop="remark">
           <el-input
@@ -225,6 +228,16 @@ watch(
     font-size: 12px;
     color: #909399;
     cursor: help;
+  }
+
+  .reject-hint {
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: #8c5a00;
+    background-color: #fdf6ec;
+    border-radius: 4px;
   }
 }
 </style>

@@ -26,18 +26,9 @@
       </el-form>
     </div>
 
-    <!-- 操作栏：分拣台按「屠宰场 + 屠宰日」自动归集为主路径；未装分拣台的场可用人工建批补录 -->
-    <div class="toolbar">
-      <el-button type="primary" @click="handleCreate"><el-icon><Plus /></el-icon>创建批次</el-button>
-      <el-button type="success" @click="handleAppend">
-        <el-icon><Connection /></el-icon>添加关联生猪
-      </el-button>
-      <span v-if="currentBatch" class="current-hint">当前批次：{{ currentBatch.batchNo }}（已关联 {{ currentBatch.pigCount }} 头）</span>
-      <span v-else class="current-hint muted">请先点击列表行选中一个批次</span>
-    </div>
-
-    <el-table v-loading="loading" :data="tableData" border stripe highlight-current-row
-      @current-change="handleCurrentChange">
+    <!-- 批次只由分拣台归集：白条下线时识读挂钩标签并过磅，系统按「屠宰场 + 屠宰日」自动成批。
+         人工建批与追加生猪的入口已删除 —— 批次边界由设备事实决定，人手补一条会让「这一批到底是哪几头」失去依据。 -->
+    <el-table v-loading="loading" :data="tableData" border stripe>
       <el-table-column prop="batchNo" label="批次号" width="180" />
       <el-table-column label="关联生猪" min-width="170">
         <template #default="{ row }">
@@ -99,58 +90,6 @@
         background @size-change="handleSizeChange" @current-change="handlePageChange" />
     </div>
 
-    <!-- 创建批次弹窗 -->
-    <el-dialog v-model="dialogVisible" title="创建胴体批次" width="600px" destroy-on-close>
-      <el-form ref="formRef" :model="batchForm" :rules="batchRules" label-width="100px">
-        <el-form-item label="选择生猪" prop="pigIds">
-          <el-select v-model="batchForm.pigIds" multiple filterable remote reserve-keyword
-            :remote-method="searchPigsForForm" :loading="pigLoading"
-            placeholder="输入耳标号搜索生猪，可多选" style="width: 100%">
-            <el-option v-for="p in pigOptions" :key="p.value"
-              :label="p.occupiedBatch ? `${p.label}（已属${p.occupiedBatch}）` : p.label"
-              :value="p.value" :disabled="!!p.occupiedBatch" />
-          </el-select>
-        </el-form-item>
-        <el-form-item v-if="batchForm.pigIds.length > 0" label="已选生猪" class="selected-pigs">
-          <el-tag v-for="id in batchForm.pigIds" :key="id" size="small" closable
-            @close="batchForm.pigIds = batchForm.pigIds.filter(i => i !== id)" style="margin-right: 6px; margin-bottom: 4px;">
-            {{ pigOptions.find(p => p.value === id)?.label || ('生猪ID ' + id) }}
-          </el-tag>
-        </el-form-item>
-        <el-form-item label="屠宰场" prop="slaughterhouse">
-          <el-select
-            v-model="batchForm.slaughterhouse"
-            placeholder="请选择或输入屠宰场"
-            filterable
-            allow-create
-            default-first-option
-            style="width: 100%"
-          >
-            <el-option
-              v-for="item in slaughterhouseOptions"
-              :key="item.id"
-              :label="item.name"
-              :value="item.name"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="操作人" prop="operator">
-          <el-input v-model="batchForm.operator" placeholder="请输入操作人姓名" maxlength="32" />
-        </el-form-item>
-        <el-form-item label="预计总重量">
-          <el-input-number v-model="batchForm.totalWeightKg" :min="0" :precision="1" style="width: 200px" />
-          <span class="unit-hint">kg</span>
-        </el-form-item>
-        <el-form-item label="备注">
-          <el-input v-model="batchForm.note" type="textarea" :rows="2" placeholder="备注信息" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmit" :loading="submitting">确认创建</el-button>
-      </template>
-    </el-dialog>
-
     <!-- 批次详情弹窗 -->
     <el-dialog v-model="detailVisible" title="胴体批次详情" width="560px">
       <el-descriptions :column="2" border>
@@ -169,49 +108,6 @@
       </el-descriptions>
     </el-dialog>
 
-    <!-- 追加关联生猪弹窗 -->
-    <el-dialog v-model="appendVisible" :title="`添加关联生猪${appendTarget ? ' - ' + appendTarget.batchNo : ''}`" width="800px" destroy-on-close>
-      <div class="pig-search-bar">
-        <el-input v-model="appendKw" placeholder="输入耳标号搜索" clearable style="width: 240px"
-          @keyup.enter="searchAppendPigs" />
-        <el-button type="primary" @click="searchAppendPigs"><el-icon><Search /></el-icon>搜索</el-button>
-        <span class="muted">已在本批次或已归其他批次的猪不可选</span>
-      </div>
-      <el-table ref="appendTableRef" v-loading="appendLoading" :data="appendPigList" border size="small"
-        max-height="320" @selection-change="handleAppendSelectionChange" style="margin-top: 10px">
-        <el-table-column type="selection" width="48" :selectable="canSelectPig" />
-        <el-table-column prop="earTagNo" label="耳标号" width="190" />
-        <el-table-column prop="breed" label="品种" width="110" />
-        <el-table-column prop="farmName" label="养殖场" min-width="140">
-          <template #default="{ row }">{{ row.farmName || '--' }}</template>
-        </el-table-column>
-        <el-table-column prop="statusLabel" label="档案状态" width="100">
-          <template #default="{ row }">{{ row.statusLabel || '--' }}</template>
-        </el-table-column>
-        <el-table-column label="归批状态" width="150">
-          <template #default="{ row }">
-            <span v-if="inCurrentBatch(row.id)" class="muted">已在本批次</span>
-            <el-tag v-else-if="occupancyMap[row.id]" size="small" type="danger">已属{{ occupancyMap[row.id] }}</el-tag>
-            <el-tag v-else size="small" type="success">可添加</el-tag>
-          </template>
-        </el-table-column>
-      </el-table>
-      <div class="append-summary">
-        <span>本次新增 <b>{{ appendSelected.length }}</b> 头，追加后共
-          <b>{{ (appendTarget?.pigCount || 0) + appendSelected.length }}</b> 头</span>
-        <div>
-          <span class="weight-label">新总重量(kg)：</span>
-          <el-input-number v-model="appendForm.totalWeightKg" :min="0" :precision="1" />
-          <span class="unit-hint">生猪重与胴体重不同，请按实际过磅填写</span>
-        </div>
-      </div>
-      <template #footer>
-        <el-button @click="appendVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitting"
-          :disabled="appendSelected.length === 0" @click="submitAppend">确认追加</el-button>
-      </template>
-    </el-dialog>
-
     <!-- 全部关联生猪弹窗 -->
     <el-dialog v-model="allPigsVisible" title="全部关联生猪" width="520px" destroy-on-close>
       <el-table :data="allPigsList" border size="small" max-height="440">
@@ -226,13 +122,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, nextTick } from 'vue'
-import { Search, Refresh, Plus, Grid, MoreFilled, Connection } from '@element-plus/icons-vue'
+import { ref, reactive, onMounted } from 'vue'
+import { Search, Refresh, Grid, MoreFilled } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { distributionApi } from '@/api/modules/distribution'
 import { pigApi } from '@/api/modules/breeding'
-import request from '@/utils/request'
 
 const router = useRouter()
 
@@ -274,162 +169,11 @@ async function handleSeal(row: any) {
   } catch { /* 错误已由拦截器提示（如已封批） */ }
 }
 
-/**
- * 人工建批：分拣台按「屠宰场 + 屠宰日」自动归集是主路径，未装分拣台的场用人工建批补录，
- * 写入强制实名并上链留痕。
- */
 const searchForm = reactive({ batchNo: '', operator: '' })
 const dateRange = ref<[string, string] | null>(null)
 const tableData = ref<any[]>([])
 const loading = ref(false)
 const pagination = reactive({ pageNum: 1, pageSize: 10, total: 0 })
-
-const dialogVisible = ref(false)
-const submitting = ref(false)
-const formRef = ref()
-const batchForm = reactive({ pigIds: [] as number[], totalWeightKg: 0, slaughterhouse: '', operator: '', note: '' })
-const batchRules = {
-  pigIds: [{ required: true, message: '请至少选择一头生猪', trigger: 'change', type: 'array', min: 1 }],
-  slaughterhouse: [{ required: true, message: '请选择屠宰场', trigger: 'change' }],
-  operator: [{ required: true, message: '请输入操作人姓名', trigger: 'blur' }],
-}
-// 屠宰场下拉：从机构树提取 type=slaughter 的节点
-const slaughterhouseOptions = ref<Array<{ id: number; name: string }>>([])
-const fetchSlaughterhouseList = async () => {
-  try {
-    const tree = await request.get('/system/orgs/tree')
-    const list: Array<{ id: number; name: string }> = []
-    const flatten = (nodes: any[]) => {
-      if (!Array.isArray(nodes)) return
-      nodes.forEach((n) => {
-        if (n.type === 'slaughter') list.push({ id: n.id, name: n.name })
-        if (n.children?.length) flatten(n.children)
-      })
-    }
-    flatten(tree || [])
-    slaughterhouseOptions.value = list
-  } catch (error) {
-    console.error('获取屠宰场列表失败:', error)
-    slaughterhouseOptions.value = []
-  }
-}
-// 生猪下拉选项（真实档案远程搜索）；occupiedBatch 标记已归属的批次号（非空则禁选）
-const pigOptions = ref<Array<{ value: number; label: string; occupiedBatch?: string }>>([])
-const pigLoading = ref(false)
-// 全量占用映射：pigId -> 批次号
-const occupancyMap = ref<Record<number, string>>({})
-
-async function fetchOccupancy() {
-  try {
-    const list: any[] = (await distributionApi.getPigOccupancy()) || []
-    const map: Record<number, string> = {}
-    list.forEach((it) => { map[it.pigId] = it.batchNo })
-    occupancyMap.value = map
-  } catch { occupancyMap.value = {} }
-}
-
-function mergePigOptions(pigs: any[], excludePigIds: number[] = []) {
-  pigs.forEach((p) => {
-    const occupied = excludePigIds.includes(p.id) ? '' : (occupancyMap.value[p.id] || '')
-    const existing = pigOptions.value.find(o => o.value === p.id)
-    if (existing) {
-      existing.occupiedBatch = occupied
-    } else {
-      pigOptions.value.push({
-        value: p.id,
-        label: p.breed ? `${p.earTagNo}（${p.breed}）` : p.earTagNo,
-        occupiedBatch: occupied,
-      })
-    }
-  })
-}
-
-async function searchPigsForForm(keyword: string) {
-  pigLoading.value = true
-  try {
-    const res: any = await pigApi.list({ pageNum: 1, pageSize: 50, earTagNo: keyword || undefined })
-    mergePigOptions(res?.records || res?.list || [])
-  } catch { /* 提示由拦截器处理 */ } finally { pigLoading.value = false }
-}
-
-// ========== 列表行选中（顶部「添加关联生猪」作用对象） ==========
-const currentBatch = ref<any>(null)
-function handleCurrentChange(row: any) {
-  currentBatch.value = row
-}
-
-// ========== 追加关联生猪弹窗 ==========
-const appendVisible = ref(false)
-const appendLoading = ref(false)
-const appendKw = ref('')
-const appendPigList = ref<any[]>([])
-const appendSelected = ref<any[]>([])
-const appendTarget = ref<any>(null)
-const appendTableRef = ref()
-const appendForm = reactive<{ totalWeightKg: number }>({ totalWeightKg: 0 })
-
-function inCurrentBatch(pigId: number) {
-  return Array.isArray(appendTarget.value?.pigIds) && appendTarget.value.pigIds.includes(pigId)
-}
-function canSelectPig(row: any) {
-  // 本批次已有、或已归其他批次的猪不可选
-  return !occupancyMap.value[row.id]
-}
-
-async function handleAppend() {
-  if (!currentBatch.value) {
-    ElMessage.warning('请先点击列表行选中一个批次')
-    return
-  }
-  // 已发生分割的批次直接提示并拦截，不打开弹窗（后端更新接口同样会拦截）
-  let hasSplits = false
-  try {
-    const tree: any = await distributionApi.getSplitTree(currentBatch.value.batchNo)
-    hasSplits = Array.isArray(tree?.children) && tree.children.length > 0
-  } catch { /* 查询失败不阻断，后端提交时会兜底校验 */ }
-  if (hasSplits) {
-    ElMessage.warning(`批次 ${currentBatch.value.batchNo} 已发生分割，不能再添加关联生猪`)
-    return
-  }
-  appendTarget.value = currentBatch.value
-  appendKw.value = ''
-  appendSelected.value = []
-  appendForm.totalWeightKg = currentBatch.value.totalWeightKg ?? 0
-  appendVisible.value = true
-  await fetchOccupancy()
-  searchAppendPigs()
-}
-
-async function searchAppendPigs() {
-  appendLoading.value = true
-  try {
-    const res: any = await pigApi.list({ pageNum: 1, pageSize: 50, earTagNo: appendKw.value || undefined })
-    appendPigList.value = res?.records || res?.list || []
-  } catch { appendPigList.value = [] } finally { appendLoading.value = false }
-}
-
-function handleAppendSelectionChange(rows: any[]) {
-  appendSelected.value = rows
-}
-
-async function submitAppend() {
-  if (!appendTarget.value || appendSelected.value.length === 0) return
-  submitting.value = true
-  const oldIds: number[] = Array.isArray(appendTarget.value.pigIds) ? appendTarget.value.pigIds : []
-  const payload = {
-    pigIds: [...oldIds, ...appendSelected.value.map(p => p.id)],
-    totalWeightKg: appendForm.totalWeightKg,
-    slaughterhouse: appendTarget.value.slaughterhouse,
-    operator: appendTarget.value.operator,
-    note: appendTarget.value.note,
-  }
-  try {
-    await distributionApi.updateBatch(appendTarget.value.id, payload)
-    ElMessage.success(`已追加 ${appendSelected.value.length} 头生猪`)
-    appendVisible.value = false
-    fetchList()
-  } catch { /* 错误已由拦截器提示（如已分割/跨批次占用） */ } finally { submitting.value = false }
-}
 
 // ========== 全部关联生猪弹窗 ==========
 const allPigsVisible = ref(false)
@@ -437,41 +181,6 @@ const allPigsList = ref<Array<{ id: number; earTagNo: string; breed?: string }>>
 function showAllPigs(row: any) {
   allPigsList.value = row.pigInfos || []
   allPigsVisible.value = true
-}
-
-function resetForm() {
-  batchForm.pigIds = []
-  batchForm.totalWeightKg = 0
-  batchForm.slaughterhouse = ''
-  batchForm.operator = ''
-  batchForm.note = ''
-}
-
-async function handleCreate() {
-  resetForm()
-  dialogVisible.value = true
-  pigOptions.value = []
-  await fetchOccupancy()
-  searchPigsForForm('')
-  nextTick(() => formRef.value?.clearValidate())
-}
-
-async function handleSubmit() {
-  await formRef.value?.validate()
-  submitting.value = true
-  const payload = {
-    pigIds: batchForm.pigIds,
-    totalWeightKg: batchForm.totalWeightKg,
-    slaughterhouse: batchForm.slaughterhouse,
-    operator: batchForm.operator,
-    note: batchForm.note
-  }
-  try {
-    await distributionApi.createBatch(payload)
-    ElMessage.success('胴体批次创建成功，数据已上链')
-    dialogVisible.value = false
-    fetchList()
-  } catch { /* 错误已由拦截器提示 */ } finally { submitting.value = false }
 }
 
 const detailVisible = ref(false)
@@ -503,7 +212,6 @@ async function resolvePigInfo(pigIds: number[]): Promise<Array<{ id: number; ear
 
 async function fetchList() {
   loading.value = true
-  const selectedId = currentBatch.value?.id
   try {
     const res: any = await distributionApi.getBatches({
       current: pagination.pageNum,
@@ -526,34 +234,19 @@ async function fetchList() {
     }))
     tableData.value = list
     pagination.total = res?.total || list.length || 0
-    // 刷新后保持原选中行（数据已更新）
-    currentBatch.value = selectedId != null ? list.find((r: any) => r.id === selectedId) || null : null
   } catch { tableData.value = []; pagination.total = 0 } finally { loading.value = false }
 }
 
-onMounted(() => { fetchOccupancy(); fetchList(); fetchSlaughterhouseList() })
+onMounted(() => { fetchList() })
 </script>
 
 <style lang="scss" scoped>
 .page-container { padding: 20px; background: #fff; border-radius: 4px; }
-.toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
 .search-panel { padding-bottom: 16px; border-bottom: 1px solid #ebeef5; margin-bottom: 16px;
   :deep(.el-form) { flex-wrap: nowrap; }
   :deep(.el-form-item) { margin-bottom: 12px; } }
 
 .pagination-wrapper { display: flex; justify-content: center; padding-top: 16px; margin-top: 16px; border-top: 1px solid #ebeef5; }
-.unit-hint { margin-left: 6px; font-size: 13px; color: #909399; }
-.selected-pigs :deep(.el-form-item__content) { line-height: 2; }
-.current-hint { font-size: 13px; color: #67c23a; }
-.current-hint.muted { color: #909399; }
 .pig-breed { color: #909399; font-size: 12px; }
-.pig-search-bar { display: flex; align-items: center; gap: 8px; }
 .muted { color: #909399; font-size: 12px; }
-.append-summary {
-  display: flex; justify-content: space-between; align-items: center;
-  margin-top: 12px; padding: 10px 12px; background: #f5f7fa; border-radius: 4px;
-  b { color: #409eff; margin: 0 2px; }
-  .weight-label { font-size: 13px; color: #606266; }
-}
-:deep(.el-table__row.current-row > td) { background-color: #ecf5ff !important; }
 </style>

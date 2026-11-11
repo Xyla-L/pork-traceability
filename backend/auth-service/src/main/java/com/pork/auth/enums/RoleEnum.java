@@ -6,7 +6,8 @@ public enum RoleEnum {
     SLAUGHTER_OP("SLAUGHTER_OP", "屠宰场操作员"),
     DISTRIBUTOR("DISTRIBUTOR", "分销商"),
     RETAILER("RETAILER", "零售商"),
-    SUPERVISOR("SUPERVISOR", "监管人员");
+    SUPERVISOR("SUPERVISOR", "监管人员"),
+    DISPOSAL("DISPOSAL", "无害化处理人员");
 
     private final String code;
     private final String desc;

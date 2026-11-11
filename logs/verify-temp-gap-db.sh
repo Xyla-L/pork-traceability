@@ -36,7 +36,12 @@ echo "  水位：计划 ${BEFORE_PLANS} / 计划明细 ${BEFORE_PITEMS} / 运单
 echo "  测试起点 ${START_TS}"
 
 T_SCOPE="t.create_time >= '$START_TS'"
-TL_SCOPE="l.create_time >= '$START_TS'"
+# 只认本次探头（DEVICE）写进来的行：种子里有 2 张停在「运输中」的演示运单（京B-TEST08/11），
+# 定时采集每 5 分钟会给它们补一条「模拟」读数 —— 那不是本次回归的数据，不参与断言、也不该被清。
+TL_SCOPE="l.create_time >= '$START_TS' AND l.source = 'DEVICE'"
+# 同窗口内定时采集补写的条数（模拟读数）：种子里 2 张停在「运输中」的演示运单每 5 分钟会被补一条，
+# 那是别的账。用「全库 − 窗口内模拟读数」这一个口径配平，避免两条查询之间被定时采集插一条。
+NET_SINCE="SELECT (SELECT COUNT(*) FROM db_distribution.temperature_log) - (SELECT COUNT(*) FROM db_distribution.temperature_log WHERE create_time >= '$START_TS' AND source = 'SIMULATED')"
 STG_SCOPE="s.create_time >= '$START_TS'"
 
 # ── 1) 跑 HTTP 回归（KEEP=1：不自行删数据，留给本脚本核验） ──
@@ -114,8 +119,16 @@ eq "★ 其余 5 条已入账(2)" \
 #   ② 断档必须自带证据：is_gap=1 只能来自写入时算出的 gap_seconds，回填不会凭空造出这个证据
 eq "本次新建运单数（T1 采集温度 / T2 用于未发车用例）" \
    "$(MYSQL "SELECT COUNT(*) FROM db_distribution.cold_chain_transport t WHERE $T_SCOPE;")" "2"
-eq "全库温度记录数 = 基线 + 本次 5 条" \
-   "$(MYSQL "SELECT COUNT(*) FROM db_distribution.temperature_log;")" "$((BEFORE_TEMP + 5))"
+# 一车一趟（2026-10-22）：一辆车同一时间只允许挂一张未完成（待发车/运输中/待签收）的运单。
+# 本用例要同时构造「运输中」和「待发车」，所以必须是两台车 —— 同车第二张单会被规则挡住。
+eq "★ 本次两张运单分属两台车（一车一趟：同车挂不了两张未完成的运单）" \
+   "$(MYSQL "SELECT COUNT(DISTINCT vehicle_no) FROM db_distribution.cold_chain_transport t WHERE $T_SCOPE;")" "2"
+eq "★ 全库不存在「同一车牌挂多张未完成运单」（一车一趟的不变量）" \
+   "$(MYSQL "SELECT COUNT(*) FROM (SELECT vehicle_no FROM db_distribution.cold_chain_transport WHERE status IN (1,2,3) GROUP BY vehicle_no HAVING COUNT(*) > 1) x;")" "0"
+eq "★ 全库温度记录数（扣除窗口内定时采集补写的模拟读数）= 基线 + 本次 5 条（各归各的账）" \
+   "$(MYSQL "$NET_SINCE;")" "$((BEFORE_TEMP + 5))"
+eq "★ 定时采集没有把「模拟读数」混进本次运单（探头报过就永久让位，两条路径不混数据）" \
+   "$(MYSQL "SELECT COUNT(*) FROM db_distribution.temperature_log l WHERE l.create_time >= '$START_TS' AND l.source = 'SIMULATED' AND l.transport_id IN ($TRANSPORT_IDS);")" "0"
 eq "存量温度记录没有被回填改动（历史断档记录的条数不变：既没被新标，也没被抹掉）" \
    "$(MYSQL "SELECT COUNT(*) FROM db_distribution.temperature_log WHERE create_time < '$START_TS' AND is_gap = 1;")" "$BEFORE_GAPS"
 eq "★ 每条断档记录都自带证据（gap_seconds 非空且确实超过额定间隔×3 —— 回填造不出这个证据）" \
@@ -135,8 +148,9 @@ if [ -n "$PLAN_IDS" ]; then
   MYSQL "DELETE FROM db_distribution.delivery_plan_item WHERE plan_id IN ($PLAN_IDS);"
   MYSQL "DELETE FROM db_distribution.delivery_plan WHERE id IN ($PLAN_IDS);"
 fi
-# 按时间收尾：不依赖 mjs 回传的 id 集合
-MYSQL "DELETE FROM db_distribution.temperature_log WHERE create_time >= '$START_TS';"
+# 按时间收尾：不依赖 mjs 回传的 id 集合。
+# 温度这一行**必须限定 source='DEVICE'**：窗口内定时采集给别的演示运单补写的模拟读数不是本次造的，删了就是篡改。
+MYSQL "DELETE FROM db_distribution.temperature_log WHERE create_time >= '$START_TS' AND source = 'DEVICE';"
 MYSQL "DELETE FROM db_distribution.store_receipt WHERE create_time >= '$START_TS';"
 MYSQL "DELETE FROM db_distribution.transport_stop WHERE create_time >= '$START_TS';"
 MYSQL "DELETE FROM db_distribution.transport_item WHERE create_time >= '$START_TS';"
@@ -151,7 +165,8 @@ eq "运单数回到基线" "$(MYSQL "SELECT COUNT(*) FROM db_distribution.cold_c
 eq "装载明细数回到基线" "$(MYSQL "SELECT COUNT(*) FROM db_distribution.transport_item;")" "$BEFORE_TITEMS"
 eq "站点台账里的孤儿行（运单已不存在）" \
    "$(MYSQL "SELECT COUNT(*) FROM db_distribution.transport_stop s LEFT JOIN db_distribution.cold_chain_transport t ON t.id = s.transport_id WHERE t.id IS NULL;")" "0"
-eq "温度记录数回到基线" "$(MYSQL "SELECT COUNT(*) FROM db_distribution.temperature_log;")" "$BEFORE_TEMP"
+eq "温度记录数回到基线（同样扣除窗口内模拟读数）" \
+   "$(MYSQL "$NET_SINCE;")" "$BEFORE_TEMP"
 eq "探头暂存行数回到基线" "$(MYSQL "SELECT COUNT(*) FROM db_ingest.ingest_staging WHERE device_no = 'TEMP-001';")" "$BEFORE_TEMP_DEV"
 
 echo

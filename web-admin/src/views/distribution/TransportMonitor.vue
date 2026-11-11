@@ -213,21 +213,11 @@
               <el-button type="warning" size="small" plain>立即发车</el-button>
             </template>
           </el-popconfirm>
-          <el-popconfirm
-            v-else-if="currentTransport.status === 2"
-            :title="nextStop
-              ? (transportStops.length > 1
-                ? `确认已到达第 ${nextStop.stopNo} 站（${nextStop.storeName || '未记录门店'}）？本趟共 ${transportStops.length} 站，逐站确认`
-                : '确认该运单已送达？')
-              : '本趟车的所有站点都已到达'"
-            @confirm="handleArrive(currentTransport)"
-          >
-            <template #reference>
-              <el-button type="success" size="small" plain>
-                {{ nextStop && transportStops.length > 1 ? `确认到达第 ${nextStop.stopNo} 站` : '确认到达' }}
-              </el-button>
-            </template>
-          </el-popconfirm>
+          <!-- 到达确认没有人工入口：到站是司机在车载终端刷卡那一刻的事实，
+               页面替人按一下就把「谁确认的」抹掉了。状态不变，这里给一句去哪儿办。 -->
+          <span v-else-if="currentTransport.status === 2" class="action-hint">
+            到达确认由司机在车载终端刷卡完成，每刷一次推进一站
+          </span>
         </div>
       </div>
 
@@ -279,6 +269,13 @@
           <div class="card-header">
             <span>温度打卡记录</span>
             <el-space>
+              <!-- 采集节奏是可预期的事实：发车后按间隔自动采，全部站点到达即停。
+                   用户看到「怎么没有新记录了」时，这条能直接回答「车已经到了」。 -->
+              <el-tooltip content="发车后自动按间隔采集一条读数，全部卸货站点到达后停止；有车载探头上报的运单以探头数据为准" placement="top">
+                <el-tag size="small" type="info" effect="plain">
+                  自动采集 · 每 {{ sampleIntervalLabel }}
+                </el-tag>
+              </el-tooltip>
               <!-- 断档数要显眼：有超标至少看得见，有空白却显示「正常」才是最危险的 -->
               <el-tag v-if="gapCount" type="danger" size="small" effect="dark">
                 断档 {{ gapCount }} 次
@@ -317,7 +314,7 @@
           </el-table-column>
           <el-table-column prop="source" label="采集设备" width="140" align="center">
             <template #default="{ row }">
-              <el-tooltip :content="row.source === 'DEVICE' ? `探头自动采集：${row.sourceRef || '--'}` : sourceLabel(row.source)" placement="top">
+              <el-tooltip :content="sourceTip(row)" placement="top">
                 <el-tag :type="sourceTag(row.source)" size="small" effect="plain">{{ deviceText(row) }}</el-tag>
               </el-tooltip>
             </template>
@@ -383,14 +380,27 @@
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="签收" width="190" align="center">
+          <el-table-column label="签收 / 拒收" width="200" align="center">
             <template #default="{ row }">
-              <el-tag :type="row.received ? 'success' : 'warning'" size="small" effect="plain">
-                {{ row.received ? '已签收' : '待签收' }}
-              </el-tag>
-              <div v-if="row.received" class="sub-text">
-                {{ row.receiver || '未记录' }}<template v-if="row.receiptTime"> · {{ row.receiptTime }}</template>
-              </div>
+              <template v-if="row.rejected">
+                <!-- 拒收是站点终态：理由、实名、时刻都要看得见，温度曲线是判责材料 -->
+                <el-tag type="danger" size="small" effect="plain">已拒收</el-tag>
+                <div class="sub-text">{{ row.rejectReason || '理由未记录' }}</div>
+                <div class="sub-text">{{ row.rejectBy || '--' }}<template v-if="row.rejectTime"> · {{ row.rejectTime }}</template></div>
+                <div v-if="row.disposalType" class="sub-text">
+                  处置：{{ { RETURN_SUPPLIER: '退回供应商', DESTROY: '就地销毁', DISCOUNT: '折价接收' }[row.disposalType] || row.disposalType }}
+                  <template v-if="row.disposalBy">（{{ row.disposalBy }}）</template>
+                </div>
+                <div v-else class="sub-text">待处置：门店签收页登记</div>
+              </template>
+              <template v-else>
+                <el-tag :type="row.received ? 'success' : 'warning'" size="small" effect="plain">
+                  {{ row.received ? (row.signedAfterReject ? '已改签收' : '已签收') : '待签收' }}
+                </el-tag>
+                <div v-if="row.received" class="sub-text">
+                  {{ row.receiver || '未记录' }}<template v-if="row.receiptTime"> · {{ row.receiptTime }}</template>
+                </div>
+              </template>
             </template>
           </el-table-column>
         </el-table>
@@ -518,12 +528,6 @@
         <el-popconfirm v-if="editingId && editingStatus === 1" title="确认该运单立即发车？" @confirm="handleDepartFromEdit">
           <template #reference>
             <el-button type="warning">发车</el-button>
-          </template>
-        </el-popconfirm>
-        <el-popconfirm v-else-if="editingId && editingStatus === 2"
-          title="确认该运单到达下一站？（一车多店时一次推进一站，按站点序号）" @confirm="handleArriveFromEdit">
-          <template #reference>
-            <el-button type="success">确认到达</el-button>
           </template>
         </el-popconfirm>
         <el-button @click="createVisible = false">取消</el-button>
@@ -715,7 +719,6 @@
         :closable="false"
         show-icon
         title="车牌必须补全后才能生成运单"
-        description="车牌是后面发车、到达都要按车牌倒查的唯一凭据，缺了整趟车的行程就断了，所以必须补。司机可以留空：现场只在上车那一刻刷一次卡，装车时司机还没上车；但发车之前必须落到具体的人（车载终端刷卡，或人工补录）。"
         style="margin-bottom: 12px"
       />
       <div class="plan-detail-sub">勾选本次装车的货物（默认全选；不勾的留在计划里等下一车）</div>
@@ -749,6 +752,7 @@ import type { EpTagType } from '@/types/common'
 import { distributionApi } from '@/api/modules/distribution'
 import { deviceText, sourceLabel, sourceTag } from '@/api/modules/ingest'
 import request from '@/utils/request'
+import { useKeywordQuery } from '@/composables/useKeywordQuery'
 
 // ==================== 运单列表 ====================
 const query = reactive({ keyword: '', status: undefined as number | undefined, pageNum: 1, pageSize: 10 })
@@ -819,11 +823,8 @@ const transportStops = ref<any[]>([])
 const receivedStopCount = computed(() => transportStops.value.filter((s) => s.received).length)
 /** 已到达站点数：到达与签收分开算 —— 「车到了」不等于「货交出去了」 */
 const arrivedStopCount = computed(() => transportStops.value.filter((s) => s.arrived).length)
-/**
- * 当前第一个未到达的站。一车多站时「确认到达」推的就是它（顺序由站点序号定，页面不另算一套），
- * 所以按钮上要说清是哪一站 —— 否则演示/操作时根本不知道点下去会推进哪一站。
- */
-const nextStop = computed(() => transportStops.value.find((s: any) => !s.arrived) || null)
+/** 已拒收站点数：拒收是站点终态，展示要单列 —— 「拒了」不能混进「签了」或「没到」 */
+const rejectedStopCount = computed(() => transportStops.value.filter((s) => s.rejected).length)
 
 /**
  * 列表里的站点进度文案。
@@ -839,6 +840,9 @@ function stopProgressLabel(row: any) {
   const received = Number(row?.receivedStopCount || 0)
   const head = total > 1 ? `途经 ${total} 站` : '1 站'
   if (Number(row?.status) === 1) return `${head} · 待发车`
+  if (Number(row?.rejectedStopCount || 0) > 0 && received + Number(row?.rejectedStopCount) >= total) {
+    return `${head} · 已完结${received ? `（签${received}/拒${Number(row?.rejectedStopCount)}）` : '（拒收）'}`
+  }
   if (received >= total) return `${head} · 已签收`
   if (arrived >= total) return `${head} · 待签收`
   if (arrived <= 0) return `${head} · 未到达`
@@ -859,6 +863,9 @@ const stopSummaryLabel = computed(() => {
   const arrived = arrivedStopCount.value
   const received = receivedStopCount.value
   const head = n > 1 ? `途经 ${n} 站` : `1 站（${list[0].storeName || '未记录门店'}）`
+  if (rejectedStopCount.value > 0 && received + rejectedStopCount.value >= n) {
+    return `${head} · 已完结（签${received}/拒${rejectedStopCount.value}）`
+  }
   if (received >= n) return `${head} · 已签收`
   if (arrived >= n) return `${head} · 待签收`
   if (arrived <= 0) return `${head} · 未到达`
@@ -882,6 +889,25 @@ function driverText(t: any) {
  * 界面若只显示「温度正常」是在假装有数据。断档数要能一眼看到。
  */
 const gapCount = computed(() => checkInList.value.filter((l) => l && Number(l.isGap) === 1).length)
+
+/**
+ * 页面上「每 X 采集一次」的区间文案。
+ * 取最后一条记录上固化的额定间隔（探头的属性，随记录留档）；
+ * 一条都还没有时给配置默认值 5 分钟，不拿当前时间反算。
+ */
+const sampleIntervalLabel = computed(() => {
+  const last = checkInList.value[checkInList.value.length - 1]
+  const sec = Number(last?.sampleIntervalSeconds)
+  if (!sec || sec <= 0) return '5 分钟'
+  return sec % 60 === 0 ? `${sec / 60} 分钟` : `${sec} 秒`
+})
+
+/** 「采集设备」列的悬停说明：模拟探头必须写清它不是真实车厢温度 */
+function sourceTip(row: any) {
+  if (row?.source === 'DEVICE') return `探头自动采集：${row.sourceRef || '--'}`
+  if (row?.source === 'SIMULATED') return '模拟探头定时采集：真机接入前用于演示，不代表真实车厢温度'
+  return sourceLabel(row?.source)
+}
 const monitorRef = ref<HTMLElement>()
 
 // 图表
@@ -929,19 +955,9 @@ async function handleDepart(row: any) {
   } catch { /* 拦截器已提示 */ }
 }
 
-async function handleArrive(row: any) {
-  try {
-    const res: any = await distributionApi.arriveTransport(row.id)
-    // 多站车次一次只推进一站，所以提示必须说清是**哪一站**到了 ——
-    // 笼统一句「已送达」在一车三店时是错觉：车只是到了第一家。
-    const stopNo = res?.stopNo
-    const store = res?.storeName
-    ElMessage.success(stopNo
-      ? `运单 ${row.transportNo} 已到达第 ${stopNo} 站${store ? `（${store}）` : ''}`
-      : `运单 ${row.transportNo} 已确认送达`)
-    await afterStatusChange(row.id)
-  } catch { /* 拦截器已提示 */ }
-}
+/* 人工「确认到达」入口已删除：到站是司机在车载终端刷卡确认的事实，
+   页面替人推进站点会把「谁确认的」这条责任链抹掉 —— 与温度人工补录同一条口径：
+   设备独占的环节只接受设备上报，页面不给人工代劳的口子。 */
 
 async function handleDepartFromEdit() {
   if (!editingId.value) return
@@ -953,18 +969,6 @@ async function handleDepartFromEdit() {
   try {
     await distributionApi.departTransport(editingId.value)
     ElMessage.success('运单已发车')
-    createVisible.value = false
-    await afterStatusChange(editingId.value)
-  } catch { /* 拦截器已提示 */ }
-}
-
-async function handleArriveFromEdit() {
-  if (!editingId.value) return
-  try {
-    const res: any = await distributionApi.arriveTransport(editingId.value)
-    ElMessage.success(res?.stopNo
-      ? `已到达第 ${res.stopNo} 站${res.storeName ? `（${res.storeName}）` : ''}`
-      : '运单已确认送达')
     createVisible.value = false
     await afterStatusChange(editingId.value)
   } catch { /* 拦截器已提示 */ }
@@ -1053,7 +1057,11 @@ function buildTimeline(t: any) {
       done: status >= 3, active: status === 3,
     },
     {
-      title: '门店签收', time: status >= 4 ? arriveTime : '--', desc: '门店已确认签收',
+      title: '门店签收', time: status >= 4 ? arriveTime : '--',
+      // 有拒收站点时如实说「部分拒收/全部拒收完结」，不能笼统写「门店已确认签收」
+      desc: rejectedStopCount.value > 0
+        ? `已拒收 ${rejectedStopCount.value} 站${receivedStopCount.value ? `、已签收 ${receivedStopCount.value} 站` : ''} —— 拒收站点在「门店签收」页处置，温度曲线为判责材料`
+        : '门店已确认签收',
       done: status >= 4, active: false,
     },
   ]
@@ -1442,6 +1450,13 @@ async function submitCreate() {
   })
 }
 
+// 顶部通知带运单号过来：填进运单搜索框（该框按运单号/车牌筛），
+// 列表收窄到这一单后照常可以在右侧看监控详情。
+useKeywordQuery((kw) => {
+  query.keyword = kw
+  handleSearch()
+})
+
 // ==================== 生命周期 ====================
 onMounted(async () => {
   window.addEventListener('resize', handleResize)
@@ -1488,6 +1503,9 @@ onUnmounted(() => {
 .info-label { font-size: 11px; color: rgba(255,255,255,0.7); }
 .info-value { font-size: 14px; font-weight: 600; color: #fff; }
 .info-actions { margin-left: auto; }
+
+// 没有人工入口的状态，用一句话说清去哪儿办（代替一个按不动的按钮）
+.action-hint { font-size: 12px; color: #909399; }
 
 // 监控网格
 .monitor-grid { display: flex; gap: 20px; margin-bottom: 20px; }

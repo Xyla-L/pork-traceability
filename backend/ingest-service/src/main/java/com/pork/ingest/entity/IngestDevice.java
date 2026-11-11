@@ -39,5 +39,7 @@ public class IngestDevice {
     private Integer status;
     private LocalDateTime lastSeenTime;
     private String remark;
+    /** 设备所属机构（sys_org.id）：设备写入的记录以此为归属来源；NULL=未绑定。 */
+    private Long orgId;
     private LocalDateTime createTime;
 }

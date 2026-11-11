@@ -16,7 +16,9 @@ import com.pork.distribution.entity.DeliveryPlanItem;
 import com.pork.distribution.entity.Driver;
 import com.pork.distribution.entity.DriverCard;
 import com.pork.distribution.entity.DriverVehicle;
+import com.pork.distribution.entity.LegItem;
 import com.pork.distribution.entity.MeatPart;
+import com.pork.distribution.entity.ReturnLoadScan;
 import com.pork.distribution.entity.SplitBatch;
 import com.pork.distribution.entity.SplitJob;
 import com.pork.distribution.entity.StoreReceipt;
@@ -33,11 +35,14 @@ import com.pork.distribution.mapper.DeliveryPlanMapper;
 import com.pork.distribution.mapper.DriverCardMapper;
 import com.pork.distribution.mapper.DriverMapper;
 import com.pork.distribution.mapper.DriverVehicleMapper;
+import com.pork.distribution.mapper.LegItemMapper;
+import com.pork.distribution.mapper.ReturnLoadScanMapper;
 import com.pork.distribution.mapper.SplitBatchMapper;
 import com.pork.distribution.mapper.SplitJobMapper;
 import com.pork.distribution.mapper.StoreReceiptMapper;
 import com.pork.distribution.mapper.TemperatureLogMapper;
 import com.pork.distribution.mapper.TransportItemMapper;
+import com.pork.distribution.mapper.TransportStopMapper;
 import com.pork.distribution.mapper.VehicleMapper;
 import com.pork.distribution.mapper.WorkshopSnapshotMapper;
 import com.pork.distribution.support.BatchGuard;
@@ -46,6 +51,7 @@ import com.pork.distribution.support.DriverSource;
 import com.pork.distribution.support.MeatPartResolver;
 import com.pork.distribution.support.SplitJobNo;
 import com.pork.distribution.support.SplitYieldCheck;
+import com.pork.distribution.support.TemperatureRecorder;
 import com.pork.mq.ChainEventPublisher;
 import com.pork.mq.ChainTxMessage;
 import lombok.extern.slf4j.Slf4j;
@@ -90,6 +96,8 @@ public class DistributionDeviceIngestService {
     private static final int STATUS_PENDING = 1;
     private static final int STATUS_IN_TRANSIT = 2;
     private static final int STATUS_ARRIVED = 3;
+    /** 已签收：回运段签收即链条终结，之后任何装车扫码都不认 */
+    private static final int STATUS_SIGNED = 4;
     /** 胴体批次归集状态：1归集中（当日同场后续白条会并入） */
     private static final int BATCH_OPEN = 1;
     /** 发货计划状态：1=待发货 2=已排车 3=已取消 4=部分排车；只有 1 和 4 还能继续发货 */
@@ -114,6 +122,8 @@ public class DistributionDeviceIngestService {
     private static final String BASIS_NONE = "NONE";
     /** 车间监控快照每次淘汰时最多清理的条数：一次上报通常只超出一两张，给足余量兜住历史堆积 */
     private static final int SNAPSHOT_PRUNE_BATCH = 200;
+    /** 设备时钟容差（分钟）：同一现场前后脚、设备时钟轻微漂移不构成「时间不成立」 */
+    private static final int CLOCK_TOLERANCE_MINUTES = 10;
 
     private final ColdChainTransportMapper transportMapper;
     private final TemperatureLogMapper temperatureLogMapper;
@@ -126,6 +136,7 @@ public class DistributionDeviceIngestService {
     private final DeliveryPlanMapper deliveryPlanMapper;
     private final DeliveryPlanItemMapper deliveryPlanItemMapper;
     private final TransportItemMapper transportItemMapper;
+    private final TransportStopMapper transportStopMapper;
     /** 装车口要查的主数据：卡↔司机、车牌↔司机、车牌↔车型 */
     private final DriverCardMapper driverCardMapper;
     private final DriverMapper driverMapper;
@@ -140,18 +151,17 @@ public class DistributionDeviceIngestService {
     private final BreedingClient breedingClient;
     /** 车间监控快照的落点；淘汰旧快照时用它把文件也删掉 */
     private final WorkshopSnapshotMapper snapshotMapper;
+    /** 回运货物清单：生成处理运单时逐件回填扫码证据 */
+    private final LegItemMapper legItemMapper;
+    /** 回运装车扫码事实：扫码枪在排车前登记「哪台车装了哪件拒收货」 */
+    private final ReturnLoadScanMapper scanMapper;
     private final FileClient fileClient;
     private final BigDecimal defaultRangeMin;
     private final BigDecimal defaultRangeMax;
     /** 单个胴体批次的头数上限，达到即自动封批（默认 200，接近「一个待宰圈 / 一车」的典型规模） */
     private final int maxPigsPerBatch;
-    /**
-     * 温度断档判定的默认基准间隔（秒），设备台账没登记 {@code sample_interval_seconds} 时用它。
-     * 「多久采一次」本该由探头自己声明；这里只是兜底，不是假设。
-     */
-    private final int defaultSampleIntervalSeconds;
-    /** 断档容差倍数：间隔 &gt; 额定 × 本值才算断档。给足余量，免得降采样与网络抖动被误判 */
-    private final int gapToleranceMultiplier;
+    /** 温度落库的唯一口径（越界 / 断档 / 间隔固化），与定时采集共用 */
+    private final TemperatureRecorder temperatureRecorder;
     /**
      * 每台监控相机保留的快照张数上限（滚动窗口）。
      * <p>
@@ -171,6 +181,7 @@ public class DistributionDeviceIngestService {
                                            DeliveryPlanMapper deliveryPlanMapper,
                                            DeliveryPlanItemMapper deliveryPlanItemMapper,
                                            TransportItemMapper transportItemMapper,
+                                           TransportStopMapper transportStopMapper,
                                            DriverCardMapper driverCardMapper,
                                            DriverMapper driverMapper,
                                            DriverVehicleMapper driverVehicleMapper,
@@ -183,13 +194,14 @@ public class DistributionDeviceIngestService {
                                            SplitYieldCheck splitYieldCheck,
                                            BreedingClient breedingClient,
                                            WorkshopSnapshotMapper snapshotMapper,
+                                           LegItemMapper legItemMapper,
+                                           ReturnLoadScanMapper scanMapper,
                                            FileClient fileClient,
                                            @Value("${ingest.temperature.range-min:-18.0}") BigDecimal defaultRangeMin,
                                            @Value("${ingest.temperature.range-max:0.0}") BigDecimal defaultRangeMax,
                                            @Value("${ingest.carcass-batch.max-pigs:200}") int maxPigsPerBatch,
-                                           @Value("${ingest.temperature.sample-interval-seconds:300}") int defaultSampleIntervalSeconds,
-                                           @Value("${ingest.temperature.gap-tolerance-multiplier:3}") int gapToleranceMultiplier,
-                                           @Value("${ingest.split-snapshot.retention:20}") int snapshotRetention) {
+                                           @Value("${ingest.split-snapshot.retention:20}") int snapshotRetention,
+                                           TemperatureRecorder temperatureRecorder) {
         this.transportMapper = transportMapper;
         this.temperatureLogMapper = temperatureLogMapper;
         this.receiptMapper = receiptMapper;
@@ -201,6 +213,7 @@ public class DistributionDeviceIngestService {
         this.deliveryPlanMapper = deliveryPlanMapper;
         this.deliveryPlanItemMapper = deliveryPlanItemMapper;
         this.transportItemMapper = transportItemMapper;
+        this.transportStopMapper = transportStopMapper;
         this.driverCardMapper = driverCardMapper;
         this.driverMapper = driverMapper;
         this.driverVehicleMapper = driverVehicleMapper;
@@ -213,13 +226,14 @@ public class DistributionDeviceIngestService {
         this.splitYieldCheck = splitYieldCheck;
         this.breedingClient = breedingClient;
         this.snapshotMapper = snapshotMapper;
+        this.legItemMapper = legItemMapper;
+        this.scanMapper = scanMapper;
         this.fileClient = fileClient;
         this.defaultRangeMin = defaultRangeMin;
         this.defaultRangeMax = defaultRangeMax;
         this.maxPigsPerBatch = maxPigsPerBatch;
-        this.defaultSampleIntervalSeconds = defaultSampleIntervalSeconds;
-        this.gapToleranceMultiplier = gapToleranceMultiplier;
         this.snapshotRetention = snapshotRetention;
+        this.temperatureRecorder = temperatureRecorder;
     }
 
     /** 冷链温度：运输中的运单才能记温度；异常值照常入账并标记 is_abnormal=1 */
@@ -243,46 +257,26 @@ public class DistributionDeviceIngestService {
             return rejected("温度下限不能高于上限");
         }
 
-        TemperatureLog entity = new TemperatureLog();
-        entity.setTransportId(transport.getId());
-        entity.setTemperature(request.getTemperature());
-        // 设备补传历史数据时按设备时间落库，避免补传整段被记成"现在"
-        entity.setRecordTime(request.getRecordTime() == null ? LocalDateTime.now() : request.getRecordTime());
-        entity.setTempRangeMin(min);
-        entity.setTempRangeMax(max);
-        entity.setIsAbnormal(request.getTemperature().compareTo(min) < 0
-                || request.getTemperature().compareTo(max) > 0 ? 1 : 0);
-        entity.setRecorder(StringUtils.hasText(request.getRecorder()) ? request.getRecorder() : "设备自动采集");
-        entity.setRecordMethod("DEVICE");
-        entity.setSource(SOURCE_DEVICE);
-        entity.setSourceRef(request.getSourceRef());
-        entity.setRawPayload(request.getRawPayload());
-        entity.setCreateTime(LocalDateTime.now());
-
-        // 断档检测：只判单点越界（is_abnormal）是不够的 —— 15:00 报一条、17:30 才报下一条，
-        // 中间两个半小时是空白，而系统会显示「温度正常」。**空白比超标更危险**：
-        // 超了至少看得见，空白是假装有数据。
-        // 基准 = 探头自己声明的额定间隔（接入层从设备台账带上来），没声明才用服务默认值；
-        // 容差给足倍数，免得降采样（最小入库间隔 60 秒）与网络抖动被误判成断档。
-        int interval = request.getSampleIntervalSeconds() != null && request.getSampleIntervalSeconds() > 0
-                ? request.getSampleIntervalSeconds() : defaultSampleIntervalSeconds;
-        TemperatureLog last = temperatureLogMapper.selectOne(Wrappers.<TemperatureLog>lambdaQuery()
-                .eq(TemperatureLog::getTransportId, transport.getId())
-                .orderByDesc(TemperatureLog::getRecordTime)
-                .orderByDesc(TemperatureLog::getId)
-                .last("LIMIT 1"));
-        Integer gapSeconds = null;
-        boolean gap = false;
-        if (last != null && last.getRecordTime() != null) {
-            long seconds = Duration.between(last.getRecordTime(), entity.getRecordTime()).getSeconds();
-            gapSeconds = (int) seconds;
-            // 补传的历史数据（时间戳早于上一条）不判断档，否则整段补传会被标成一片红
-            gap = seconds > (long) interval * gapToleranceMultiplier;
+        // 记录时间不能跑到未来：这条会成为该运单的「最近一条」，之后所有真实温度都被当成
+        // 「补传的历史数据」（recordTime 早于上一条 → 不判断档），这一趟的断档从此再也报不出来。
+        // 属于「数据不成立」（终端时钟错乱），拒绝入库，不留人工队列。
+        //
+        // 为什么只卡「未来」这一侧：补传历史数据是这条通道的合法能力（车载终端先缓存、进站后整段上传），
+        // 所以「早于发车」甚至「早于建单」都可能是正常补传，拿时间往回去卡一定会误伤；
+        // 而「这条温度属于哪一趟」是由报文里的 transportNo 归属的，不是靠时间去猜的。
+        LocalDateTime recordTime = request.getRecordTime();
+        if (recordTime != null
+                && recordTime.isAfter(LocalDateTime.now().plusMinutes(CLOCK_TOLERANCE_MINUTES))) {
+            return rejected("温度记录时间 " + recordTime.toString().replace('T', ' ')
+                    + " 晚于当前时间，疑似车载终端时钟错误，禁止入库");
         }
-        entity.setSampleIntervalSeconds(interval);
-        entity.setGapSeconds(gapSeconds);
-        entity.setIsGap(gap ? 1 : 0);
-        temperatureLogMapper.insert(entity);
+
+        // 越界 / 断档 / 间隔固化统一交给 TemperatureRecorder（与定时采集共用一份判定）
+        TemperatureLog entity = temperatureRecorder.record(transport.getId(), request.getTemperature(),
+                request.getRecordTime(), min, max,
+                StringUtils.hasText(request.getRecorder()) ? request.getRecorder() : "设备自动采集",
+                "DEVICE", SOURCE_DEVICE, request.getSourceRef(), request.getRawPayload(),
+                request.getSampleIntervalSeconds());
 
         StringBuilder reason = new StringBuilder();
         if (Integer.valueOf(1).equals(entity.getIsAbnormal())) {
@@ -290,8 +284,9 @@ public class DistributionDeviceIngestService {
         } else {
             reason.append("温度已入账");
         }
-        if (gap) {
-            reason.append("；本条距上一条已 ").append(gapSeconds).append(" 秒（额定 ").append(interval)
+        if (Integer.valueOf(1).equals(entity.getIsGap())) {
+            reason.append("；本条距上一条已 ").append(entity.getGapSeconds()).append(" 秒（额定 ")
+                    .append(entity.getSampleIntervalSeconds())
                     .append(" 秒），中间未采集到数据，已标记断档");
         }
         return written(entity.getId(), reason.toString());
@@ -306,6 +301,18 @@ public class DistributionDeviceIngestService {
         }
         if (!StringUtils.hasText(request.getReceiver())) {
             return manual("缺少签收人，责任转移必须落具体人，请人工确认后补录");
+        }
+        // 本店站点已拒收：设备通道不能把拒收的货再签收掉 —— 拒收是门店的商业判断，
+        // 只有门店在页面上「拒收改签收」（实名 + 上链）这一条路能翻案。
+        boolean stopRejected = transportStopMapper.selectList(Wrappers.<TransportStop>lambdaQuery()
+                        .eq(TransportStop::getTransportId, transport.getId())
+                        .eq(TransportStop::getStatus, TransportStop.STOP_REJECTED)).stream()
+                .anyMatch(s -> request.getStoreId() != null
+                        ? Objects.equals(s.getStoreId(), request.getStoreId())
+                        : Objects.equals(s.getStoreName(), request.getStoreName()));
+        if (stopRejected) {
+            return manual("运单 " + transport.getTransportNo() + " 在门店「" + request.getStoreName()
+                    + "」已拒收：设备无权翻案，请门店协商后在页面执行「拒收改签收」");
         }
         // 幂等键是「运单 + 门店」：一个车次送四家店就是四次货权转移，各签各的；
         // 同一家店在同一车次上仍只能签一次 —— 放开的是站点数，不是签收次数。
@@ -830,7 +837,8 @@ public class DistributionDeviceIngestService {
             ColdChainTransport transport = distributionService.generateTransportFromPlans(
                     new ArrayList<>(planSeq.keySet()), batchIds,
                     new DistributionRequests.LoadSite(request.getVehicleNo(), vehicleType, driverName,
-                            request.getDriverPhone(), driverSource, request.getSourceRef(), request.getRawPayload()));
+                            request.getDriverPhone(), driverSource, request.getSourceRef(), request.getRawPayload(),
+                            request.getOrgId()));
             String destinationText = plans.size() == 1
                     ? plans.values().iterator().next().getStoreName()
                     : "途经 " + plans.size() + " 站（" + String.join("、",
@@ -868,8 +876,9 @@ public class DistributionDeviceIngestService {
      * ② 同时有<b>多张</b>待发车运单 → 转人工（不敢猜是哪一趟）；③ 现场刷卡的人与运单上安排的人不一致
      * → 转人工（最可能的解释是上错车）。司机必须由卡号换出具体的人，换不出人一律转人工（「设备 ≠ 人」）。
      * <p>
-     * 发车<b>不单独上链</b>：人工发车（{@code depart}）也没有上链，两条路径保持一致 ——
-     * 运单本身已经在装车与签收两个节点上链了。
+     * 发车确认<b>两条路径都上链</b>（2026-11-06）：事件类型同为 {@code TRANSPORT_DEPART}，
+     * 人工 {@code depart} 与设备上报只差 {@code path} 字段（MANUAL/DEVICE）——
+     * 谁在什么时刻把哪趟车发走的，链上可查。
      */
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> ingestDepart(DeviceIngestRequests.DeviceDepart request) {
@@ -943,6 +952,18 @@ public class DistributionDeviceIngestService {
         if (changed == 0) {
             return manual("运单 " + transport.getTransportNo() + " 当前已不是「待发车」（可能刚被发走），请人工核对");
         }
+        // 发车确认上链存证（设备路径）：与人工 depart 同一事件类型 TRANSPORT_DEPART，
+        // 谁在什么时刻把哪趟车发走的，链上可查；失败不阻塞发车
+        Map<String, Object> departPayload = Map.of(
+                "transportNo", transport.getTransportNo(),
+                "vehicleNo", vehicleNo,
+                "driverName", driverName,
+                "driverSource", String.valueOf(driverSource),
+                "path", "DEVICE");
+        Map<String, Object> departHash = new LinkedHashMap<>(departPayload);
+        departHash.put("departTime", departTime.toString());
+        publish("TRANSPORT_DEPART", transport.getId(), transport.getTransportNo(),
+                HashUtil.sha256Json(departHash), departPayload);
         return written(transport.getId(), "车载终端刷卡确认发车：运单 " + transport.getTransportNo()
                 + "，车牌 " + vehicleNo + "，司机 " + driverName + "（" + DriverSource.labelOf(driverSource)
                 + "），发车时刻 " + departTime);
@@ -1037,6 +1058,11 @@ public class DistributionDeviceIngestService {
             return manual("运单 " + transport.getTransportNo() + " 的 " + stops.size()
                     + " 个站点都已到达，本次刷卡无处可记（是不是重复刷了），请人工核对");
         }
+        // 召回收运：上一站的货没扫码收完，不许往下一站走（货还在店里，车就开走 = 清单对不上）
+        String recallBlocker = distributionService.recallArriveBlocker(transport.getId(), next.getStopNo());
+        if (recallBlocker != null) {
+            return manual(recallBlocker);
+        }
 
         // ③ 到达必须由司机本人刷卡确认：卡号 → 备案 → 持卡人。
         //    「设备 ≠ 人」在这条通道上的落点 —— 车牌只说明是哪一趟车，说明不了是谁把货送到的；
@@ -1082,6 +1108,209 @@ public class DistributionDeviceIngestService {
                 + "）到达时刻 " + arriveTime + "，司机 " + confirmDriver
                 + "（" + DriverSource.labelOf(DriverSource.CARD) + "）"
                 + (status >= STATUS_ARRIVED ? "；本趟车全部站点已到达" : "；后面还有站点没到"));
+    }
+
+    /**
+     * 拒收回运装车扫码：装车位那把专用扫码枪扫到「哪台车上了哪件拒收货」。
+     * <p>
+     * 与装车口（{@code LoadChannelHandler}）同构：<b>车牌 + 货码，倒查业务对象</b>。
+     * 区别只在倒查的目标 —— 装车口倒查待发货计划，这里倒查「已拒收、还没排上回运车」的门店站点
+     * （{@code transport_stop.status=3} 且没有 DISPOSAL 明细）。
+     * <p>
+     * <b>扫码即出单（2026-11-04 用户拍板）</b>：登记成功的货立刻由
+     * {@code distributionService.autoPlanDisposalForScan} 生成（或并入）该车牌名下的处理运单，
+     * 司机随后就能在车载终端刷卡发车 —— 页面上那个「生成处理运单」按钮降级为兜底，
+     * 专职处理没扫到的货（按载重补装）。
+     * <p>
+     * 判定边界：
+     * <ul>
+     *   <li>货码命中唯一站点 → 登记 + 出单/并入（同车同站重复扫是幂等，只刷新时刻，不重复计数）；</li>
+     *   <li>一码对多站（同一原运单送多店、几家都拒收）→ 不猜，转人工并提示改扫门店标签；</li>
+     *   <li>货码对不上任何拒收站点 → 转人工，原文照留（上错车或标签不对的第一信号）；</li>
+     *   <li>货码对应的货已并入别的处理运单 → 转人工，不允许重复装车；</li>
+     *   <li>车名下还有未完成运单（一车一趟）→ 扫码事实留池，出单原因随回执转述。</li>
+     * </ul>
+     */
+    public Map<String, Object> ingestReturnLoad(DeviceIngestRequests.DeviceReturnLoad request) {
+        String plateNo = StringUtils.hasText(request.getVehicleNo()) ? request.getVehicleNo().trim() : null;
+        if (plateNo == null) return rejected("缺少车牌号，无法确定这批拒收货装的是哪台车");
+        List<String> codes = request.getScanCodes() == null ? List.of()
+                : request.getScanCodes().stream().filter(StringUtils::hasText).map(String::trim)
+                        .distinct().toList();
+        if (codes.isEmpty()) return rejected("本次没有扫到任何货物码，无法登记装车");
+
+        // ① 已拒收站点全集：回运只处理门店拒收的货，别的来源的码一律不接
+        List<TransportStop> rejectedStops = transportStopMapper.selectList(Wrappers.<TransportStop>lambdaQuery()
+                .eq(TransportStop::getStatus, TransportStop.STOP_REJECTED));
+        if (rejectedStops.isEmpty()) {
+            return rejected("系统里没有已拒收的货物：拒收回运只处理门店拒收的货");
+        }
+        Set<Long> stopIds = rejectedStops.stream().map(TransportStop::getId).collect(Collectors.toSet());
+        // 已经排进回运段的站点：这些货不能再装第二车
+        Set<Long> plannedStopIds = legItemMapper.selectList(Wrappers.<LegItem>lambdaQuery()
+                        .in(LegItem::getSourceStopId, stopIds)
+                        .eq(LegItem::getLegKind, LegItem.KIND_DISPOSAL))
+                .stream().map(LegItem::getSourceStopId).collect(Collectors.toSet());
+        List<TransportStop> pendingStops = rejectedStops.stream()
+                .filter(s -> !plannedStopIds.contains(s.getId())).toList();
+
+        // ② 原运单与分割批次：货码可能是原运单号，也可能是批次号（拒收包装上就这两种标签）
+        Map<Long, ColdChainTransport> origins = transportMapper.selectBatchIds(
+                        rejectedStops.stream().map(TransportStop::getTransportId).collect(Collectors.toSet()))
+                .stream().collect(Collectors.toMap(ColdChainTransport::getId, t -> t));
+        Set<Long> batchIds = origins.values().stream().map(ColdChainTransport::getSplitBatchId)
+                .filter(Objects::nonNull).collect(Collectors.toSet());
+        Map<Long, SplitBatch> batches = batchIds.isEmpty() ? Map.of()
+                : splitBatchMapper.selectBatchIds(batchIds).stream()
+                        .collect(Collectors.toMap(SplitBatch::getId, b -> b));
+
+        // ③ 货码索引：待排车的与已排车的分开，后者用来识别「这货已经上过别的单了」
+        Map<String, List<TransportStop>> pendingByNo = indexStops(pendingStops, origins, batches, true);
+        Map<String, List<TransportStop>> pendingByBatch = indexStops(pendingStops, origins, batches, false);
+        List<TransportStop> plannedStops = rejectedStops.stream()
+                .filter(s -> plannedStopIds.contains(s.getId())).toList();
+        Map<String, List<TransportStop>> plannedByNo = indexStops(plannedStops, origins, batches, true);
+        Map<String, List<TransportStop>> plannedByBatch = indexStops(plannedStops, origins, batches, false);
+
+        LocalDateTime scanTime = request.getScanTime() == null ? LocalDateTime.now() : request.getScanTime();
+        String deviceNo = StringUtils.hasText(request.getSourceRef()) ? request.getSourceRef().trim() : null;
+
+        List<String> unsettled = new ArrayList<>();
+        List<TransportStop> acceptedStops = new ArrayList<>();
+        int fresh = 0;
+        for (String code : codes) {
+            List<TransportStop> hits = pendingByNo.get(code);
+            if (hits == null || hits.isEmpty()) hits = pendingByBatch.get(code);
+            if (hits == null || hits.isEmpty()) {
+                List<TransportStop> done = plannedByNo.get(code);
+                if (done == null || done.isEmpty()) done = plannedByBatch.get(code);
+                if (done != null && !done.isEmpty()) {
+                    unsettled.add(code + "（已并入处理运单，不能重复装车）");
+                    saveAbnormalScan(code, plateNo, deviceNo, scanTime, "该货已并入处理运单，不允许重复装车");
+                } else {
+                    unsettled.add(code + "（系统里没有这件拒收货）");
+                    saveAbnormalScan(code, plateNo, deviceNo, scanTime, "货码对不上任何已拒收站点");
+                }
+                continue;
+            }
+            if (hits.size() > 1) {
+                unsettled.add(code + "（对应 " + hits.size() + " 家拒收门店，请改扫门店标签）");
+                saveAbnormalScan(code, plateNo, deviceNo, scanTime,
+                        "一个货码对应 " + hits.size() + " 家拒收门店，无法确定装的是哪一件");
+                continue;
+            }
+
+            TransportStop stop = hits.get(0);
+            ColdChainTransport origin = origins.get(stop.getTransportId());
+            SplitBatch batch = origin == null || origin.getSplitBatchId() == null
+                    ? null : batches.get(origin.getSplitBatchId());
+            // 同车同站重复扫是幂等：现场连扫两枪不产生两条装车记录
+            ReturnLoadScan exist = scanMapper.selectOne(Wrappers.<ReturnLoadScan>lambdaQuery()
+                    .eq(ReturnLoadScan::getStopId, stop.getId())
+                    .eq(ReturnLoadScan::getPlateNo, plateNo)
+                    .eq(ReturnLoadScan::getStatus, ReturnLoadScan.ST_PENDING)
+                    .last("LIMIT 1"));
+            if (exist != null) {
+                scanMapper.update(null, Wrappers.<ReturnLoadScan>lambdaUpdate()
+                        .eq(ReturnLoadScan::getId, exist.getId())
+                        .set(ReturnLoadScan::getScanTime, scanTime)
+                        .set(ReturnLoadScan::getDeviceNo, deviceNo));
+            } else {
+                ReturnLoadScan row = new ReturnLoadScan();
+                row.setScanCode(code);
+                row.setStopId(stop.getId());
+                row.setTransportNo(origin == null ? null : origin.getTransportNo());
+                row.setBatchNo(batch == null ? null : batch.getBatchNo());
+                row.setStoreName(stop.getStoreName());
+                row.setWeightKg(stop.getWeightKg());
+                row.setPlateNo(plateNo);
+                row.setDeviceNo(deviceNo);
+                row.setScanTime(scanTime);
+                row.setStatus(ReturnLoadScan.ST_PENDING);
+                row.setCreateTime(LocalDateTime.now());
+                scanMapper.insert(row);
+                fresh++;
+            }
+            acceptedStops.add(stop);
+        }
+
+        // ④ 扫码即出单：登记成功的货立刻生成（或并入）该车的处理运单（2026-11-04 用户拍板），
+        //    司机随后就能在车载终端刷卡发车 —— 不用再回页面点「生成处理运单」。
+        //    出不了单（车还没回来等）不算报文失败：扫码事实已落库，原因随回执转述给现场。
+        String planNote = null;
+        if (!acceptedStops.isEmpty()) {
+            Map<String, Object> plan;
+            try {
+                plan = distributionService.autoPlanDisposalForScan(plateNo,
+                        acceptedStops.stream().map(TransportStop::getId).toList(),
+                        scanTime, deviceNo, request.getOrgId());
+            } catch (Exception e) {
+                log.warn("return_load_autoplan_failed plate={} err={}", plateNo, e.toString());
+                plan = Map.of("created", false, "appended", false,
+                        "reason", "自动出单失败：" + e.getMessage() + "，扫码货已留在处理计划，请到页面生成");
+            }
+            planNote = buildPlanNote(plan);
+        }
+
+        // ⑤ 有对不上的货码 → 转人工（已登记并出单的照样生效，不因为一条异常丢掉整车的装车事实）
+        if (!unsettled.isEmpty()) {
+            return manual("车牌 " + plateNo + " 本次登记 " + acceptedStops.size() + " 件（新增 " + fresh
+                    + " 件）" + (planNote == null ? "" : "；" + planNote)
+                    + "。另有 " + unsettled.size() + " 个货码对不上本车清单："
+                    + unsettled.stream().limit(3).collect(Collectors.joining("、"))
+                    + (unsettled.size() > 3 ? " 等" : "") + "。已处理的照常生效，请人工核对");
+        }
+        return written(null, "回运装车扫码：车牌 " + plateNo + "，本次 " + acceptedStops.size()
+                + " 件（新增 " + fresh + " 件）" + (planNote == null ? "" : "；" + planNote));
+    }
+
+    /** 把「扫码即出单」的结果转成一句现场能读懂的话 */
+    private String buildPlanNote(Map<String, Object> plan) {
+        String transportNo = String.valueOf(plan.getOrDefault("transportNo", ""));
+        if (Boolean.TRUE.equals(plan.get("created"))) {
+            return "已生成处理运单 " + transportNo + "（待发车），司机可立即在车载终端刷卡发车";
+        }
+        if (Boolean.TRUE.equals(plan.get("appended"))) {
+            return "已并入该车待发车的处理运单 " + transportNo + "，司机可立即刷卡发车";
+        }
+        Object reason = plan.get("reason");
+        return reason == null ? null : String.valueOf(reason);
+    }
+
+    /** 按「原运单号」或「分割批次号」把站点建索引：货码是现场唯一能读到的东西 */
+    private Map<String, List<TransportStop>> indexStops(List<TransportStop> stops,
+                                                        Map<Long, ColdChainTransport> origins,
+                                                        Map<Long, SplitBatch> batches,
+                                                        boolean byTransportNo) {
+        Map<String, List<TransportStop>> index = new LinkedHashMap<>();
+        for (TransportStop stop : stops) {
+            ColdChainTransport origin = origins.get(stop.getTransportId());
+            if (origin == null) continue;
+            String key;
+            if (byTransportNo) {
+                key = origin.getTransportNo();
+            } else {
+                SplitBatch batch = origin.getSplitBatchId() == null ? null : batches.get(origin.getSplitBatchId());
+                key = batch == null ? null : batch.getBatchNo();
+            }
+            if (!StringUtils.hasText(key)) continue;
+            index.computeIfAbsent(key.trim(), k -> new ArrayList<>()).add(stop);
+        }
+        return index;
+    }
+
+    /** 对不上的货码也留原文：扫码枪读到什么就记什么，异常本身是排查线索 */
+    private void saveAbnormalScan(String code, String plateNo, String deviceNo,
+                                  LocalDateTime scanTime, String note) {
+        ReturnLoadScan row = new ReturnLoadScan();
+        row.setScanCode(code);
+        row.setPlateNo(plateNo);
+        row.setDeviceNo(deviceNo);
+        row.setScanTime(scanTime);
+        row.setStatus(ReturnLoadScan.ST_ABNORMAL);
+        row.setNote(note);
+        row.setCreateTime(LocalDateTime.now());
+        scanMapper.insert(row);
     }
 
     /**

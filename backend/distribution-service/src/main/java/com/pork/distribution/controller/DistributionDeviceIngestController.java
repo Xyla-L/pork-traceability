@@ -102,6 +102,29 @@ public class DistributionDeviceIngestController {
     }
 
     /**
+     * 拒收回运装车扫码（冷链中心装车位上的专用扫码枪）。
+     * <p>
+     * 与装车口（{@link #load}）互为镜像，但只做核对：回运单由调度按载重生成，
+     * 这条通道证明「单上列的拒收货确实装上了这台车」，<b>不建单、不推进状态</b>。
+     * <p>
+     * 三条分档：扫的不是回运单 / 已签收 / 车牌不是这单排的车 → <b>拒绝</b>（现场重扫即可自愈）；
+     * 已发车才补扫 / 没有货物清单 / 扫到不属于本车的货 → <b>转人工</b>（命中的照样落库）。
+     */
+    @PostMapping("/return-load")
+    public Result<Map<String, Object>> returnLoad(@Valid @RequestBody DeviceIngestRequests.DeviceReturnLoad request) {
+        return Result.success(ingestService.ingestReturnLoad(request));
+    }
+
+    /**
+     * 召回到店扫码收货（随车手持扫码枪）：
+     * 车牌 → 在途收运运单 → 当前已到达的门店 → 本站召回货，四步唯一才认。
+     */
+    @PostMapping("/recall-collect")
+    public Result<Map<String, Object>> recallCollect(@Valid @RequestBody DeviceIngestRequests.DeviceRecallCollect request) {
+        return Result.success(distributionService.ingestRecallCollect(request));
+    }
+
+    /**
      * 订单转入（外部 ERP/OMS 的选购事实，走接入层 ORDER 通道）。
      * <p>
      * 与上面几条通道有一处本质差别：那些通道落的都是「已经发生的事实」，

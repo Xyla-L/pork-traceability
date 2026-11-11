@@ -1,0 +1,19 @@
+{
+  "_说明": "另一批（另一个批次号）却用了同一段耳标：两头猪不能共用一个耳标号，这条必须转人工而不是覆盖。用来演示「外部系统的数据不等于正确的数据」。",
+  "channel": "FARM_ERP",
+  "bizKey": "ERP-{{RUN}}-2",
+  "reportTime": "{{NOW}}",
+  "sourceRef": "DEMO-ERP-撞号",
+  "data": {
+    "action": "UPSERT",
+    "systemCode": "DEMO_ERP",
+    "farmName": "{{FARM}}",
+    "batchNo": "ERP-{{RUN}}-B",
+    "breed": "三元杂",
+    "entryDate": "{{ENTRY}}",
+    "birthDate": "{{BIRTH}}",
+    "source": "外购-示例供应商",
+    "earTagStart": "ET-ERP{{RUN}}010",
+    "earTagEnd": "ET-ERP{{RUN}}015"
+  }
+}

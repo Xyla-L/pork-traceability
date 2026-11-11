@@ -26,11 +26,12 @@ public class FarmServiceImpl extends ServiceImpl<FarmMapper, Farm> implements Fa
     private final OrgSyncClient orgSyncClient;
 
     @Override
-    public Page<FarmVO> pageQuery(Long current, Long size, String farmName) {
+    public Page<FarmVO> pageQuery(Long current, Long size, String farmName, Long scopedFarmId) {
         Page<Farm> page = this.page(
                 new Page<>(current, size),
                 Wrappers.<Farm>lambdaQuery()
                         .like(StringUtils.hasText(farmName), Farm::getFarmName, farmName)
+                        .eq(scopedFarmId != null, Farm::getId, scopedFarmId)
                         .orderByDesc(Farm::getCreateTime)
         );
         Page<FarmVO> voPage = new Page<>(current, size);

@@ -86,10 +86,18 @@ const pad = (n) => String(n).padStart(2, '0')
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` }
 
 /** 每次上报给一个不同的到达时刻：同设备 + 同通道 + 同一份报文会被判重复上报 */
+// 每次运行整体前移一个随机分钟数：连跑两遍脚本时两次运行间隔可能不足 1 秒，
+// 若不加偏移，第 k 次上报的时间戳会在两轮里截断成同一秒，撞上一轮落库报文被判重
+const RUN_OFFSET = Math.floor(Math.random() * 600) * 1000
 let tickSeq = 0
+/** 上一条用的毫秒值：相邻两次调用若恰好跨 1000ms 整，截断到秒会得到同一字符串而撞判重 */
+let lastMs = Number.MAX_SAFE_INTEGER
 function nextTime() {
   tickSeq += 1
-  const d = new Date(Date.now() - tickSeq * 1000)
+  let ms = Date.now() - RUN_OFFSET - tickSeq * 1000
+  if (ms >= lastMs) ms = lastMs - 1000
+  lastMs = ms
+  const d = new Date(ms)
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} `
     + `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }

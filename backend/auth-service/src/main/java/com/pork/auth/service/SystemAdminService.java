@@ -34,4 +34,12 @@ public interface SystemAdminService {
 
     /** 业务档案删除后移除对应机构；机构有下级或已关联用户时不动，返回是否真的删了。 */
     boolean removeOrgByName(String type, String name);
+
+    /**
+     * 按角色 / 机构查「活跃用户」的收件人清单（内部接口，供业务服务发通知用）。
+     * <p>
+     * 只回 {@code status=1} 的账号：给离职账号发召回通知等于没发。
+     * role 与 orgIds 都可为空：为空表示不限。orgIds 为空字符串元素一律忽略。
+     */
+    List<Map<String, Object>> internalRecipients(String role, List<Long> orgIds);
 }

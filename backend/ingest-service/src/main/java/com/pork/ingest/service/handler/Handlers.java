@@ -1,6 +1,7 @@
 package com.pork.ingest.service.handler;
 
 import com.pork.ingest.support.DispatchResult;
+import com.pork.ingest.support.IngestStatus;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -38,7 +39,10 @@ final class Handlers {
         }
         String reason = result.get("reason") == null ? "业务校验未通过" : result.get("reason").toString();
         if (Boolean.TRUE.equals(result.get("written"))) {
-            return DispatchResult.accepted(longValue(result.get("id")), targetTable);
+            // 入账也可以带话术（如 RETURN_LOAD 的「已生成处理运单（待发车）」）：
+            // reason 为空时退回默认的「已入账」，其余原样带给现场
+            return new DispatchResult(IngestStatus.ACCEPTED, longValue(result.get("id")), targetTable,
+                    result.get("reason") == null ? "已入账" : reason);
         }
         return Boolean.TRUE.equals(result.get("retryable"))
                 ? DispatchResult.manual(targetTable, reason)

@@ -1,0 +1,14 @@
+{
+  "_说明": "源系统撤销批次（录错/合并/退养）：批次与成员作废并上链，但成员行与下游已发生的事实保留可追溯——撤销不等于删除。",
+  "channel": "FARM_ERP",
+  "bizKey": "ERP-{{RUN}}-3",
+  "reportTime": "{{NOW}}",
+  "sourceRef": "DEMO-ERP-撤批",
+  "data": {
+    "action": "REVOKE",
+    "systemCode": "DEMO_ERP",
+    "farmName": "{{FARM}}",
+    "batchNo": "ERP-{{RUN}}",
+    "voidReason": "ERP 侧录错进场日期，整批撤销后重推"
+  }
+}

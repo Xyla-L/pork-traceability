@@ -1,0 +1,19 @@
+{
+  "_说明": "养殖 ERP 推送一批自繁猪（区间模式）。占位符由 farm-erp-demo.mjs 替换后原样发出——演示用的是这份报文本身，不是代码里拼的。",
+  "channel": "FARM_ERP",
+  "bizKey": "ERP-{{RUN}}-1",
+  "reportTime": "{{NOW}}",
+  "sourceRef": "DEMO-ERP-推批",
+  "data": {
+    "action": "UPSERT",
+    "systemCode": "DEMO_ERP",
+    "farmName": "{{FARM}}",
+    "batchNo": "ERP-{{RUN}}",
+    "breed": "三元杂",
+    "entryDate": "{{ENTRY}}",
+    "birthDate": "{{BIRTH}}",
+    "source": "自繁",
+    "earTagStart": "ET-ERP{{RUN}}001",
+    "earTagEnd": "ET-ERP{{RUN}}030"
+  }
+}

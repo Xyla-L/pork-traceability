@@ -51,4 +51,23 @@ public class OrgInternalController {
     public Result<Boolean> remove(@RequestParam String type, @RequestParam String name) {
         return Result.success(service.removeOrgByName(type, name));
     }
+
+    /**
+     * 按角色 / 机构查活跃用户的收件人清单（业务服务发通知用）。
+     * <p>
+     * 通知是「谁的事」写死在收件人上：召回要通知涉事门店与冷链中心，调用方只能拿到机构 id
+     * （销售记录里只有 store_id），user_id 只有 auth 服务知道 —— 所以这一步放在这里，
+     * 而不是让每个业务服务各自读一份 sys_user。
+     */
+    @GetMapping("/users")
+    @Operation(summary = "按角色/机构查活跃用户（供业务服务发通知，返回 userId/orgId/orgName）")
+    public Result<java.util.List<java.util.Map<String, Object>>> users(
+            @RequestParam(required = false) String role,
+            @RequestParam(required = false) String orgIds) {
+        java.util.List<Long> ids = orgIds == null || orgIds.isBlank() ? java.util.List.of()
+                : java.util.Arrays.stream(orgIds.split(","))
+                        .map(String::trim).filter(s -> !s.isEmpty())
+                        .map(Long::valueOf).toList();
+        return Result.success(service.internalRecipients(role, ids));
+    }
 }

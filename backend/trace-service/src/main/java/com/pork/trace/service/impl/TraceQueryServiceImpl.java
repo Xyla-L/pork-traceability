@@ -146,9 +146,22 @@ public class TraceQueryServiceImpl implements TraceQueryService {
         List<Map<String, Object>> comparisons = details.stream().map(this::verifyRecord).toList();
         boolean verified = !comparisons.isEmpty() && comparisons.stream()
                 .allMatch(row -> Boolean.TRUE.equals(row.get("match")));
-        return Map.of("allVerified", verified, "verified", verified, "chainStatus",
-                verified ? "区块链已验证" : "区块链验证未通过", "details", comparisons,
-                "detail", verified ? "全部存证记录与链上哈希一致" : "存在未确认或缺失的存证记录");
+        // 存证载体决定这句话能说多重：本地账本只能证明「平台内记录没被改过」，
+        // 只有真上链（evm）才配得上「区块上能独立核验」这种表述。
+        String chainMode = comparisons.stream()
+                .map(row -> Objects.toString(row.get("chainMode"), ""))
+                .filter(mode -> !mode.isBlank()).findFirst().orElse("local");
+        boolean onChain = "evm".equals(chainMode);
+        String chainStatus = verified
+                ? (onChain ? "区块链已验证" : "本地存证已核对")
+                : (onChain ? "区块链验证未通过" : "本地存证核对未通过");
+        String detail = verified
+                ? (onChain ? "全部存证记录与链上哈希一致"
+                           : "全部存证记录与平台存证一致（当前为本地存证模式，未写入区块链）")
+                : "存在未确认或缺失的存证记录";
+        return Map.of("allVerified", verified, "verified", verified,
+                "chainMode", chainMode, "onChain", onChain,
+                "chainStatus", chainStatus, "details", comparisons, "detail", detail);
     }
 
     @Override
@@ -182,6 +195,10 @@ public class TraceQueryServiceImpl implements TraceQueryService {
 
         Map<String, Object> blockchain = new LinkedHashMap<>();
         blockchain.put("verified", Boolean.TRUE.equals(verification.get("verified")));
+        // 载体必须一起给：小程序拿 verified=true 就说「区块链已验证」，
+        // 而本地账本模式下的 verified 只代表平台内哈希一致
+        blockchain.put("chainMode", Objects.toString(verification.get("chainMode"), "local"));
+        blockchain.put("onChain", Boolean.TRUE.equals(verification.get("onChain")));
         blockchain.put("recordCount", chainRecords.size());
         blockchain.put("records", verification.getOrDefault("details", List.of()));
 
@@ -212,16 +229,58 @@ public class TraceQueryServiceImpl implements TraceQueryService {
         return new ArrayList<>(rows);
     }
 
+    /**
+     * 存证事件类型 → 中文名。
+     * 口径必须与 web-admin 的 `utils/chainBizType.ts` 一致：同一个事件在后台和小程序里
+     * 叫两个名字，消费者看到的时间轴就跟监管看的不一样。未收录的如实回退成代码，不编中文。
+     */
+    private static final Map<String, String> BIZ_TYPE_LABELS = Map.ofEntries(
+            Map.entry("PIG_BATCH", "生猪建档"),
+            Map.entry("PIG_INDIVIDUAL", "生猪个体"),
+            Map.entry("VACCINE_RECORD", "免疫记录"),
+            Map.entry("QUARANTINE_CERT", "检疫证明"),
+            Map.entry("SLAUGHTER_APPLY", "屠宰申报"),
+            Map.entry("TRANSPORT_DEPART", "发车确认"),
+            Map.entry("ENTRY_INSPECTION", "入场查验"),
+            Map.entry("RACTOPAMINE_TEST", "瘦肉精检测"),
+            Map.entry("SLAUGHTER_INSPECT", "屠宰检验"),
+            Map.entry("CARCASS_STAMP", "检疫盖章"),
+            Map.entry("CARCASS_BATCH", "胴体批次"),
+            Map.entry("SPLIT_JOB", "分割作业"),
+            Map.entry("SPLIT_BATCH", "批次拆分"),
+            Map.entry("COLD_CHAIN_TRANSPORT", "冷链运输"),
+            Map.entry("TRANSPORT_ARRIVE", "到站确认"),
+            Map.entry("STORE_RECEIPT", "门店签收"),
+            Map.entry("STOP_REJECTED", "门店拒收"),
+            Map.entry("STOP_REJECT_REVERSED", "拒收改签收"),
+            Map.entry("STOP_DISPOSAL", "拒收处置"),
+            Map.entry("RETAIL_SALE", "销售激活"),
+            Map.entry("RECALL_PLANNED", "召回发起"),
+            Map.entry("RECALL_ORDER", "召回收运单"),
+            Map.entry("RECALL_COMPLETED", "召回闭环"),
+            Map.entry("DISPOSAL_PLANNED", "处置运单生成"),
+            Map.entry("DISPOSAL_CONFIRMED", "处置签收"),
+            Map.entry("PIG_BATCH_VOID", "生猪建档作废"),
+            Map.entry("PIG_INDIVIDUAL_VOID", "生猪个体作废"),
+            Map.entry("VACCINE_RECORD_VOID", "免疫记录作废"),
+            Map.entry("QUARANTINE_CERT_VOID", "检疫证明作废"),
+            Map.entry("ENTRY_VOID", "入场查验作废"),
+            Map.entry("RACTOPAMINE_VOID", "瘦肉精检测作废"),
+            Map.entry("SLAUGHTER_INSPECT_VOID", "屠宰检验作废"),
+            Map.entry("CARCASS_STAMP_VOID", "检疫盖章作废"),
+            Map.entry("CARCASS_BATCH_VOID", "胴体批次作废"),
+            Map.entry("SPLIT_BATCH_VOID", "批次拆分作废"),
+            Map.entry("SPLIT_BATCH_MANUAL_EDIT", "批次拆分更正"),
+            Map.entry("RETAIL_SALE_VOID", "销售作废"),
+            Map.entry("VACCINE_RECORD_MANUAL_EDIT", "免疫记录更正"),
+            Map.entry("RECALL_ORDER_PROGRESS", "召回进度上报"),
+            Map.entry("RETURN_LOAD_SCANNED", "拒收装车扫码"),
+            Map.entry("RETURN_PLANNED", "处理运单生成"),
+            Map.entry("RETURN_INTAKE", "拒收入库")
+    );
+
     private String bizTypeLabel(String bizType) {
-        return switch (bizType) {
-            case "QUARANTINE_CERT" -> "产地检疫证明";
-            case "SLAUGHTER_INSPECT" -> "屠宰检验";
-            case "SPLIT_BATCH" -> "批次分割";
-            case "STORE_RECEIPT" -> "门店签收";
-            case "RETAIL_SALE" -> "销售激活";
-            case "RECALL_ORDER" -> "产品召回";
-            default -> bizType;
-        };
+        return BIZ_TYPE_LABELS.getOrDefault(bizType, bizType);
     }
 
     private List<Object> certChain(Object slaughter) {
@@ -426,6 +485,8 @@ public class TraceQueryServiceImpl implements TraceQueryService {
         detail.put("chainHash", verification.get("onChainHash"));
         detail.put("match", match);
         detail.put("txHash", record.get("txHash"));
+        detail.put("chainMode", verification.get("mode"));
+        detail.put("onChain", verification.get("onChain"));
         return detail;
     }
 

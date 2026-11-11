@@ -184,12 +184,14 @@ eq "★ 同一台车载终端本次覆盖了两个通道（合并生效：一台
    "$(MYSQL "SELECT COUNT(DISTINCT channel) FROM db_ingest.ingest_staging WHERE device_no = 'ARRIVE-001' AND create_time >= '$START_TS';")" "2"
 eq "★ 设备台账里 ARRIVE-001 已是「车载终端」（发车与到站刷卡是同一台设备）" \
    "$(MYSQL "SELECT COUNT(*) FROM db_ingest.ingest_device WHERE device_no = 'ARRIVE-001' AND device_name LIKE '%车载终端%';")" "1"
-# 三台车载终端是一个系列（2026-10-11 命名统一）：命名格式一致，但绑定不同 ——
-# 两台是「一车一台」（真机形态），一台是演示/回归的通用终端。
-eq "★ 三台车载终端是同一系列：命名统一为「车载终端（…）」" \
-   "$(MYSQL "SELECT COUNT(*) FROM db_ingest.ingest_device WHERE device_no IN ('DEPART-001','DEPART-003','ARRIVE-001') AND device_name LIKE '车载终端（%';")" "3"
-eq "★ 系列里的绑定：两台真车各绑一台（京A·12345 / 京A·12346），通用那台有意不绑车" \
-   "$(MYSQL "SELECT COUNT(*) FROM db_ingest.ingest_device WHERE (device_no='DEPART-001' AND vehicle_no='京A·12345') OR (device_no='DEPART-003' AND vehicle_no='京A·12346') OR (device_no='ARRIVE-001' AND vehicle_no IS NULL);")" "3"
+# 2026-10-24 设备收敛：车载终端只剩通用的一台（DEPART-001/003 已删），
+# 发车与到站由它一台承担（报文自带 channel，能力校验按 deviceGroup）。
+eq "★ 车载终端只剩 ARRIVE-001 一台，命名仍为「车载终端（…）」系列" \
+   "$(MYSQL "SELECT COUNT(*) FROM db_ingest.ingest_device WHERE device_no = 'ARRIVE-001' AND device_name LIKE '车载终端（%';")" "1"
+eq "★ 收敛后已无单独登记的 DEPART 设备（发车能力由通用终端承担）" \
+   "$(MYSQL "SELECT COUNT(*) FROM db_ingest.ingest_device WHERE channel = 'DEPART';")" "0"
+eq "★ 通用终端有意不绑车（车牌以报文为准）" \
+   "$(MYSQL "SELECT COUNT(*) FROM db_ingest.ingest_device WHERE device_no='ARRIVE-001' AND vehicle_no IS NULL;")" "1"
 
 # 2.8 存量数据未被波及
 eq "存量装载明细里门店为空的条数保持不变（历史事实，不篡改）" \

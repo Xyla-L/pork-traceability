@@ -27,6 +27,12 @@ public class PigIndividualVO {
     @Schema(description = "养殖场名称（关联查询字段，非数据库字段）")
     private String farmName;
 
+    @Schema(description = "所属生猪批次ID")
+    private Long batchId;
+
+    @Schema(description = "所属批次号（关联查询字段）")
+    private String batchNo;
+
     @Schema(description = "品种")
     private String breed;
 

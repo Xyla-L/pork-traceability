@@ -12,6 +12,14 @@ public final class IngestStatus {
     public static final int REJECTED = 3;
     /** 高频上报按最小间隔降采样丢弃（非异常值），留档但不入业务表 */
     public static final int DROPPED = 4;
+    /**
+     * 重复上报：这条数据此前已经收过（同设备同编号，或同设备同通道同报文），本次拒绝入账。
+     * <p>
+     * 这是<b>回执层</b>的状态，只描述「本次请求的结论」；队列里不会出现该状态 ——
+     * 重复上报不新建流水（否则重推会把待确认队列刷满），原记录的状态另放
+     * {@code originalStatus} 返回。
+     */
+    public static final int DUPLICATED = 5;
 
     private IngestStatus() {
     }
@@ -24,6 +32,7 @@ public final class IngestStatus {
             case ACCEPTED -> "已入账";
             case REJECTED -> "已拒绝";
             case DROPPED -> "已降采样";
+            case DUPLICATED -> "重复上报";
             default -> "未知";
         };
     }

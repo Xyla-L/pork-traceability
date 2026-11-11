@@ -2,6 +2,7 @@ package com.pork.breeding.controller;
 
 import com.pork.breeding.dto.QuarantineCertDTO;
 import com.pork.breeding.service.QuarantineCertService;
+import com.pork.breeding.support.FarmScope;
 import com.pork.breeding.vo.QuarantineCertVO;
 import com.pork.core.result.Result;
 import com.pork.web.source.VoidRequest;
@@ -18,10 +19,12 @@ import org.springframework.web.bind.annotation.*;
 public class QuarantineCertController {
 
     private final QuarantineCertService quarantineCertService;
+    private final FarmScope farmScope;
 
     @PostMapping
     @Operation(summary = "上传产地检疫证明")
     public Result<Void> upload(@PathVariable Long pigId, @Valid @RequestBody QuarantineCertDTO dto) {
+        farmScope.requirePigOfFarm(pigId, "该产地检疫证");
         dto.setPigId(pigId);
         quarantineCertService.uploadCert(dto);
         return Result.success();
@@ -30,6 +33,7 @@ public class QuarantineCertController {
     @GetMapping
     @Operation(summary = "查看产地检疫证明")
     public Result<QuarantineCertVO> getCert(@PathVariable Long pigId) {
+        farmScope.requirePigOfFarm(pigId, "该产地检疫证");
         QuarantineCertVO vo = quarantineCertService.getCertByPigId(pigId);
         return Result.success(vo);
     }
@@ -38,6 +42,7 @@ public class QuarantineCertController {
     @Operation(summary = "作废产地检疫证明：需填写作废理由，记录保留不物理删除")
     public Result<Void> voidCert(@PathVariable Long pigId, @PathVariable Long id,
                                  @Valid @RequestBody VoidRequest request) {
+        farmScope.requirePigOfFarm(pigId, "该产地检疫证");
         quarantineCertService.voidCert(pigId, id, request.getReason());
         return Result.success();
     }

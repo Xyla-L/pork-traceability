@@ -42,6 +42,8 @@ public class AuthServiceImpl implements AuthService {
             "DISTRIBUTOR", List.of("distribution:manage", "trace:read"),
             "RETAILER", List.of("sales:manage", "trace:read"),
             "SUPERVISOR", List.of("trace:read", "complaint:handle", "recall:manage", "blockchain:audit"),
+            // 无害化处理人员：只确认回运处置段的签收（没有拒收），顺带能看追溯链
+            "DISPOSAL", List.of("disposal:manage", "trace:read"),
             "ADMIN", List.of("breeding:manage", "slaughter:manage", "distribution:manage", "sales:manage",
                     "trace:read", "complaint:handle", "recall:manage", "blockchain:audit", "system:manage")
     );
@@ -150,9 +152,13 @@ public class AuthServiceImpl implements AuthService {
         // 落到审批人、出证人这类字段上读不出责任主体。未填实名时该声明缺省，
         // 网关会退回用户ID，下游据此识别「这个人还没实名」并拦下关键结论动作。
         String operatorName = StringUtils.hasText(user.getRealName()) ? user.getRealName() : null;
+        // 机构声明：数据隔离的唯一依据（零售商只能看自己门店的数据）。
+        // 不放进令牌而是每次查库也行，但那样每个接口都要回查一次用户表，
+        // 而且「换个门店ID就能看别家数据」的越权口子正来自「机构由调用方传」。
+        String orgId = user.getOrgId() == null ? null : user.getOrgId().toString();
         return LoginVO.builder()
                 // 令牌主体是用户ID（下游 X-User-Id 依赖），姓名作为独立声明供审计/来源标记展示
-                .token(JwtUtil.generateToken(subject, user.getRole(), operatorName))
+                .token(JwtUtil.generateToken(subject, user.getRole(), operatorName, orgId))
                 .refreshToken(JwtUtil.generateRefreshToken(subject, user.getRole()))
                 .expiresIn(ACCESS_EXPIRES_IN_SECONDS)
                 .user(toUserInfo(user))

@@ -1,10 +1,10 @@
 package com.pork.breeding.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.pork.breeding.dto.PigIndividualDTO;
 import com.pork.breeding.dto.SlaughterApplyDTO;
 import com.pork.breeding.service.PigIndividualService;
 import com.pork.breeding.service.SlaughterApplyService;
+import com.pork.breeding.support.FarmScope;
 import com.pork.breeding.vo.PigIndividualVO;
 import com.pork.core.result.PageResult;
 import com.pork.core.result.Result;
@@ -26,6 +26,7 @@ public class PigIndividualController {
 
     private final PigIndividualService pigIndividualService;
     private final SlaughterApplyService slaughterApplyService;
+    private final FarmScope farmScope;
 
     @GetMapping({"", "/page"})
     @Operation(summary = "分页查询")
@@ -39,7 +40,10 @@ public class PigIndividualController {
             @Parameter(description = "出生日期起（YYYY-MM-DD）") @RequestParam(required = false) String birthDateStart,
             @Parameter(description = "出生日期止（YYYY-MM-DD）") @RequestParam(required = false) String birthDateEnd) {
 
-        Page<PigIndividualVO> page = pigIndividualService.pageQuery(current, size, earTagNo, farmId, breed, status, birthDateStart, birthDateEnd);
+        // 机构隔离：养殖角色只看自己场——请求里传的 farmId 被忽略（restrict 强制换成自己的场），
+        // 防止「换个场号翻别家的猪」；其他角色原样放行
+        Page<PigIndividualVO> page = pigIndividualService.pageQuery(current, size, earTagNo,
+                farmScope.restrict(farmId), breed, status, birthDateStart, birthDateEnd);
         return Result.success(PageResult.of(page));
     }
 
@@ -49,13 +53,13 @@ public class PigIndividualController {
         return Result.success(pigIndividualService.breedOptions());
     }
 
-    /* 人工新增（建档）入口已删除：耳标佩戴由读写器设备通道自动建档
-       （/breeding/internal/ingest/tag），不再提供人工建档接口。 */
+    /* 设备建档走 /breeding/internal/ingest/tag；人工登记走 /pigs/batches（按批次，个体不再逐头建档）。 */
 
 
     @GetMapping("/{id}")
     @Operation(summary = "根据ID获取详情")
     public Result<PigIndividualVO> getDetail(@PathVariable Long id) {
+        farmScope.requirePigOfFarm(id, "该生猪档案");
         PigIndividualVO vo = pigIndividualService.getDetail(id);
         return Result.success(vo);
     }
@@ -63,6 +67,7 @@ public class PigIndividualController {
     @PostMapping("/{id}/void")
     @Operation(summary = "作废生猪档案（原删除）：需填写作废理由，记录保留不物理删除")
     public Result<Void> voidIndividual(@PathVariable Long id, @Valid @RequestBody VoidRequest request) {
+        farmScope.requirePigOfFarm(id, "该生猪档案");
         pigIndividualService.voidIndividual(id, request.getReason());
         return Result.success();
     }
@@ -70,6 +75,8 @@ public class PigIndividualController {
     @PostMapping("/{pigId}/apply")
     @Operation(summary = "创建出栏申报")
     public Result<Long> applySlaughter(@PathVariable Long pigId, @Valid @RequestBody SlaughterApplyDTO dto) {
+        // 机构隔离：不能替别家的猪提出栏申报
+        farmScope.requirePigOfFarm(pigId, "该出栏申报");
         // pigId 由路径变量注入，请求体无需携带
         dto.setPigId(pigId);
         return Result.success(slaughterApplyService.createApply(dto));

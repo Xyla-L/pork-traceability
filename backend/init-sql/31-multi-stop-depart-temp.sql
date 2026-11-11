@@ -143,10 +143,9 @@ PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
 -- 车载探头补上车牌绑定（原来只有 location 里一句自然语言）。
 -- 注意顺序：**先绑车牌，再按车牌筛出车载探头设间隔** —— 反过来写会因为
 -- 过滤条件里的 vehicle_no 还是 NULL 而漏掉全部记录（写脚本时踩过一次）。
+-- （TEMP-003 的绑定已随 2026-10-24 设备收敛删除：温度探头只留 TEMP-001 一台。）
 UPDATE db_ingest.ingest_device SET vehicle_no = '京A·12345'
  WHERE device_no = 'TEMP-001' AND vehicle_no IS NULL;
-UPDATE db_ingest.ingest_device SET vehicle_no = '京A·12346'
- WHERE device_no = 'TEMP-003' AND vehicle_no IS NULL;
 
 -- 车载探头登记额定间隔（5 分钟一条）。固定点位的冷库探头不设，走服务默认值。
 UPDATE db_ingest.ingest_device SET sample_interval_seconds = 300
@@ -157,13 +156,10 @@ UPDATE db_ingest.ingest_device SET sample_interval_seconds = 300
 --    点位 = 车载终端本身（一台车一个终端号），刷卡即发车。
 --    这是唯一一条「推进已有运单状态」而不是「写入新事实」的通道 ——
 --    它不产生任何业务判定：哪台车该发、发给谁，早就在运单里定死了。
+--    2026-10-24 设备收敛：不再按车登记发车终端（DEPART-001/003 已删），
+--    发车/到站由通用车载终端 ARRIVE-001 承担（报文自带 channel 与车牌，
+--    服务端按 IngestChannel.deviceGroup() 校验能力，一台终端兼任两个动作）。
 -- ---------------------------------------------------------------------------
-INSERT IGNORE INTO db_ingest.ingest_device
-  (device_no, device_name, channel, location, vehicle_no, sample_interval_seconds, secret_key, status, remark) VALUES
-('DEPART-001', '车载发车终端 京A·12345', 'DEPART', '一号冷藏车驾驶室', '京A·12345', NULL, 'dev-key-depart-001', 1,
- '第 17 条通道：司机上车刷卡即确认发车，把该车牌名下「待发车」的运单推进为「运输中」。设备只报「我（某车）发车了」，运单号由系统按车牌倒查 —— 同装车口「扫码是确认不是选择」。发车是物理事实，且不产生业务判定。'),
-('DEPART-003', '车载发车终端 京A·12346', 'DEPART', '二号冷藏车驾驶室', '京A·12346', NULL, 'dev-key-depart-003', 1,
- '第 17 条通道：同上。车牌与终端的绑定是结构化的（vehicle_no 列），不靠设备名里的字符串猜。');
 
 
 -- ---------------------------------------------------------------------------

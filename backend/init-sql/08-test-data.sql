@@ -70,6 +70,25 @@ SET @pig13 := (SELECT id FROM pig_individual WHERE ear_tag_no='ET-TEST-0013');
 SET @pig14 := (SELECT id FROM pig_individual WHERE ear_tag_no='ET-TEST-0014');
 SET @pig15 := (SELECT id FROM pig_individual WHERE ear_tag_no='ET-TEST-0015');
 
+-- 生猪批次档案：按养殖场归批（同场同批），批次登记时耳标区间内的成员自动展开。
+-- 这里为存量测试猪补批次档，批次号 PB-TEST-0xx，区间即对应场内的测试猪。
+INSERT INTO pig_batch (batch_no, farm_id, breed, entry_date, ear_tag_start, ear_tag_end, quantity, source, data_source, source_ref) VALUES
+('PB-TEST-001', 1,      '长白猪', DATE_SUB(CURDATE(), INTERVAL 200 DAY), 'ET-TEST-0001', 'ET-TEST-0001', 1, '自繁', 'MANUAL', '人工登记批次'),
+('PB-TEST-002', @farm2, '大白猪', DATE_SUB(CURDATE(), INTERVAL 180 DAY), 'ET-TEST-0002', 'ET-TEST-0003', 2, '自繁', 'MANUAL', '人工登记批次'),
+('PB-TEST-003', @farm3, '长白猪', DATE_SUB(CURDATE(), INTERVAL 190 DAY), 'ET-TEST-0004', 'ET-TEST-0005', 2, '自繁', 'MANUAL', '人工登记批次'),
+('PB-TEST-004', @farm4, '大白猪', DATE_SUB(CURDATE(), INTERVAL 210 DAY), 'ET-TEST-0006', 'ET-TEST-0007', 2, '自繁', 'MANUAL', '人工登记批次'),
+('PB-TEST-005', @farm5, '杜洛克', DATE_SUB(CURDATE(), INTERVAL 140 DAY), 'ET-TEST-0008', 'ET-TEST-0009', 2, '自繁', 'MANUAL', '人工登记批次'),
+('PB-TEST-006', @farm6, '长白猪', DATE_SUB(CURDATE(), INTERVAL 120 DAY), 'ET-TEST-0010', 'ET-TEST-0011', 2, '自繁', 'MANUAL', '人工登记批次'),
+('PB-TEST-007', @farm7, '杜洛克', DATE_SUB(CURDATE(), INTERVAL 100 DAY), 'ET-TEST-0012', 'ET-TEST-0012', 1, '自繁', 'MANUAL', '人工登记批次'),
+('PB-TEST-008', @farm8, '长白猪', DATE_SUB(CURDATE(), INTERVAL 90 DAY),  'ET-TEST-0013', 'ET-TEST-0013', 1, '自繁', 'MANUAL', '人工登记批次'),
+('PB-TEST-009', @farm9, '皮特兰', DATE_SUB(CURDATE(), INTERVAL 80 DAY),  'ET-TEST-0014', 'ET-TEST-0014', 1, '自繁', 'MANUAL', '人工登记批次'),
+('PB-TEST-010', @farm10,'大白猪', DATE_SUB(CURDATE(), INTERVAL 70 DAY),  'ET-TEST-0015', 'ET-TEST-0015', 1, '自繁', 'MANUAL', '人工登记批次')
+ON DUPLICATE KEY UPDATE breed=VALUES(breed);
+UPDATE pig_individual p JOIN pig_batch b
+  ON p.ear_tag_no BETWEEN b.ear_tag_start AND b.ear_tag_end
+SET p.batch_id = b.id
+WHERE b.batch_no LIKE 'PB-TEST-%';
+
 -- 疫苗记录：已有1条，新增15条
 INSERT INTO vaccine_record (pig_id, vaccine_name, batch_no, manufacturer, inject_time, dosage, inject_site, operator, file_ids) VALUES
 (@pig1, '猪瘟活疫苗', 'VAC-TEST-0001', '示范动物药业', DATE_SUB(NOW(), INTERVAL 100 DAY), '2ml', '颈部肌肉', '李牧', '[]'),

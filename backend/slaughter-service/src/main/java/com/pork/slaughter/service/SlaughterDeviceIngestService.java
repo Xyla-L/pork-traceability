@@ -161,12 +161,23 @@ public class SlaughterDeviceIngestService {
         entity.setSource(SOURCE_DEVICE);
         entity.setSourceRef(request.getSourceRef());
         entity.setRawPayload(request.getRawPayload());
+        // 机构归属埋点（暂不过滤）：设备装在哪家屠宰场，记录就归哪家；NULL=设备未绑定机构
+        entity.setOrgId(request.getOrgId());
         entity.setRemark(request.getRemark());
         // 闸口设备只能判「有异常体征/无异常体征」，落地为合格/不合格需要兽医在人工入口确认：
         // 有异常体征 → 不合格(2) 直接拦下；无异常体征 → 合格(1)
         entity.setStatus(Integer.valueOf(1).equals(entity.getHealthCheck()) ? 1 : 2);
         entity.setCreateTime(LocalDateTime.now());
         entryMapper.insert(entity);
+        // 入场查验上链存证：它是屠宰链的第一个事实（这头猪何时进的厂），失败不阻塞入账
+        Map<String, Object> entryPayload = Map.of(
+                "earTagNo", entity.getEarTagNo(),
+                "batchNo", StringUtils.hasText(entity.getBatchNo()) ? entity.getBatchNo() : "",
+                "sourceFarm", StringUtils.hasText(entity.getSourceFarm()) ? entity.getSourceFarm() : "",
+                "status", entity.getStatus(),
+                "inspector", StringUtils.hasText(entity.getInspector()) ? entity.getInspector() : "未记录");
+        chainEvents.publish(ChainTxMessage.create("ENTRY_INSPECTION", entity.getId(), entity.getEarTagNo(),
+                HashUtil.sha256Json(request), entryPayload));
         return written(entity.getId(), "入场查验已入账");
     }
 
@@ -220,10 +231,21 @@ public class SlaughterDeviceIngestService {
         entity.setSource(SOURCE_DEVICE);
         entity.setSourceRef(request.getSourceRef());
         entity.setRawPayload(request.getRawPayload());
+        // 机构归属埋点（暂不过滤）：设备装在哪家屠宰场，记录就归哪家；NULL=设备未绑定机构
+        entity.setOrgId(request.getOrgId());
         entity.setReportUrl(request.getReportUrl());
         entity.setRemark(request.getRemark());
         entity.setCreateTime(LocalDateTime.now());
         testMapper.insert(entity);
+        // 瘦肉精检测上链存证：阳性整批受控是硬判定，检测结果本身必须可追不可改
+        Map<String, Object> raPayload = Map.of(
+                "testNo", entity.getTestNo(),
+                "sampleNo", entity.getSampleNo(),
+                "batchNo", entity.getBatchNo(),
+                "result", entity.getResult(),
+                "operator", StringUtils.hasText(entity.getOperator()) ? entity.getOperator() : "未记录");
+        chainEvents.publish(ChainTxMessage.create("RACTOPAMINE_TEST", entity.getId(), entity.getTestNo(),
+                HashUtil.sha256Json(request), raPayload));
         return written(entity.getId(), Integer.valueOf(1).equals(request.getResult())
                 ? "检测结果阴性，已入账"
                 : "检测结果阳性，已入账；该猪及批次「" + request.getBatchNo() + "」已被阻断，不得进入屠宰检验及后续环节");
@@ -319,6 +341,8 @@ public class SlaughterDeviceIngestService {
         entity.setSource(SOURCE_DEVICE);
         entity.setSourceRef(request.getSourceRef());
         entity.setRawPayload(request.getRawPayload());
+        // 机构归属埋点（暂不过滤）：设备装在哪家屠宰场，记录就归哪家；NULL=设备未绑定机构
+        entity.setOrgId(request.getOrgId());
         entity.setContentHash(HashUtil.sha256Json(request));
         entity.setCreateTime(LocalDateTime.now());
         inspectionMapper.insert(entity);
@@ -403,11 +427,13 @@ public class SlaughterDeviceIngestService {
         entity.setSource(SOURCE_DEVICE);
         entity.setSourceRef(request.getSourceRef());
         entity.setRawPayload(request.getRawPayload());
+        // 机构归属埋点（暂不过滤）：设备装在哪家屠宰场，记录就归哪家；NULL=设备未绑定机构
+        entity.setOrgId(request.getOrgId());
         entity.setContentHash(HashUtil.sha256Json(request));
         entity.setCreateTime(LocalDateTime.now());
         stampMapper.insert(entity);
 
-        chainEvents.publish(ChainTxMessage.create("SLAUGHTER_INSPECT", entity.getId(), entity.getStampNo(),
+        chainEvents.publish(ChainTxMessage.create("CARCASS_STAMP", entity.getId(), entity.getStampNo(),
                 entity.getContentHash(), Map.of("stampNo", entity.getStampNo(), "pigId", entity.getPigId())));
         return written(entity.getId(), "胴体已盖章入账（章号 " + entity.getStampNo() + "）");
     }

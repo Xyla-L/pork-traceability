@@ -19,7 +19,7 @@
  *   8 入场查验    —— 检疫证核验未过不自动入账、转人工；人工确认后才写业务表
  *   9 门店收银    —— POS 扫码售出，零售记录来源标记为 DEVICE
  *  10 门店签收    —— PDA 签收生成签收单，并把运单推进到「已签收」
- *  11 养殖建档    —— 缺养殖场/养殖场未登记转人工；正常建档 dataSource=DEVICE；同耳标幂等
+ *  11 养殖建档    —— 区间外新耳标转人工；批次登记后设备再报命中入账；同耳标幂等
  *  12 免疫注射    —— 缺疫苗批号必须拒绝；带批号入账 vaccine_record.source=DEVICE
  *  13 屠宰检验    —— 终端未给结论必须拒绝（不得默认合格）；带结论+兽医入账 source=DEVICE
  *  14 胴体盖章    —— 无合格检验必须拒绝（人工确认也绕不过）；检验合格后盖章入账
@@ -370,38 +370,37 @@ async function main() {
   // 覆盖三条法规与技术红线：判定权在人（检验）、盖章以检验为前提、批次号系统生成。
   // ==========================================================================
 
-  // -------------------------------------- 11 养殖建档：耳标读写器，佩戴即建档
+  // ------------------- 11 养殖建档：耳标读写器 × 批次档案（2026-10-25） -------------------
   let freshPig = null
   {
     const earTagNo = `ET-ACC-${Date.now()}`
-    // 11a 养殖场未登记 → 转人工（登记后可确认入账，retryable）
+    // 11a 区间外新耳标 → 转人工（登记批次后可确认入账，retryable）
     const badFarm = await report('dev-key-tag-001', 'TAG', bizKey('TAG'), {
       earTagNo, farmName: '不存在的养殖场-X',
     })
-    // 11b 正常建档
+    // 11b 人工登记批次（区间覆盖该耳标）→ 成员行自动生成，设备再报直接命中
     const farm = firstPage(await api('/breeding/farms?pageNum=1&pageSize=1'))[0]
-    const farmName = farm?.farmName || farm?.farm_name
-    if (!farmName) {
-      recordSkip(11, '养殖建档通道：佩戴即建档且 dataSource=DEVICE', '养殖库没有养殖场，无法建档')
+    const farmId = farm?.id || farm?.farm_id
+    if (!farmId) {
+      recordSkip(11, '养殖建档通道：批次区间命中即入账、同耳标幂等', '养殖库没有养殖场，无法登记批次')
     } else {
-      const resp = await report('dev-key-tag-001', 'TAG', bizKey('TAG'), {
-        earTagNo, farmName, breed: '三元杂', gender: 1, penNo: '验收舍', origin: '自繁',
-        // 设备建档也要带上出生日期：留空会让档案出生日期缺失，列表只能显示占位符
-        birthDate: new Date(Date.now() - 180 * 86400000).toISOString().slice(0, 10),
+      const batchNo = `PB-ACC-${Date.now()}`
+      await api('/breeding/pigs/batches', {
+        method: 'POST',
+        body: JSON.stringify({ batchNo, farmId, earTagStart: earTagNo, earTagEnd: earTagNo, breed: '三元杂', source: '自繁' }),
       })
+      const resp = await report('dev-key-tag-001', 'TAG', bizKey('TAG'), { earTagNo })
       const rows = firstPage(await api(`/breeding/pigs?pageNum=1&pageSize=20&earTagNo=${encodeURIComponent(earTagNo)}`))
       const row = rows[0]
       freshPig = row ? { id: row.id, earTagNo } : null
-      // 11c 同耳标再推一次（新 bizKey）→ 业务级幂等：返回既有档案，不新建第二条
-      const again = await report('dev-key-tag-001', 'TAG', bizKey('TAG'), {
-        earTagNo, farmName, breed: '三元杂', gender: 1,
-      })
+      // 11c 同耳标再推一次（新 bizKey）→ 业务级幂等：返回既有成员档案，不新建第二条
+      const again = await report('dev-key-tag-001', 'TAG', bizKey('TAG'), { earTagNo })
       const archives = firstPage(await api(`/breeding/pigs?pageNum=1&pageSize=20&earTagNo=${encodeURIComponent(earTagNo)}`))
-      record(11, '养殖建档：佩戴即建档、来源标记 DEVICE、同耳标幂等、出生日期落库',
-        badFarm.data?.status === 1 && resp.data?.accepted === true && row?.dataSource === 'DEVICE'
-          && again.data?.accepted === true && archives.length === 1 && !!row?.birthDate,
-        `未登记场 → ${badFarm.data?.statusLabel}；建档 → ${resp.data?.statusLabel}；` +
-        `pig_individual.dataSource=${row?.dataSource}；出生日期=${row?.birthDate || '空'}；` +
+      record(11, '养殖建档：区间外转人工、批次登记后命中入账、成员带批次号、同耳标幂等',
+        badFarm.data?.status === 1 && resp.data?.accepted === true && row?.batchNo === batchNo
+          && again.data?.accepted === true && archives.length === 1,
+        `区间外 → ${badFarm.data?.statusLabel}；登记批次后 → ${resp.data?.statusLabel}；` +
+        `成员批次号=${row?.batchNo || '空'}；` +
         `重复上报 → ${again.data?.statusLabel}，` +
         `同耳标档案数=${archives.length}（期望 1）`)
     }

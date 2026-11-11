@@ -70,6 +70,7 @@ HOUSES_JSON=$(pick '#HOUSES' || true)
 
 jget() { printf '%s' "$1" | sed -n "s/.*\"$2\":\([^,}]*\).*/\1/p"; }
 PIGS=$(printf '%s' "$CLEANUP" | sed -n 's/.*"pigs":\[\([^]]*\)\].*/\1/p' | tr -d ' ')
+PIG_BATCHES=$(printf '%s' "$CLEANUP" | sed -n 's/.*"batches":\[\([^]]*\)\].*/\1/p' | tr -d ' ')
 BATCH_LIST=$(printf '%s' "$CLEANUP" | sed -n 's/.*"carcassBatches":\[\([^]]*\)\].*/\1/p' | tr -d ' ')
 
 P0=$(jget "$PIGS_JSON" P0); P1=$(jget "$PIGS_JSON" P1); P2=$(jget "$PIGS_JSON" P2); P3=$(jget "$PIGS_JSON" P3)
@@ -224,8 +225,10 @@ DELETE FROM db_slaughter.entry_inspection WHERE pig_id IN (${PIGS:-0});
 DELETE FROM db_breeding.slaughter_apply WHERE pig_id IN (${PIGS:-0});
 DELETE FROM db_breeding.quarantine_certificate WHERE pig_id IN (${PIGS:-0});
 DELETE FROM db_breeding.pig_individual WHERE id IN (${PIGS:-0});
+-- 2026-10-25 起档案按批次登记：临时猪的养殖批次档（pig_batch）一并清，按 mjs 回传的成员行批次 id
+DELETE FROM db_breeding.pig_batch WHERE id IN (${PIG_BATCHES:-0});
 DELETE FROM db_ingest.source_fallback_unlock WHERE stage_code='BATCH' AND reason LIKE '%回归验证%';
 " >/dev/null
-echo "  已清理（临时猪 ${PIGS}，批次 ${BATCH_LIST}，昨日批次 ${YESTERDAY_ID}，接近上限批次 ${FULL_ID}）"
+echo "  已清理（临时猪 ${PIGS}，养殖批次 ${PIG_BATCHES:-无}，胴体批次 ${BATCH_LIST}，昨日批次 ${YESTERDAY_ID}，接近上限批次 ${FULL_ID}）"
 
 [ "$fail" -eq 0 ]

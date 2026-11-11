@@ -61,6 +61,13 @@ spring:
           predicates:
             - Path=/api/v1/ingest/**
           filters: *strip-api-prefix
+        # 智能助手：只读问答。走登录态（不设白名单），身份头由网关统一注入，
+        # 保证「养殖户只能问自家猪」这件事和页面口径一致。
+        - id: agent-route
+          uri: lb://agent-service
+          predicates:
+            - Path=/api/v1/agent/**
+          filters: *strip-api-prefix
       globalcors:
         cors-configurations:
           '[/**]':
@@ -68,6 +75,11 @@ spring:
             allowed-methods: [GET, POST, PUT, PATCH, DELETE, OPTIONS]
             allowed-headers: '*'
             allow-credentials: true
+      # 下游服务（common-web WebMvcConfig）也会加一份 CORS 头，网关再叠加就变成
+      # 「Access-Control-Allow-Origin: a, a」，浏览器直接判定跨域失败。
+      # 这里去重只留第一份：网关有配置就以网关为准。
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_FIRST
   data:
     redis:
       host: ${REDIS_HOST:127.0.0.1}

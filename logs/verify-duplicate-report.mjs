@@ -4,9 +4,12 @@
  *
  * 背景：接入层原有幂等键是 device_no + biz_key。设备若每次自造新唯一号重推，
  * 就绕过了它——数据卡在「待人工处理」时，队列里会堆出一串一模一样的记录。
- * 现新增一道兜底：同设备 + 同通道 + 同一份报文，只要已经收过就直接回既有结论、不新建，
+ * 现新增一道兜底：同设备 + 同通道 + 同一份报文，只要已经收过就不再新建，
  * 覆盖「待处理 / 待人工处理」与「已入账」三种状态；「已拒绝 / 已降采样」仍放行
  * （前者要给外部条件补齐后重发的机会，后者本来就不写业务表）。
+ *
+ * 2026-10-19 起回执语义变更：重复上报不再回照「已入账」，而是 status=5「重复上报」
+ * + accepted=false + message「该信息已存在」，**明确拒绝入账**（仍指回原记录、不新建流水）。
  *
  * 验证六件事（用「耳标不存在」构造必然转人工的报文）：
  *   1) 首次上报进入「待人工处理」
@@ -83,6 +86,8 @@ async function main() {
   // ---------- 2) 换新编号、报文相同 → 应被判为重复 ----------
   const r2 = await report(device.deviceNo, data)
   check('同报文换新编号重发：被判为重复上报', r2.duplicate === true, `duplicate=${r2.duplicate}`)
+  check('同报文换新编号重发：明确拒绝入账（status=5 / accepted=false）',
+    r2.status === 5 && r2.accepted === false, `status=${r2.status} accepted=${r2.accepted}`)
   check('重发返回的是同一条记录，没有新建', r2.stagingId === r1.stagingId,
     `首次 id=${r1.stagingId}，重发 id=${r2.stagingId}`)
   check('待确认队列条数没有增加', (await queueCount()) === before + 1,
@@ -123,6 +128,10 @@ async function main() {
     })
     const r5 = res.data || {}
     check('已入账的数据重发：被判为重复上报', r5.duplicate === true, `duplicate=${r5.duplicate}`)
+    check('已入账的数据重发：拒绝入账（status=5 / accepted=false）',
+      r5.status === 5 && r5.accepted === false, `status=${r5.status} accepted=${r5.accepted}`)
+    check('已入账的数据重发：文案点明「该信息已存在」',
+      String(r5.message || '').includes('该信息已存在'), `message=${r5.message}`)
     check('已入账的数据重发：返回原记录，没有新建', r5.stagingId === accepted.id,
       `原 id=${accepted.id}，重发 id=${r5.stagingId}`)
     check('已入账的数据重发：业务侧未产生新记录', r5.targetId === accepted.targetId,

@@ -104,6 +104,8 @@ public class SlaughterInspection {
      * 设备原始报文留档
      */
     private String rawPayload;
+    /** 操作机构（sys_org.id）：记录归属的屠宰场；NULL=平台操作/未知，不猜。只埋点暂不过滤。 */
+    private Long orgId;
 
     /**
      * 创建时间

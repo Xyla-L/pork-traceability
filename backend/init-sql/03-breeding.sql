@@ -7,13 +7,31 @@ CREATE TABLE IF NOT EXISTS farm (
     UNIQUE KEY uk_license_no (license_no), INDEX idx_status (status)
 ) ENGINE=InnoDB COMMENT='养殖场';
 
+-- 生猪批次档案：养殖端档案的登记单位（现实商品猪按批次管理，逐头建档既做不到也没人做）。
+-- 人工登记一张批次表单，耳标起止号圈定成员区间；登记时区间内的耳标自动展开成 pig_individual 成员行。
+-- 2026-10-26 起还可由养殖 ERP 经接入层同步进来：external_system + external_id 是外部系统的幂等键
+--（两家 ERP 都叫 PB-001 是常态，(farm_id,batch_no) 挡不住），birth_date 供日龄现算，void_source 区分人工作废/源撤销。
+CREATE TABLE IF NOT EXISTS pig_batch (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT, batch_no VARCHAR(32) NOT NULL, farm_id BIGINT NOT NULL,
+    breed VARCHAR(32), entry_date DATE, birth_date DATE,
+    ear_tag_start VARCHAR(32) NOT NULL, ear_tag_end VARCHAR(32) NOT NULL,
+    quantity INT NOT NULL, source VARCHAR(64),
+    external_system VARCHAR(32), external_id VARCHAR(64),
+    data_source VARCHAR(16) NOT NULL DEFAULT 'MANUAL', source_ref VARCHAR(128), raw_payload TEXT,
+    void_flag TINYINT DEFAULT 0, void_reason VARCHAR(256), void_operator VARCHAR(32), void_source VARCHAR(16), void_time DATETIME,
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP, update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_batch (farm_id, batch_no), UNIQUE KEY uk_external (external_system, external_id),
+    INDEX idx_farm (farm_id), INDEX idx_void (void_flag)
+) ENGINE=InnoDB COMMENT='生猪批次档案';
+
 CREATE TABLE IF NOT EXISTS pig_individual (
     id BIGINT PRIMARY KEY AUTO_INCREMENT, ear_tag_no VARCHAR(32) NOT NULL, farm_id BIGINT NOT NULL,
+    batch_id BIGINT COMMENT '所属生猪批次 pig_batch.id；成员行由批次按耳标区间自动展开，无人工逐头建档入口',
     breed VARCHAR(32), birth_date DATE, gender TINYINT DEFAULT 1, pen_no VARCHAR(16), source VARCHAR(64), status TINYINT DEFAULT 1,
     deleted TINYINT DEFAULT 0, content_hash CHAR(64) DEFAULT NULL, create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY uk_ear_tag (ear_tag_no), INDEX idx_farm_status (farm_id, status), INDEX idx_deleted (deleted)
-) ENGINE=InnoDB COMMENT='生猪个体档案';
+    UNIQUE KEY uk_ear_tag (ear_tag_no), INDEX idx_farm_status (farm_id, status), INDEX idx_batch (batch_id), INDEX idx_deleted (deleted)
+) ENGINE=InnoDB COMMENT='生猪个体档案（批次成员行）';
 
 CREATE TABLE IF NOT EXISTS vaccine_record (
     id BIGINT PRIMARY KEY AUTO_INCREMENT, pig_id BIGINT NOT NULL, vaccine_name VARCHAR(64) NOT NULL,

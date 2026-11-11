@@ -83,7 +83,9 @@
     />
 
     <!-- 分页 -->
+    <!-- 分页：total 是「批次数」不是「样本数」——列表按批折叠，一份样本一行会让翻页错位 -->
     <div class="pagination-wrapper">
+      <span class="group-total">共 {{ pagination.total }} 批（按批折叠，点行首箭头看逐份样本）</span>
       <el-pagination
         v-model:current-page="pagination.pageNum"
         v-model:page-size="pagination.pageSize"
@@ -104,6 +106,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { Search, Refresh } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 import RactoTable from './RactoTable.vue'
+import { useKeywordQuery } from '@/composables/useKeywordQuery'
 
 // ==================== 搜索相关 ====================
 
@@ -134,8 +137,8 @@ const fetchList = async () => {
   tableLoading.value = true
   try {
     const params = {
-      pageNum: pagination.pageNum,
-      pageSize: pagination.pageSize,
+      current: pagination.pageNum,
+      size: pagination.pageSize,
       testNo: searchForm.testNo || undefined,
       batchNo: searchForm.batchNo || undefined,
       sampleNo: searchForm.sampleNo || undefined,
@@ -145,7 +148,7 @@ const fetchList = async () => {
       endDate: dateRange.value?.[1] || undefined
     }
 
-    const res = await request.get('/slaughter/ractopamine', { params })
+    const res = await request.get('/slaughter/records/ractopamine', { params })
     tableData.value = res?.records || res?.list || []
     pagination.total = res?.total || 0
   } catch (error) {
@@ -189,6 +192,12 @@ const handlePageChange = (page) => {
 
 // ==================== 初始化 ====================
 
+// 顶部通知带检测单号过来：填进「检测单号」再查，落地就是那条检测记录
+useKeywordQuery((kw) => {
+  searchForm.testNo = kw
+  handleSearch()
+})
+
 onMounted(() => {
   fetchList()
 })
@@ -212,10 +221,17 @@ onMounted(() => {
 
   .pagination-wrapper {
     display: flex;
-    justify-content: center;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
     padding-top: 16px;
     margin-top: 16px;
     border-top: 1px solid #ebeef5;
+
+    .group-total {
+      font-size: 13px;
+      color: #909399;
+    }
   }
 }
 </style>

@@ -11,6 +11,7 @@ import com.pork.breeding.entity.SlaughterApply;
 import com.pork.breeding.mapper.PigIndividualMapper;
 import com.pork.breeding.mapper.SlaughterApplyMapper;
 import com.pork.breeding.service.SlaughterApplyService;
+import com.pork.breeding.support.FarmScope;
 import com.pork.breeding.vo.SlaughterApplyVO;
 import com.pork.core.enums.ErrorCode;
 import com.pork.core.exception.BusinessException;
@@ -50,12 +51,18 @@ public class SlaughterApplyServiceImpl extends ServiceImpl<SlaughterApplyMapper,
 
     private final PigIndividualMapper pigIndividualMapper;
     private final SourceGuard sourceGuard;
+    private final FarmScope farmScope;
 
     @Override
     public Page<SlaughterApplyVO> pageQuery(Long current, Long size, Integer approvalStatus) {
+        // 机构隔离：养殖角色只看自己场的申报。申报表只挂 pig_id，场维度用 inSql 下推，
+        // 分页在数据库里做完——内存过滤会让「总数」和「每页行数」对不上
+        String pigScopeSql = farmScope.pigIdsInFarmSql();
         Page<SlaughterApply> page = this.page(
                 new Page<>(current, size),
-                Wrappers.<SlaughterApply>lambdaQuery().eq(approvalStatus != null, SlaughterApply::getApprovalStatus, approvalStatus)
+                Wrappers.<SlaughterApply>lambdaQuery()
+                        .eq(approvalStatus != null, SlaughterApply::getApprovalStatus, approvalStatus)
+                        .inSql(pigScopeSql != null, SlaughterApply::getPigId, pigScopeSql)
         );
         Page<SlaughterApplyVO> voPage = new Page<>(current, size);
         BeanUtils.copyProperties(page, voPage);
@@ -78,10 +85,13 @@ public class SlaughterApplyServiceImpl extends ServiceImpl<SlaughterApplyMapper,
 
     @Override
     public Map<Integer, Long> countByStatus() {
-        // 一次 GROUP BY 查出各状态数量，缺失的状态补 0
+        // 一次 GROUP BY 查出各状态数量，缺失的状态补 0。
+        // 机构隔离与列表同口径：养殖角色的角标只数自己场的，否则「列表 3 条、角标 30 条」对不上
+        String pigScopeSql = farmScope.pigIdsInFarmSql();
         List<Map<String, Object>> rows = this.listMaps(
                 new QueryWrapper<SlaughterApply>()
                         .select("approval_status AS status", "COUNT(*) AS cnt")
+                        .inSql(pigScopeSql != null, "pig_id", pigScopeSql)
                         .groupBy("approval_status")
         );
         Map<Integer, Long> result = new HashMap<>();

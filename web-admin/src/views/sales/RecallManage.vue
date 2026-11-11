@@ -42,11 +42,9 @@
           </div>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="150" fixed="right" align="center">
+      <el-table-column label="操作" width="100" fixed="right" align="center">
         <template #default="{ row }">
           <el-button type="primary" link size="small" @click="handleView(row)">详情</el-button>
-          <el-button v-if="row.status === 1 || row.status === 2" type="warning" link size="small"
-            @click="openProgressDialog(row)">进度上报</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -71,14 +69,32 @@
           </el-radio-group>
         </el-form-item>
         <el-form-item label="召回范围" prop="batchIds">
-          <el-select v-model="recallForm.batchIds" multiple placeholder="选择需召回的批次" style="width: 100%" @change="handleBatchChange">
+          <el-select v-model="recallForm.batchIds" multiple placeholder="选择被举报的批次" style="width: 100%"
+            no-data-text="没有可召回的举报批次" @change="handleBatchChange">
             <el-option v-for="b in batchOptions" :key="b.value" :label="b.label" :value="b.value" />
           </el-select>
+          <!-- 范围不是自由勾选：能召回的只能是举报台账里出现过的批次 -->
+          <div class="scope-hint">
+            只列被举报过的批次。
+            <template v-if="missingReportedBatches.length">
+              另有 {{ missingReportedBatches.length }} 个被举报批次查不到分割记录（{{ missingReportedBatches.slice(0, 3).join('、') }}{{ missingReportedBatches.length > 3 ? ' 等' : '' }}），未列入可选范围，请先核对该批次是否已入库。
+            </template>
+          </div>
         </el-form-item>
-        <el-form-item label="目标门店" prop="storeIds">
-          <el-select v-model="recallForm.storeIds" multiple placeholder="选择目标门店" style="width: 100%">
-            <el-option v-for="s in storeOptions" :key="s.value" :label="s.label" :value="s.value" />
-          </el-select>
+        <el-form-item label="目标门店">
+          <div v-loading="previewLoading" class="store-preview">
+            <template v-if="storePreview.length">
+              <el-tag v-for="s in storePreview" :key="s.storeId" size="small" class="store-tag">
+                {{ s.storeName || `门店#${s.storeId}` }} · {{ s.saleCount }} 件
+              </el-tag>
+              <div class="scope-hint">
+                共 {{ storePreview.length }} 家门店、{{ affectedCount }} 件在售或已售出的货，按召回范围自动带出，不需要手选。
+              </div>
+            </template>
+            <span v-else class="scope-hint">
+              {{ recallForm.batchIds.length ? '所选批次没有在售/已售记录：没有门店需要召回' : '选择召回范围后自动带出门店' }}
+            </span>
+          </div>
         </el-form-item>
         <el-form-item label="备注说明">
           <el-input v-model="recallForm.note" type="textarea" :rows="2" placeholder="补充说明" />
@@ -87,30 +103,6 @@
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
         <el-button type="danger" @click="handleSubmitRecall" :loading="submitting">确认发起召回</el-button>
-      </template>
-    </el-dialog>
-
-    <!-- 进度上报弹窗：召回原因/范围已上链不可改，只更新进度 -->
-    <el-dialog v-model="progressVisible" title="召回进度上报" width="460px" destroy-on-close>
-      <el-form ref="progressFormRef" :model="progressForm" :rules="progressRules" label-width="90px">
-        <el-form-item label="召回编号">
-          <span>{{ progressRow?.recallNo || '-' }}</span>
-        </el-form-item>
-        <el-form-item label="执行状态" prop="status">
-          <el-radio-group v-model="progressForm.status">
-            <el-radio :value="2">执行中</el-radio>
-            <el-radio :value="3">已完成</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="已召回数" prop="recalledCount">
-          <el-input-number v-model="progressForm.recalledCount" :min="0"
-            :max="progressRow?.affectedCount || undefined" style="width: 100%" />
-          <div class="progress-text">受影响共 {{ progressRow?.affectedCount ?? '-' }} 件，不能超出该数量</div>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="progressVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleProgressSubmit" :loading="progressSubmitting">提交进度</el-button>
       </template>
     </el-dialog>
 
@@ -157,10 +149,11 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { WarningFilled } from '@element-plus/icons-vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import type { EpTagType } from '@/types/common'
 import { salesApi } from '@/api/modules/sales'
 import { distributionApi } from '@/api/modules/distribution'
+import { traceApi } from '@/api/modules/trace'
 import { useAuthStore } from '@/stores/auth'
 
 const authStore = useAuthStore()
@@ -180,31 +173,60 @@ const submitting = ref(false)
 const formRef = ref()
 const recallForm = reactive({ reason: '', riskLevel: 2, batchIds: [] as number[], storeIds: [] as number[], note: '' })
 const rules = { reason: [{ required: true, message: '请输入召回原因', trigger: 'blur' }],
-  batchIds: [{ required: true, message: '请选择批次', trigger: 'change' }],
-  storeIds: [{ required: true, message: '请选择门店', trigger: 'change' }] }
-const batchOptions = ref<{ label: string; value: number }[]>([])
-const storeOptions = ref<{ label: string; value: number }[]>([])
+  batchIds: [{ required: true, message: '请选择被举报的批次', trigger: 'change' }] }
+const batchOptions = ref<{ label: string; value: number; batchNo: string }[]>([])
+/** 举报过、但在分割记录里查不到的批次号：不兜底成当天任意批次，直接报出来让人核 */
+const missingReportedBatches = ref<string[]>([])
+/** 按召回范围自动带出的门店（只读）：页面不给手选，货卖到哪几家是既成事实 */
+const storePreview = ref<{ storeId: number; storeName: string; saleCount: number }[]>([])
+const previewLoading = ref(false)
+const affectedCount = ref(0)
 
+/**
+ * 召回范围只能来自举报台账。
+ * 思路是「先看举报、再对批次」：拿到被举报的批次号，再去分割批次里找对应记录。
+ * 反过来（列出全部批次让人挑）等于允许无依据召回 —— 报没报过案都能召回，就不叫召回了。
+ *
+ * 两个「不许偷懒」的地方：
+ * ① 举报台账可能不止一页（列表接口 pageSize 上限 200），按页取完；
+ * ② 分割批次不能拉一页再本地过筛 —— 那只会筛到前 200 个批次，
+ *    剩下的批次全被判成「查不到分割记录」。按批次号逐个精确查才对得上。
+ */
 async function fetchBatchOptions() {
   try {
-    const res: any = await distributionApi.getSplits({ current: 1, size: 1000 })
-    const records = res?.records || res?.list || []
-    batchOptions.value = records.map((b: any) => ({
-      label: `${b.batchNo} - ${b.productName || '未命名'}`,
-      value: b.id,
+    const counts = new Map<string, number>()
+    for (let pageNum = 1; pageNum <= 5; pageNum++) {
+      const res: any = await traceApi.getComplaints({ pageNum, pageSize: 200 })
+      const rows = res?.records || res?.list || []
+      rows.forEach((c: any) => {
+        const no = String(c?.targetBatch || '').trim()
+        if (no) counts.set(no, (counts.get(no) || 0) + 1)
+      })
+      if (rows.length < 200 || pageNum * 200 >= Number(res?.total || 0)) break
+    }
+    const batchNos = [...counts.keys()]
+    const matched = await Promise.all(batchNos.map(async (no) => {
+      try {
+        const res: any = await distributionApi.getSplits({ keyword: no, pageNum: 1, pageSize: 20 })
+        const rows = res?.records || res?.list || []
+        // keyword 是模糊匹配：必须认批次号完全相同的那一条，近似的不要
+        return { no, split: rows.find((b: any) => String(b?.batchNo || '').trim() === no) || null }
+      } catch {
+        return { no, split: null }
+      }
     }))
-  } catch { batchOptions.value = [] }
-}
-
-async function fetchStoreOptions() {
-  try {
-    const res: any = await distributionApi.getStores()
-    const list = Array.isArray(res) ? res : (res?.records || [])
-    storeOptions.value = list.map((s: any) => ({
-      label: s.store_name || s.storeName || `门店#${s.store_id ?? s.storeId}`,
-      value: s.store_id ?? s.storeId,
-    }))
-  } catch { storeOptions.value = [] }
+    batchOptions.value = matched
+      .filter((m) => m.split)
+      .map(({ no, split }) => ({
+        label: `${no} · ${split.productName || '未命名'} · 被举报 ${counts.get(no)} 次`,
+        value: split.id as number,
+        batchNo: no,
+      }))
+    missingReportedBatches.value = matched.filter((m) => !m.split).map((m) => m.no)
+  } catch {
+    batchOptions.value = []
+    missingReportedBatches.value = []
+  }
 }
 
 // 详情弹窗
@@ -213,42 +235,58 @@ const detailData = ref<any>({})
 const progressPct = (row: any) => row.affectedCount ? Math.round(row.recalledCount / row.affectedCount * 100) : 0
 
 function handleCreate() {
+  recallForm.batchIds = []
+  recallForm.storeIds = []
+  recallForm.note = ''
+  storePreview.value = []
+  affectedCount.value = 0
   fetchBatchOptions()
-  fetchStoreOptions()
   dialogVisible.value = true
 }
 
+/**
+ * 选了范围就把门店带出来。
+ * 口径走销售服务的「受影响门店」查询（与发起召回时的受影响件数同一份 SQL），
+ * 前端不再自己拼运单+签收单 —— 那会拼出「弹窗 3 家店、召回后 4 家」。
+ */
 async function handleBatchChange() {
-  if (!recallForm.batchIds.length) { recallForm.storeIds = []; return }
+  recallForm.storeIds = []
+  storePreview.value = []
+  affectedCount.value = 0
+  if (!recallForm.batchIds.length) return
+  previewLoading.value = true
   try {
-    // 1. 拉所有运单，按所选批次的 splitBatchId 过滤出受影响的 transportId
-    const tRes: any = await distributionApi.getTransports({ current: 1, size: 1000 })
-    const transports = tRes?.records || []
-    const batchSet = new Set(recallForm.batchIds)
-    const matchedTransportIds = transports
-      .filter((t: any) => batchSet.has(t.splitBatchId))
-      .map((t: any) => t.id)
-    if (!matchedTransportIds.length) { recallForm.storeIds = []; return }
-    // 2. 拉所有签收单，找出这些运单签收过的门店
-    const rRes: any = await distributionApi.getReceipts({ current: 1, size: 1000 })
-    const receipts = rRes?.records || []
-    const transportIdSet = new Set(matchedTransportIds)
-    const storeIds = new Set<number>()
-    receipts.forEach((r: any) => {
-      if (transportIdSet.has(r.transportId) && r.storeId != null) storeIds.add(r.storeId)
-    })
-    recallForm.storeIds = [...storeIds]
-  } catch { /* 拉取失败时保留当前选择 */ }
+    const res: any = await salesApi.getRecallAffectedStores(recallForm.batchIds)
+    const data = res?.data || res || {}
+    storePreview.value = Array.isArray(data.stores) ? data.stores : []
+    affectedCount.value = Number(data.affectedCount || 0)
+    recallForm.storeIds = storePreview.value.map((s) => s.storeId)
+  } catch {
+    storePreview.value = []
+    recallForm.storeIds = []
+  } finally { previewLoading.value = false }
 }
 
 async function handleSubmitRecall() {
   await formRef.value?.validate()
+  if (!recallForm.storeIds.length) {
+    ElMessage.warning('所选批次没有在售或已售出的货，没有门店需要召回')
+    return
+  }
   submitting.value = true
   try {
     await salesApi.createRecall({
       reason: recallForm.reason, riskLevel: recallForm.riskLevel,
-      // 后端 RecallCreate 要求 scope(Map) 与 initiator 必填，batchIds/storeIds 需放入 scope
-      scope: { batchIds: recallForm.batchIds, storeIds: recallForm.storeIds, note: recallForm.note },
+      // 后端 RecallCreate 要求 scope(Map) 与 initiator 必填，batchIds/storeIds 需放入 scope；
+      // batchNos 只为详情展示留痕（批次改名也认得出当初召的是哪批）
+      scope: {
+        batchIds: recallForm.batchIds,
+        batchNos: batchOptions.value.filter((b) => recallForm.batchIds.includes(b.value)).map((b) => b.batchNo),
+        storeIds: recallForm.storeIds,
+        // 门店名一起留痕：召回单是历史凭证，门店后来改名也要看得出当初召的是哪几家
+        storeNames: storePreview.value.map((s) => s.storeName || `门店#${s.storeId}`),
+        note: recallForm.note,
+      },
       initiator: authStore.user?.realName || authStore.user?.username || '管理员',
     })
     ElMessage.success('召回指令已发布，数据已上链')
@@ -257,71 +295,30 @@ async function handleSubmitRecall() {
   } catch { /* 错误已由拦截器提示 */ } finally { submitting.value = false }
 }
 
-// 进度上报弹窗
-const progressVisible = ref(false)
-const progressSubmitting = ref(false)
-const progressFormRef = ref()
-const progressRow = ref<any>(null)
-const progressForm = reactive({ status: 2, recalledCount: 0 })
-const progressRules = {
-  status: [{ required: true, message: '请选择执行状态', trigger: 'change' }],
-  recalledCount: [{ required: true, message: '请填写已召回数量', trigger: 'blur' }],
-}
-
-function openProgressDialog(row: any) {
-  progressRow.value = row
-  progressForm.status = row.status === 1 ? 2 : row.status
-  progressForm.recalledCount = row.recalledCount ?? 0
-  progressVisible.value = true
-}
-
-async function handleProgressSubmit() {
-  await progressFormRef.value?.validate()
-  const affected = progressRow.value?.affectedCount
-  if (progressForm.recalledCount > affected) {
-    ElMessage.warning('已召回数量不能超出受影响数量')
-    return
-  }
-  progressSubmitting.value = true
-  try {
-    await salesApi.updateRecallStatus(progressRow.value.id, {
-      status: progressForm.status,
-      recalledCount: progressForm.recalledCount,
-    })
-    ElMessage.success('召回进度已更新，状态变更已上链存证')
-    progressVisible.value = false
-    fetchList()
-  } catch { /* 错误已由拦截器提示 */ } finally { progressSubmitting.value = false }
-}
-
 async function handleView(row: any) {
   detailData.value = { ...row }
   // 解析 scope 中的召回范围和目标门店
   try {
     const scope = typeof row.scope === 'string' ? JSON.parse(row.scope) : (row.scope || {})
-    // 召回范围
+    // 召回范围：优先用发起时留痕的批次号；老单据没有 batchNos 才退回按 id 找
     const batchNames: string[] = []
-    if (scope.batchNo) {
+    if (Array.isArray(scope.batchNos) && scope.batchNos.length) {
+      batchNames.push(...scope.batchNos)
+    } else if (scope.batchNo) {
       batchNames.push(scope.batchNo)
     } else if (scope.batchIds?.length) {
-      // 如果是 batchIds 数组，尝试匹配
       if (!batchOptions.value.length) await fetchBatchOptions()
       scope.batchIds.forEach((bid: number) => {
         const match = batchOptions.value.find(b => b.value === bid)
-        if (match) batchNames.push(match.label)
+        if (match) batchNames.push(match.batchNo)
       })
       if (!batchNames.length) batchNames.push(`批次#${scope.batchIds.join(', #')}`)
     }
     detailData.value.batchNames = batchNames
-    // 目标门店
-    const storeNames: string[] = []
-    if (scope.storeIds?.length) {
-      if (!storeOptions.value.length) await fetchStoreOptions()
-      scope.storeIds.forEach((sid: number) => {
-        const match = storeOptions.value.find(s => s.value === sid)
-        if (match) storeNames.push(match.label)
-        else storeNames.push(`门店#${sid}`)
-      })
+    // 目标门店：同样是发起时留痕的门店名
+    const storeNames: string[] = Array.isArray(scope.storeNames) ? [...scope.storeNames] : []
+    if (!storeNames.length && scope.storeIds?.length) {
+      scope.storeIds.forEach((sid: number) => storeNames.push(`门店#${sid}`))
     }
     detailData.value.storeNames = storeNames
   } catch {
@@ -352,4 +349,8 @@ onMounted(() => fetchList())
 .progress-cell { display: flex; align-items: center; gap: 10px; }
 .progress-text { font-size: 12px; color: #909399; white-space: nowrap; flex-shrink: 0; }
 .scope-tags { display: flex; flex-wrap: wrap; }
+/* 目标门店只读：标签 + 一行说明，不给下拉框（货卖到哪几家不是人选出来的） */
+.store-preview { width: 100%; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-height: 24px; }
+.store-tag { margin: 0; }
+.scope-hint { width: 100%; font-size: 12px; color: #909399; line-height: 1.6; }
 </style>

@@ -1,0 +1,69 @@
+server:
+  port: ${SERVICE_PORT:8090}
+spring:
+  application:
+    name: agent-service
+  config:
+    import: optional:nacos:${spring.application.name}.yaml
+  cloud:
+    nacos:
+      discovery:
+        server-addr: ${NACOS_ADDR:127.0.0.1:8848}
+        namespace: ${NACOS_NAMESPACE:}
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${DB_URL:jdbc:mysql://localhost:3306/db_common?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:123456}
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      database: ${REDIS_DATABASE:0}
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    banner: false
+
+# 被问答调用的业务服务：全部是**只读**取数，agent 不自带第二份口径
+services:
+  trace-url: ${SERVICES_TRACE_URL:http://localhost:8086}
+  ingest-url: ${SERVICES_INGEST_URL:http://localhost:8089}
+
+agent:
+  access:
+    # 现阶段只开给管理员：事实与工具还在迭代，口径没定死之前不下放。
+    # 放开时把角色加在这里即可（逗号分隔），工具级的 roles() 白名单仍在原处生效。
+    roles: ${AGENT_ACCESS_ROLES:ADMIN}
+  llm:
+    # 默认指向智谱开放平台的免费模型 glm-4-flash（OpenAI 兼容协议）。
+    # 换供应商只改这三项即可：硅基流动/DeepSeek/Ollama 都是同一套 /chat/completions 协议。
+    # 不填 api-key 时不会发起任何付费调用，自动降级为「本地归纳」——用工具查出的事实拼答案，
+    # 措辞朴素但结论一致，功能不因缺 key 而不可用。
+    base-url: ${AGENT_LLM_BASE_URL:https://open.bigmodel.cn/api/paas/v4}
+    api-key: ${AGENT_LLM_API_KEY:}
+    model: ${AGENT_LLM_MODEL:glm-4-flash}
+    timeout-seconds: ${AGENT_LLM_TIMEOUT:45}
+    # 三态：不配=不传该字段（换供应商时用各家默认）；false=显式关思考（qwen3 系把 30s 压到 10s）
+    enable-thinking: ${AGENT_LLM_ENABLE_THINKING:}
+    # 单次上送的事实最多多少行，防止把整张表塞进提示词（既贵又容易答偏）
+    max-fact-lines: ${AGENT_MAX_FACT_LINES:120}
+  history:
+    # 多轮对话带上最近几条消息：太多会让小模型抓不住重点，也白花 token
+    max-turns: ${AGENT_MAX_TURNS:6}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+---
+spring:
+  config:
+    activate:
+      on-profile: docker
+  data:
+    redis:
+      password: ${REDIS_PASSWORD:}

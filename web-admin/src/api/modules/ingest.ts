@@ -50,6 +50,8 @@ export const ingestApi = {
 /** 接入通道中文名（与后端 IngestChannel 对应） */
 /** 设备通道 → 中文名。键顺序即业务发生顺序，用于「接入通道」下拉/筛选的展示次序 */
 export const CHANNEL_LABELS: Record<string, string> = {
+  // 养殖系统同步排在第一位：它不是设备通道，是档案的源头，业务发生顺序上早于耳标建档
+  FARM_ERP: '养殖系统同步（外部ERP）',
   TAG: '养殖建档（耳标）',
   VACCINE: '免疫注射',
   QUARANTINE: '产地检疫出证',
@@ -64,13 +66,23 @@ export const CHANNEL_LABELS: Record<string, string> = {
   LOAD: '装车发运（装车口）',
   DEPART: '发车确认（车载终端）',
   ARRIVE: '到达确认（车载终端刷卡）',
+  // 拒收回运装车：冷链中心装车位上的**专用**扫码枪（另起一台，不复用装车口那把 ——
+  // 两种货混用一把枪只能靠格式猜场景，分错的代价是废品混进正常运单）
+  RETURN_LOAD: '拒收回运装车（扫码枪）',
+  // 召回到店收货：随车手持扫码枪。与回运装车枪是两个现场位置（车上 vs 门店货架），
+  // 报文字段一致但业务对象不同，所以独立一条通道
+  RECALL_COLLECT: '召回到店收货（扫码枪）',
   TEMPERATURE: '冷链温度采集',
   RECEIPT: '门店签收',
   SALE: '门店收银',
   SPLIT_SNAPSHOT: '分割车间监控',
 }
 
-/** 待确认队列状态：0待处理 1待人工处理 2已入账 3已拒绝 4已降采样丢弃 */
+/**
+ * 待确认队列状态：0待处理 1待人工处理 2已入账 3已拒绝 4已降采样丢弃
+ * <p>
+ * 5（重复上报）只出现在**上报回执**里，不会出现在队列里 —— 重复上报不新建流水。
+ */
 
 export const INGEST_STATUS_LABELS: Record<number, string> = {
   0: '待处理',
@@ -78,6 +90,7 @@ export const INGEST_STATUS_LABELS: Record<number, string> = {
   2: '已入账',
   3: '已拒绝',
   4: '已降采样',
+  5: '重复上报',
 }
 
 export const INGEST_STATUS_TAGS: Record<number, string> = {
@@ -86,6 +99,7 @@ export const INGEST_STATUS_TAGS: Record<number, string> = {
   2: 'success',
   3: 'danger',
   4: 'info',
+  5: 'warning',
 }
 
 /** 数据来源标签：MANUAL=人工录入 DEVICE=设备自动采集 API=第三方推送 IMPORT=批量导入 */
@@ -94,6 +108,8 @@ export const SOURCE_LABELS: Record<string, string> = {
   DEVICE: '设备采集',
   API: '第三方推送',
   IMPORT: '批量导入',
+  // 真机探头接入前，由系统定时采集器按间隔补的读数（演示用），必须与真实采集区分开
+  SIMULATED: '模拟探头',
 }
 
 export const SOURCE_TAGS: Record<string, string> = {
@@ -101,6 +117,7 @@ export const SOURCE_TAGS: Record<string, string> = {
   DEVICE: 'success',
   API: 'warning',
   IMPORT: 'warning',
+  SIMULATED: 'danger',
 }
 
 export function sourceLabel(source?: string) {

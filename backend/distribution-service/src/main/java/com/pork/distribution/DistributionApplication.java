@@ -3,7 +3,9 @@ package com.pork.distribution;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
+@EnableScheduling
 @MapperScan("com.pork.distribution.mapper")
 @SpringBootApplication(scanBasePackages = "com.pork")
 public class DistributionApplication {

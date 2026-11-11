@@ -44,4 +44,8 @@ export const salesApi = {
   updateRecallStatus(id: number, data: { status: number; recalledCount?: number }) {
     return request.put(`/sales/recalls/${id}/status`, data)
   },
+  /** 发起召回弹窗：按所选批次算出售到过这批货的门店与受影响件数（门店由此自动带出） */
+  getRecallAffectedStores(batchIds: number[]) {
+    return request.get('/sales/recalls/affected-stores', { params: { batchIds: batchIds.join(',') } })
+  },
 }

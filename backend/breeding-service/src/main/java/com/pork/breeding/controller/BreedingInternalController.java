@@ -62,6 +62,29 @@ public class BreedingInternalController {
     }
 
     /**
+     * 批次内生猪的品种（去重、按字典序），供分割树等展示场景在批次号后标注「猪的种类」。
+     * <p>
+     * 刻意做成一个只回品种字符串的轻端点，而不是让调用方复用 {@link #byIds}：
+     * 那条路径按 id 逐头取详情（N 次查询 + 带出整份档案），展示一个品种犯不着。
+     * 只查当前有效档案（逻辑删除过滤）；作废档案的品种不参与展示。
+     */
+    @GetMapping("/breeds")
+    public Result<List<String>> breeds(@RequestParam List<Long> ids) {
+        if (ids == null || ids.isEmpty()) return Result.success(List.of());
+        if (ids.size() > 200) throw new BusinessException(ErrorCode.PARAM_ERROR, "单次最多查询200头生猪");
+        List<PigIndividual> pigs = pigIndividualMapper.selectList(Wrappers.<PigIndividual>lambdaQuery()
+                .select(PigIndividual::getBreed)
+                .in(PigIndividual::getId, ids)
+                .isNotNull(PigIndividual::getBreed)
+                .orderByAsc(PigIndividual::getBreed));
+        return Result.success(pigs.stream()
+                .map(PigIndividual::getBreed)
+                .filter(breed -> breed != null && !breed.isBlank())
+                .distinct()
+                .toList());
+    }
+
+    /**
      * 生猪当前状态（供下游做「这头猪还能不能再进入下一个环节」的判断）。
      * <p>
      * 只读、按 id 查。档案不存在时直接 404，**不能**给调用方一个「查不到就默认正常」的返回——

@@ -107,6 +107,8 @@ public class LoadChannelHandler implements ChannelHandler {
         body.put("source", "DEVICE");
         body.put("sourceRef", ctx.sourceRef());
         body.put("rawPayload", ctx.rawPayload());
+        // 机构归属埋点（暂不过滤）：设备装在哪家机构，写入的记录就归哪家；NULL=设备未绑定
+        body.put("orgId", ctx.device().getOrgId());
 
         try {
             Map<String, Object> result = bizClient.post(distributionUrl + "/distribution/internal/ingest/load", body);

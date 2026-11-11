@@ -9,6 +9,7 @@ import com.pork.breeding.entity.VaccineRecord;
 import com.pork.breeding.mapper.PigIndividualMapper;
 import com.pork.breeding.mapper.VaccineRecordMapper;
 import com.pork.breeding.service.VaccineRecordService;
+import com.pork.breeding.support.FarmScope;
 import com.pork.breeding.vo.VaccineRecordVO;
 import com.pork.core.enums.ErrorCode;
 import com.pork.core.exception.BusinessException;
@@ -45,12 +46,17 @@ public class VaccineRecordServiceImpl extends ServiceImpl<VaccineRecordMapper, V
     private final PigIndividualMapper pigMapper;
     private final SourceGuard sourceGuard;
     private final ChainEventPublisher chainEvents;
+    private final FarmScope farmScope;
 
     @Override
     public Page<VaccineRecordVO> pageQuery(Long current, Long size, Long pigId) {
+        // 机构隔离：养殖角色只看自己场的免疫记录（pig_id 维度 inSql 下推）
+        String pigScopeSql = farmScope.pigIdsInFarmSql();
         Page<VaccineRecord> page = this.page(
                 new Page<>(current, size),
-                Wrappers.<VaccineRecord>lambdaQuery().eq(pigId != null, VaccineRecord::getPigId, pigId)
+                Wrappers.<VaccineRecord>lambdaQuery()
+                        .eq(pigId != null, VaccineRecord::getPigId, pigId)
+                        .inSql(pigScopeSql != null, VaccineRecord::getPigId, pigScopeSql)
         );
         Page<VaccineRecordVO> voPage = new Page<>(current, size);
         BeanUtils.copyProperties(page, voPage);

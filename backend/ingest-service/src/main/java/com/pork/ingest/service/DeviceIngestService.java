@@ -92,19 +92,23 @@ public class DeviceIngestService {
         String rawPayload = toJson(request.getData());
         LocalDateTime now = LocalDateTime.now();
 
-        // 幂等：同一设备同一条数据重发，直接回既有结论，不重复入账
+        // 判重第一道：同一设备、同一上报编号（bizKey）＝同一条数据。
+        // 重复上报一律「拒绝入账」，既不新建流水、也不回照「已入账」：
+        // 回照会让设备与操作员误以为又写了一条 —— 这正是「重推看着像成功」的来源。
         IngestStaging exists = findStaging(device.getDeviceNo(), request.getBizKey());
         if (exists != null) {
             touchDevice(device, now);
-            return toResponse(exists, true);
+            log.info("ingest_duplicate_bizkey device={} bizKey={} stagingId={} status={}",
+                    device.getDeviceNo(), request.getBizKey(), exists.getId(), exists.getStatus());
+            return duplicateResponse(exists, "同一设备上报了相同编号");
         }
 
-        // 重复上报兜底：同设备 + 同通道 + 同一份报文，只要已经收过，就直接回既有结论，不再新建。
+        // 判重第二道（兜底）：同设备 + 同通道 + 同一份报文。
+        // 设备端若每次自造新唯一号，就绕过了上面的 bizKey 判重，队列里会堆出一串一模一样的
+        // 记录，人工还得逐条辨别哪条有效 —— 这一道专挡这种「换号重推」。
         // 覆盖三种状态：
-        //   - 待处理 / 待人工处理：设备拿不到「待人工处理」这个结论，只会当成没收到而重推；
-        //     设备端若每次自造新唯一号，就绕过了上面的 bizKey 幂等，队列里会堆出一串
-        //     一模一样的记录，人工还得逐条辨别哪条有效。
-        //   - 已入账：数据已经成功写入业务，重发没有任何意义，只会在队列里多留一条重复记录。
+        //   - 待处理 / 待人工处理：还没入账，但已经在队列里了，重复排队没有意义；
+        //   - 已入账：数据已经写进业务表，重发只会在队列里多留一条重复记录。
         // 仍然放行「已拒绝 / 已降采样」：前者要给「外部条件补上后重发」留出机会
         // （例如耳标先没建档被拒、后来建档了再重发同一条报文就该放过去）；
         // 后者是高频抽稀，本来就不写业务表，重发再抽一次无副作用。
@@ -123,7 +127,7 @@ public class DeviceIngestService {
             touchDevice(device, now);
             log.info("ingest_duplicate_payload device={} channel={} stagingId={}",
                     device.getDeviceNo(), channel, samePayload.getId());
-            return toResponse(samePayload, true);
+            return duplicateResponse(samePayload, "同一设备上报了相同报文");
         }
 
         IngestStaging staging = new IngestStaging();
@@ -140,17 +144,17 @@ public class DeviceIngestService {
         try {
             stagingMapper.insert(staging);
         } catch (DuplicateKeyException e) {
-            // 并发重发：唯一键兜底，退回既有记录
+            // 并发重发：唯一键兜底，同样按重复上报处理
             IngestStaging concurrent = findStaging(device.getDeviceNo(), request.getBizKey());
             if (concurrent == null) throw new BusinessException(ErrorCode.DATABASE_ERROR, "重复上报判定失败");
-            return toResponse(concurrent, true);
+            return duplicateResponse(concurrent, "同一设备并发送达了相同编号");
         }
 
         IngestContext ctx = new IngestContext(device, request, rawPayload);
         DispatchResult result = process(ctx, handler, false);
         applyResult(staging, result);
         touchDevice(device, now);
-        return toResponse(staging, false);
+        return toResponse(staging);
     }
 
     /** 校验 + 分发，把各类异常统一翻译成处理结论 */
@@ -184,7 +188,11 @@ public class DeviceIngestService {
         staging.setStatus(result.status());
         staging.setTargetTable(result.targetTable());
         staging.setTargetId(result.targetId());
-        staging.setErrorMsg(result.accepted() ? null : result.message());
+        // 已入账默认不落错误信息；但业务侧明确给了话术（如扫码即出单的回执）要原样带给现场
+        String msg = result.message();
+        staging.setErrorMsg(result.accepted()
+                ? (msg == null || "已入账".equals(msg) ? null : msg)
+                : msg);
         stagingMapper.updateById(staging);
         if (!result.accepted()) {
             log.info("ingest_not_written device={} bizKey={} status={} reason={}",
@@ -219,7 +227,7 @@ public class DeviceIngestService {
 
     public Map<String, Object> getStaging(Long id) {
         IngestStaging staging = requireStaging(id);
-        return toResponse(staging, false);
+        return toResponse(staging);
     }
 
     /** 人工确认后强制入账：跳过依赖外部数据的软校验，硬校验（越界值、缺必填）仍然生效 */
@@ -266,7 +274,7 @@ public class DeviceIngestService {
             staging.setRemark(finalRemark);
             stagingMapper.updateById(staging);
         }
-        return toResponse(staging, false);
+        return toResponse(staging);
     }
 
     /**
@@ -316,7 +324,7 @@ public class DeviceIngestService {
         staging.setHandleTime(LocalDateTime.now());
         staging.setHandler(handler);
         stagingMapper.updateById(staging);
-        return toResponse(staging, false);
+        return toResponse(staging);
     }
 
     /**
@@ -324,18 +332,24 @@ public class DeviceIngestService {
      * <p>
      * 原因：这些环节的人工入口在业务侧已经关闭，能走到这里说明是"设备报了但条件不满足"，
      * 人工放行等于替设备背书。既然要背书，就得写清楚是谁、为什么，链上存证才有意义。
+     * <p>
+     * <b>外部养殖系统（FARM_ERP）同样要实名 + 理由</b>，虽然它不是关键环节、也不在
+     * {@link TraceStage} 里（批次档案不是溯源环节，是档案本体）。口径是一致的：
+     * 外部系统的数据不等于正确的数据，把它放行到档案里，是在替一个我们控制不了的系统背书。
      */
     private void requireReviewerForCriticalStage(IngestStaging staging, String handler, String remark) {
         TraceStage stage = TraceStage.ofChannel(staging.getChannel());
         boolean critical = stage != null && stage.defaultPolicy() == SourcePolicy.DEVICE_ONLY;
-        if (!critical) return;
+        boolean externalSystem = IngestChannel.FARM_ERP.name().equalsIgnoreCase(staging.getChannel());
+        if (!critical && !externalSystem) return;
+        String stageLabel = critical ? stage.label() : "养殖系统同步";
         if (!StringUtils.hasText(handler) || "unknown".equalsIgnoreCase(handler)) {
             throw new BusinessException(ErrorCode.FORBIDDEN,
-                    "【来源管控】" + stage.label() + "的人工复核必须实名：请使用已登录账号操作");
+                    "【来源管控】" + stageLabel + "的人工复核必须实名：请使用已登录账号操作");
         }
         if (!StringUtils.hasText(remark)) {
             throw new BusinessException(ErrorCode.PARAM_MISSING,
-                    "【来源管控】" + stage.label() + "的人工复核必须填写放行理由（将随复核记录留档）");
+                    "【来源管控】" + stageLabel + "的人工复核必须填写放行理由（将随复核记录留档）");
         }
     }
 
@@ -476,8 +490,38 @@ public class DeviceIngestService {
         }
     }
 
+    /**
+     * 重复上报的回执：明确告诉调用方「这条已经存在」，本次拒绝入账。
+     * <p>
+     * 与正常回执的唯一区别是 <b>{@code accepted} 恒为 false</b>。之所以不再照抄原记录的状态
+     * （以前重推一条已入账的数据，回执照样是「已入账」，看上去像又写了一条），
+     * 是因为回执描述的是<b>本次请求</b>的结论，而不是原数据的状态；原状态另放
+     * {@code originalStatus} 里，排查时照样看得到。
+     * <p>
+     * {@code discardLocalCopy=true} 是给设备端的安全信号：不要因为看到「拒绝」就无限重推 ——
+     * 这条数据已经在系统里了，本地缓存可以删；只有 status=3（数据本身不成立）才是「改完再报」。
+     */
+    private Map<String, Object> duplicateResponse(IngestStaging original, String how) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("stagingId", original.getId());
+        response.put("channel", original.getChannel());
+        response.put("bizKey", original.getBizKey());
+        response.put("status", IngestStatus.DUPLICATED);
+        response.put("statusLabel", IngestStatus.label(IngestStatus.DUPLICATED));
+        response.put("accepted", false);
+        response.put("duplicate", true);
+        response.put("originalStatus", original.getStatus());
+        response.put("originalStatusLabel", IngestStatus.label(original.getStatus()));
+        response.put("targetTable", original.getTargetTable());
+        response.put("targetId", original.getTargetId());
+        response.put("discardLocalCopy", true);
+        response.put("message", "该信息已存在（" + how + "，原上报编号 #" + original.getId()
+                + "，当前状态：" + IngestStatus.label(original.getStatus()) + "），本次拒绝入账");
+        return response;
+    }
+
     /** 设备回执：明确告知收没收下、入没入账、没入账的原因 */
-    private Map<String, Object> toResponse(IngestStaging staging, boolean duplicate) {
+    private Map<String, Object> toResponse(IngestStaging staging) {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("stagingId", staging.getId());
         response.put("channel", staging.getChannel());
@@ -488,7 +532,7 @@ public class DeviceIngestService {
         response.put("targetTable", staging.getTargetTable());
         response.put("targetId", staging.getTargetId());
         response.put("message", staging.getErrorMsg() == null ? IngestStatus.label(staging.getStatus()) : staging.getErrorMsg());
-        response.put("duplicate", duplicate);
+        response.put("duplicate", false);
         return response;
     }
 }

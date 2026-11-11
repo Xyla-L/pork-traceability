@@ -17,15 +17,15 @@ public class JwtUtil {
     private static final long REFRESH_EXPIRE_TIME = 7 * 24 * 60 * 60 * 1000L;
 
     public static String generateToken(String username) {
-        return generateToken(username, null, null, "access", ACCESS_EXPIRE_TIME);
+        return generateToken(username, null, null, null, "access", ACCESS_EXPIRE_TIME);
     }
 
     public static String generateRefreshToken(String username) {
-        return generateToken(username, null, null, "refresh", REFRESH_EXPIRE_TIME);
+        return generateToken(username, null, null, null, "refresh", REFRESH_EXPIRE_TIME);
     }
 
     public static String generateToken(String username, String role) {
-        return generateToken(username, role, null, "access", ACCESS_EXPIRE_TIME);
+        return generateToken(username, role, null, null, "access", ACCESS_EXPIRE_TIME);
     }
 
     /**
@@ -36,18 +36,33 @@ public class JwtUtil {
      * 只为让"谁改的这条关键数据"在链上和审计里能读出人名，而不是一串数字ID。
      */
     public static String generateToken(String subject, String role, String userName) {
-        return generateToken(subject, role, userName, "access", ACCESS_EXPIRE_TIME);
+        return generateToken(subject, role, userName, null, "access", ACCESS_EXPIRE_TIME);
+    }
+
+    /**
+     * 带机构声明的访问令牌。
+     * <p>
+     * {@code orgId} 是「这个人属于哪家机构」（{@code sys_user.org_id}）。它是数据隔离的唯一依据：
+     * 零售商只能看自己门店的数据，靠的就是这个声明经网关透传后由各服务收敛查询范围。
+     * <b>不能让前端传门店ID</b> —— 前端传的值可以随便改，那只是「页面不显示」，不是隔离。
+     * <p>
+     * 为 null 时不写入声明（与姓名同理）：老令牌、系统内置账号可能确实没有机构。
+     */
+    public static String generateToken(String subject, String role, String userName, String orgId) {
+        return generateToken(subject, role, userName, orgId, "access", ACCESS_EXPIRE_TIME);
     }
 
     public static String generateRefreshToken(String username, String role) {
-        return generateToken(username, role, null, "refresh", REFRESH_EXPIRE_TIME);
+        return generateToken(username, role, null, null, "refresh", REFRESH_EXPIRE_TIME);
     }
 
-    private static String generateToken(String username, String role, String userName, String type, long ttl) {
+    private static String generateToken(String username, String role, String userName, String orgId,
+                                        String type, long ttl) {
         Map<String, Object> payload = new HashMap<>();
         payload.put("username", username);
         if (role != null && !role.isBlank()) payload.put("role", role);
         if (userName != null && !userName.isBlank()) payload.put("userName", userName);
+        if (orgId != null && !orgId.isBlank()) payload.put("orgId", orgId);
         payload.put("tokenType", type);
         payload.put("iat", new Date());
         payload.put("exp", new Date(System.currentTimeMillis() + ttl));
@@ -98,6 +113,11 @@ public class JwtUtil {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    /** 机构ID声明（sys_user.org_id）。老令牌没有该声明时返回 null，由各服务按「无机构」处理。 */
+    public static String getOrgId(String token) {
+        return getClaim(token, "orgId");
     }
 
     public static boolean isValid(String token) {

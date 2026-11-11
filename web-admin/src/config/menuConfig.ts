@@ -108,6 +108,16 @@ export const menuConfig: MenuItem[] = [
         title: '门店签收',
         roles: ['RETAILER', 'SUPERVISOR', 'ADMIN'],
       },
+      {
+        path: '/admin/distribution/return',
+        title: '处理运输',
+        roles: ['DISTRIBUTOR', 'SUPERVISOR', 'ADMIN'],
+      },
+      {
+        path: '/admin/disposal/confirm',
+        title: '处理签收',
+        roles: ['DISPOSAL', 'SUPERVISOR', 'ADMIN'],
+      },
     ],
   },
 

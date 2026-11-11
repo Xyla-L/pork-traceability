@@ -18,6 +18,7 @@ const ADMIN = { username: 'admin', password: '123456' }
 
 /** 期望值 = 前端 CHANNEL_LABELS（web-admin/src/api/modules/ingest.ts），两边必须一致 */
 const EXPECT = {
+  FARM_ERP: '养殖系统同步（外部ERP）',
   TAG: '养殖建档（耳标）',
   VACCINE: '免疫注射',
   QUARANTINE: '产地检疫出证',
@@ -35,6 +36,8 @@ const EXPECT = {
   ORDER: '订单转入（商家选购）',
   DEPART: '发车确认（车载终端）',
   ARRIVE: '到达确认（车载终端刷卡）',
+  RETURN_LOAD: '拒收回运装车（扫码枪）',
+  RECALL_COLLECT: '召回到店收货（扫码枪）',
   SPLIT_SNAPSHOT: '分割车间监控',
 }
 

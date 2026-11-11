@@ -3,6 +3,8 @@ package com.pork.blockchain.adapter.evm;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pork.blockchain.adapter.BlockchainAdapter;
 import com.pork.blockchain.config.EvmChainProperties;
+import com.pork.blockchain.entity.ChainLedger;
+import com.pork.blockchain.mapper.ChainLedgerMapper;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
@@ -59,14 +61,16 @@ public class EvmBlockchainAdapter implements BlockchainAdapter, DisposableBean {
     private static final ObjectMapper JSON = new ObjectMapper();
 
     private final EvmChainProperties props;
+    private final ChainLedgerMapper ledgerMapper;
     private Web3j web3j;
     private Credentials credentials;
     private RawTransactionManager txManager;
     private TransactionReceiptProcessor receiptProcessor;
     private String contractAddress;
 
-    public EvmBlockchainAdapter(EvmChainProperties props) {
+    public EvmBlockchainAdapter(EvmChainProperties props, ChainLedgerMapper ledgerMapper) {
         this.props = props;
+        this.ledgerMapper = ledgerMapper;
     }
 
     @PostConstruct
@@ -124,12 +128,17 @@ public class EvmBlockchainAdapter implements BlockchainAdapter, DisposableBean {
             if (!receipt.isStatusOK()) {
                 throw new IllegalStateException("EVM 交易执行失败(reverted): tx=" + receipt.getTransactionHash());
             }
-            return new TxResult(receipt.getTransactionHash(), receipt.getBlockNumber().longValueExact(),
+            TxResult result = new TxResult(receipt.getTransactionHash(), receipt.getBlockNumber().longValueExact(),
                     blockTime(receipt.getBlockNumber()));
+            mirrorToLedger(bizKey, contentHash, result);
+            return result;
         } catch (IOException | TransactionException e) {
             throw new IllegalStateException("上链失败: " + e.getMessage(), e);
         }
     }
+
+    @Override
+    public String mode() { return "evm"; }
 
     @Override
     public Optional<ChainData> queryOnChain(String bizKey) {
@@ -155,6 +164,26 @@ public class EvmBlockchainAdapter implements BlockchainAdapter, DisposableBean {
                     LocalDateTime.ofInstant(Instant.ofEpochSecond(timestamp), ZoneId.systemDefault())));
         } catch (IOException e) {
             throw new IllegalStateException("查询链上存证失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 链上交易落地的同时补一行「平台镜像账本」：存证记录 ↔ 账本行的配对断言
+     * （悬空存证 / 孤儿块对账）依赖这张表。不写的话 evm 模式下每条新存证都是悬空的。
+     * tx_hash 是真实交易哈希（每笔唯一），不会撞 uk_tx_hash。
+     */
+    private void mirrorToLedger(String bizKey, String contentHash, TxResult tx) {
+        try {
+            ChainLedger row = new ChainLedger();
+            row.setBizKey(bizKey);
+            row.setContentHash(contentHash);
+            row.setTxHash(tx.txHash());
+            row.setBlockNumber(tx.blockNumber());
+            row.setChainTime(tx.chainTime());
+            ledgerMapper.insert(row);
+        } catch (RuntimeException e) {
+            // 镜像行写不进去不阻塞上链结果本身，但必须留痕——对账任务会按悬空存证把它揪出来
+            log.warn("chain_ledger_mirror_failed tx={} err={}", tx.txHash(), e.getMessage());
         }
     }
 

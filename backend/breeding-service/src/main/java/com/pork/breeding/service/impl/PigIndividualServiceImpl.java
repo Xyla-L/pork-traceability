@@ -4,10 +4,11 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.pork.breeding.dto.PigIndividualDTO;
 import com.pork.breeding.entity.Farm;
+import com.pork.breeding.entity.PigBatch;
 import com.pork.breeding.entity.PigIndividual;
 import com.pork.breeding.mapper.FarmMapper;
+import com.pork.breeding.mapper.PigBatchMapper;
 import com.pork.breeding.mapper.PigIndividualMapper;
 import com.pork.breeding.mapper.QuarantineCertMapper;
 import com.pork.breeding.mapper.VaccineRecordMapper;
@@ -61,6 +62,7 @@ public class PigIndividualServiceImpl extends ServiceImpl<PigIndividualMapper, P
             "长白猪", "大白猪", "杜洛克", "皮特兰", "三元杂", "大约克夏", "巴克夏", "汉普夏");
 
     private final FarmMapper farmMapper;
+    private final PigBatchMapper pigBatchMapper;
     private final VaccineRecordMapper vaccineRecordMapper;
     private final QuarantineCertMapper quarantineCertMapper;
     private final SourceGuard sourceGuard;
@@ -143,9 +145,11 @@ public class PigIndividualServiceImpl extends ServiceImpl<PigIndividualMapper, P
         return List.copyOf(merged);
     }
 
-    /* 人工建档方法已删除：养殖建档为设备独占环节，写入只走设备通道
-       （BreedingDeviceIngestController /breeding/internal/ingest/tag）。 */
-
+    /**
+     * 个体建档入口已取消（2026-10-25 起按批次建档）：档案信息以批次为单位人工登记
+     * （/pigs/batches），个体行由批次按耳标区间自动展开——个体行只是批次成员，
+     * 不再有人工逐头建档的路径。
+     */
 
     @Override
     public PigIndividualVO getDetail(Long id) {
@@ -252,20 +256,14 @@ public class PigIndividualServiceImpl extends ServiceImpl<PigIndividualMapper, P
                 id, entity.getEarTagNo(), operator, cleanReason);
     }
 
-    private void validateReferences(PigIndividualDTO dto, Long currentId) {
-        if (farmMapper.selectById(dto.getFarmId()) == null) {
-            throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, "养殖场不存在");
-        }
-        long duplicates = this.count(Wrappers.<PigIndividual>lambdaQuery()
-                .eq(PigIndividual::getEarTagNo, dto.getEarTagNo())
-                .ne(currentId != null, PigIndividual::getId, currentId));
-        if (duplicates > 0) throw new BusinessException(ErrorCode.RECORD_ALREADY_EXISTS, "耳标号已存在");
-    }
-
     private PigIndividualVO convertToVO(PigIndividual entity) {
         PigIndividualVO vo = new PigIndividualVO();
         BeanUtils.copyProperties(entity, vo);
         vo.setStatusLabel(STATUS_CODE_TO_LABEL.get(entity.getStatus()));
+        if (entity.getBatchId() != null) {
+            PigBatch batch = pigBatchMapper.selectById(entity.getBatchId());
+            if (batch != null) vo.setBatchNo(batch.getBatchNo());
+        }
         return vo;
     }
 

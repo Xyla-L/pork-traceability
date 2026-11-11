@@ -16,8 +16,8 @@
  * （本环境 node 禁止子进程调用，DB 核验与清理必须走 bash。）
  */
 const BASE = process.env.BASE_URL || 'http://localhost:8080/api/v1'
-const TAG_DEVICE = 'TAG-W001'
 const CERT_DEVICE = 'QSCAN-001'
+const INJ_DEVICE = 'INJ-001'
 const EXIT_DEVICE = 'EXITSCALE-001'
 const GATE_DEVICE = 'GATE-001'
 /** 已存在的、出栏申报被驳回的猪（只读用例，不改数据） */
@@ -52,8 +52,25 @@ async function api(path, { method = 'GET', token, body, headers = {} } = {}) {
 }
 
 const pad = (n) => String(n).padStart(2, '0')
-function nowText(offsetSeconds = 0) {
-  const d = new Date(Date.now() + offsetSeconds * 1000)
+/** 免疫上报必须带真实存在的凭证照片（编造的 fileId 会被接入层判拒绝），这里上传一张 1x1 PNG */
+async function uploadVoucher() {
+  const buffer = Buffer.from(
+    '89504e470d0a1a0a0000000d494844520000000100000001080200000090775'
+    + '3de0000000c4944415408d763f8cfc000000301010018dd8db00000000049454e44ae426082',
+    'hex',
+  )
+  const fd = new FormData()
+  fd.append('file', new Blob([buffer], { type: 'image/png' }), `gate-${stamp}.png`)
+  const res = await fetch(`${BASE}/file/upload`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: fd,
+  })
+  const body = await res.json().catch(() => null)
+  return body?.data?.fileId
+}
+
+function nowText(offsetSeconds = 0) {  const d = new Date(Date.now() + offsetSeconds * 1000)
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }
 function dateText(daysFromNow = 0) {
@@ -88,24 +105,38 @@ let applyId = null
 let entryId = null
 let manualStagingId = null
 
-console.log('\n== 1) 造一头临时猪（建档 + 产地检疫出证）==')
+console.log('\n== 1) 造一头临时猪（登记单头批次 + 产地检疫出证）==')
 {
+  // 2026-10-25 起档案按批次登记：测试猪登记为单头批次（耳标区间 = 该猪自身）
   const farms = await api('/breeding/farms?current=1&size=1', { token })
-  const farmName = farms?.data?.records?.[0]?.farmName
-  check('取到一个已登记养殖场', !!farmName, `farmName=${farmName}`)
+  const farm = farms?.data?.records?.[0]
+  check('取到一个已登记养殖场', !!farm?.id, `farmId=${farm?.id}`)
 
-  const tag = track(await report(TAG_DEVICE, {
+  const created = await api('/breeding/pigs/batches', {
+    method: 'POST', token,
+    body: {
+      batchNo: `PB-GATE-${stamp}`, farmId: farm?.id, earTagStart: earTagNo, earTagEnd: earTagNo,
+      breed: '三元杂', entryDate: dateText(-90), source: '自繁',
+    },
+  })
+  check('批次登记成功', !!created?.data, JSON.stringify(created).slice(0, 200))
+  const pigPage = await api(`/breeding/pigs?earTagNo=${encodeURIComponent(earTagNo)}&current=1&size=1`, { token })
+  pigId = pigPage?.data?.records?.[0]?.id
+  check('批次成员行已生成', !!pigId, `pigId=${pigId}`)
+
+  // 产地检疫的前置是「有有效免疫记录」（ImmunityGate）：先走智能注射器上报一条免疫。
+  // 少这一步，出证会被当场拒绝，后面的出栏申报、入场查验整条链都无从谈起。
+  const voucherId = await uploadVoucher()
+  check('接种凭证上传成功', !!voucherId, '未拿到 fileId')
+  const vac = track(await report(INJ_DEVICE, {
     earTagNo,
-    farmName,
-    birthDate: dateText(-90),
-    breed: '三元杂',
-    gender: 1,
-    penNo: '回归验证舍',
-    origin: '自繁',
+    vaccineName: `猪瘟疫苗${stamp}`,
+    vaccineBatchNo: `VB-GATE-${stamp}`,
+    injectTime: nowText(),
+    operator: '张兽医',
+    fileIds: [voucherId],
   }))
-  check('建档入账', tag?.data?.accepted === true, JSON.stringify(tag?.data).slice(0, 200))
-  pigId = tag?.data?.targetId
-  check('拿到生猪肉档编号', !!pigId, `pigId=${pigId}`)
+  check('免疫入账（出证前置）', vac?.data?.accepted === true, JSON.stringify(vac?.data).slice(0, 200))
 
   const cert = track(await report(CERT_DEVICE, {
     earTagNo,

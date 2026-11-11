@@ -1,0 +1,19 @@
+{
+  "_说明": "撤销之后 ERP 把这一批改正后又推了回来（进场日期改了）：报文内容与撤销前不同，所以不会被判重挡在第一道；系统仍不自动「复活」已撤销档案，转人工核对——撤销是一条留痕的结论，不能被一次重推抹掉。",
+  "channel": "FARM_ERP",
+  "bizKey": "ERP-{{RUN}}-4",
+  "reportTime": "{{NOW}}",
+  "sourceRef": "DEMO-ERP-撤后重推",
+  "data": {
+    "action": "UPSERT",
+    "systemCode": "DEMO_ERP",
+    "farmName": "{{FARM}}",
+    "batchNo": "ERP-{{RUN}}",
+    "breed": "三元杂",
+    "entryDate": "{{ENTRY_FIXED}}",
+    "birthDate": "{{BIRTH}}",
+    "source": "自繁",
+    "earTagStart": "ET-ERP{{RUN}}001",
+    "earTagEnd": "ET-ERP{{RUN}}030"
+  }
+}

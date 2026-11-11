@@ -191,6 +191,8 @@ public final class DeviceIngestRequests {
         private String source;
         private String sourceRef;
         private String rawPayload;
+        /** 装车口设备所属机构（sys_org.id）：接入层按设备台账带出，NULL=未绑定，不猜 */
+        private Long orgId;
     }
 
     /**
@@ -276,6 +278,83 @@ public final class DeviceIngestRequests {
         private String source;
         private String sourceRef;
         private String rawPayload;
+    }
+
+    /**
+     * 拒收回运装车扫码：冷链中心装车位上的专用扫码枪。
+     * <p>
+     * 只报两件现场事实：<b>哪台车</b>、<b>扫到了哪些货</b>。这批货属于哪家门店的拒收，
+     * 由业务侧拿原运单号/批次号<b>倒查</b> —— 扫码是「登记」，不是「选择」。
+     * <p>
+     * <b>不带卡号</b>：装车位没有读卡器，司机身份由车载终端在发车时确认（与装车口同一条纪律）。
+     */
+    @Data
+    public static class DeviceReturnLoad {
+        /**
+         * 车牌（相机识别），必填：这一枪要回答的是「这批货上了哪台车」。
+         * <p>
+         * 2026-11-03 起扫码前移到排车之前：现场装车时还没有回运单号，能读到、也必须读到的
+         * 就是车牌与货码 —— 与装车口（LOAD）同一条口径。
+         */
+        @NotBlank(message = "车牌号不能为空")
+        private String vehicleNo;
+        private String vehicleSource;
+
+        /**
+         * 回运单号：<b>可选</b>，兼容先排车再补扫的现场习惯。
+         * <p>
+         * 主路径不靠它 —— 单号是排车那一刻才生成的，装车时手里没有。给了也不参与判定，
+         * 登记仍按「车牌 + 货码」倒查拒收站点。
+         */
+        private String legTransportNo;
+
+        /**
+         * 本次扫到的货码：拒收包装上的原运单号或分割批次号。
+         * <p>
+         * 为什么允许两种：同一原运单可能送多店、几家都拒收 —— 一个码对多站时业务侧
+         * <b>不猜</b>（转人工，提示改扫门店标签）。命中唯一站点才登记，
+         * 存量原文照留，异常本身是排查线索。
+         */
+        @NotEmpty(message = "至少要扫到一件货")
+        private List<String> scanCodes;
+
+        /** 现场扫码时刻；没给则由业务侧取服务器当前时间 */
+        private LocalDateTime scanTime;
+
+        private String source;
+        private String sourceRef;
+        private String rawPayload;
+        /** 机构归属（设备装在冷链中心，记录随设备归属） */
+        private Long orgId;
+    }
+
+    /**
+     * 召回到店扫码收货（随车手持扫码枪）。
+     * <p>
+     * 与回运装车扫码（{@link DeviceReturnLoad}）同构：<b>车牌 + 货码，倒查业务对象</b>。
+     * 区别在倒查的目标：装车扫码找的是「已拒收、还没排上车的站点」，
+     * 到店扫码找的是「这趟收运车当前所在门店的召回货」 —— 车已经把门店锁定了，
+     * 报文不需要报门店（门店主数据不下发到车上，报也报不准）。
+     */
+    @Data
+    public static class DeviceRecallCollect {
+        /** 车牌（必填）：哪台收运车在收货 */
+        @NotBlank(message = "车牌号不能为空")
+        private String vehicleNo;
+        private String vehicleSource;
+
+        /** 本次扫到的货码：召回货包装上的分割批次号（门店标签亦可，业务侧按批次倒查） */
+        @NotEmpty(message = "至少要扫到一件货")
+        private List<String> scanCodes;
+
+        /** 现场扫码时刻；没给则由业务侧取服务器当前时间 */
+        private LocalDateTime scanTime;
+
+        private String source;
+        private String sourceRef;
+        private String rawPayload;
+        /** 机构归属（设备装在冷链中心，记录随设备归属） */
+        private Long orgId;
     }
 
     /** 分割作业的一个部位产出 */

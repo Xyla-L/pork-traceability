@@ -11,12 +11,7 @@
         </el-form-item>
         <el-form-item label="角色">
           <el-select v-model="searchForm.role" placeholder="全部" clearable style="width: 140px">
-            <el-option label="养殖场" value="FARMER" />
-            <el-option label="屠宰场" value="SLAUGHTER_OP" />
-            <el-option label="配送商" value="DISTRIBUTOR" />
-            <el-option label="零售商" value="RETAILER" />
-            <el-option label="监管" value="SUPERVISOR" />
-            <el-option label="管理员" value="ADMIN" />
+            <el-option v-for="r in ROLE_OPTIONS" :key="r.value" :label="r.label" :value="r.value" />
           </el-select>
         </el-form-item>
         <el-form-item label="机构">
@@ -82,18 +77,15 @@
           <el-input v-model="formData.realName" placeholder="请输入姓名" />
         </el-form-item>
         <el-form-item label="角色" prop="role">
-          <el-select v-model="formData.role" placeholder="请选择角色" style="width: 100%">
-            <el-option label="养殖场操作员" value="FARMER" />
-            <el-option label="屠宰场操作员" value="SLAUGHTER_OP" />
-            <el-option label="配送商操作员" value="DISTRIBUTOR" />
-            <el-option label="零售商操作员" value="RETAILER" />
-            <el-option label="监管人员" value="SUPERVISOR" />
-            <el-option label="系统管理员" value="ADMIN" />
+          <el-select v-model="formData.role" placeholder="请选择角色" style="width: 100%" @change="handleRoleChange">
+            <el-option v-for="r in ROLE_OPTIONS" :key="r.value" :label="r.label" :value="r.value" />
           </el-select>
         </el-form-item>
         <el-form-item label="所属机构" prop="orgId">
           <el-select v-model="formData.orgId" placeholder="请选择机构" filterable clearable style="width: 100%">
-            <el-option v-for="o in orgOptions" :key="o.value" :label="o.label" :value="o.value" />
+            <el-option-group v-for="g in orgGroups" :key="g.type" :label="g.label">
+              <el-option v-for="o in g.options" :key="o.value" :label="o.label" :value="o.value" />
+            </el-option-group>
           </el-select>
         </el-form-item>
         <el-form-item label="联系电话" prop="phone">
@@ -112,20 +104,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { Search, Refresh, Plus } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { EpTagType } from '@/types/common'
 import { systemUserApi, systemOrgApi } from '@/api/modules/system'
+import { ORG_ROLE_GROUPS, ROLE_OPTIONS, orgTypeOfRole, roleLabelOf } from '@/constants/orgRoles'
 
 const searchForm = reactive({ username: '', realName: '', role: '', orgName: '', status: null as number | null })
 const tableData = ref<any[]>([])
 const loading = ref(false)
 const pagination = reactive({ pageNum: 1, pageSize: 10, total: 0 })
-const orgOptions = ref<{ label: string; value: number }[]>([])
+const orgList = ref<{ id: number; name: string; type: string }[]>([])
 
 const roleColor = (r: string): EpTagType => (({ FARMER: 'success', SLAUGHTER_OP: 'danger', DISTRIBUTOR: 'info', RETAILER: 'warning', SUPERVISOR: 'info', ADMIN: 'danger' } as Record<string, EpTagType>)[r] || 'info')
-const roleLabel = (r: string) => ({ FARMER: '养殖场', SLAUGHTER_OP: '屠宰场', DISTRIBUTOR: '配送商', RETAILER: '零售商', SUPERVISOR: '监管', ADMIN: '管理员' } as Record<string, string>)[r] || r
+const roleLabel = roleLabelOf
 
 const dialogVisible = ref(false)
 const isEdit = ref(false)
@@ -219,26 +212,51 @@ async function fetchList() {
   }
 }
 
-async function loadOrgOptions() {
+async function loadOrgList() {
   try {
     const tree: any = await systemOrgApi.tree()
-    const opts: { label: string; value: number }[] = []
+    const list: { id: number; name: string; type: string }[] = []
     const walk = (nodes: any[]) => {
       if (!Array.isArray(nodes)) return
       for (const n of nodes) {
-        opts.push({ label: n.label || n.name, value: n.id })
+        list.push({ id: n.id, name: n.label || n.name, type: n.type })
         if (n.children?.length) walk(n.children)
       }
     }
     walk(tree || [])
-    orgOptions.value = opts
+    orgList.value = list
   } catch (e) {
-    orgOptions.value = []
+    orgList.value = []
   }
 }
 
+/** 机构下拉按角色域分组：选了角色只列该环节的机构（系统管理员不限） */
+const orgGroups = computed(() => {
+  const only = orgTypeOfRole(formData.role)
+  const groups = ORG_ROLE_GROUPS
+    .filter((g) => !only || g.type === only)
+    .map((g) => ({
+      type: g.type as string,
+      label: `${g.orgLabel}（${g.roleLabel}）`,
+      options: orgList.value.filter((o) => o.type === g.type).map((o) => ({ label: o.name, value: o.id })),
+    }))
+  // 存量里若有未知类型的机构，单独兜底，不静默吞掉
+  const known = new Set(ORG_ROLE_GROUPS.map((g) => g.type))
+  const others = orgList.value.filter((o) => !known.has(o.type))
+  if (others.length) groups.push({ type: 'other', label: '其他机构', options: others.map((o) => ({ label: o.name, value: o.id })) })
+  return groups.filter((g) => g.options.length)
+})
+
+/** 换角色时，若已选机构不属于该角色的环节，清掉——避免出现「养殖人员挂在门店」 */
+function handleRoleChange() {
+  const only = orgTypeOfRole(formData.role)
+  if (!only || !formData.orgId) return
+  const cur = orgList.value.find((o) => o.id === formData.orgId)
+  if (cur && cur.type !== only) formData.orgId = null
+}
+
 onMounted(() => {
-  loadOrgOptions()
+  loadOrgList()
   fetchList()
 })
 </script>

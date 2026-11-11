@@ -14,32 +14,24 @@ import java.util.List;
  * 设备通道（养殖建档 / 免疫注射）接入请求。
  * <p>
  * 独立于人工录入的 DTO：设备侧多带来源三件套（source/sourceRef/rawPayload）。
- * 注意 pig_individual 的业务字段 source（自繁/外购）在 DeviceTag 里叫 origin，避免撞名。
  */
 public final class BreedingDeviceIngestRequests {
 
     private BreedingDeviceIngestRequests() {
     }
 
-    /** 养殖建档：耳标读写器，佩戴即建档 */
+    /**
+     * 养殖建档：耳标读写器。
+     * <p>
+     * 只有 earTagNo —— 耳标芯片里只有一个编号，读写器物理上读不出品种/性别/出生日期/
+     * 圈舍/来源（那是人的知识，人工建档时录入）。耳标已建档时幂等返回既有档案；
+     * 新耳标转待人工，提示先人工建档。
+     */
     @Data
     public static class DeviceTag {
         @NotBlank(message = "耳标号不能为空")
         private String earTagNo;
 
-        /** 养殖场名称（设备侧只有名称，由本服务按名称反查 farm） */
-        @NotBlank(message = "养殖场名称不能为空")
-        private String farmName;
-
-        private String breed;
-        private LocalDate birthDate;
-        /** 1公 2母 */
-        private Integer gender;
-        private String penNo;
-        /** 业务来源：自繁/外购-供应商名 */
-        private String origin;
-
-        private String operator;
         private String source;
         private String sourceRef;
         private String rawPayload;

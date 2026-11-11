@@ -27,6 +27,7 @@ export interface SplitNode {
   note?: string
   key?: string     // 对照节点没有库表 id，用后端给的 key 做稳定标识
   count?: number   // 对照分组：未产出的部位数
+  pigBreeds?: string[] // 胴体批次根：批次内生猪的品种（去重），标注在批次号后面
 }
 
 /** 树上允许出现的节点类型（对照节点是「字典提示」，不是业务记录） */
@@ -67,7 +68,7 @@ export function normalizeSplitTree(node: any): SplitNode | null {
   return out
 }
 
-/** 节点主标题：作业节点说「白条 · 编号」，对照分组说缺了几项，其余照实 */
+/** 节点主标题：作业节点说「白条 · 编号」，对照分组说缺了几项，胴体批次根在批次号后标品种，其余照实 */
 export function splitNodeTitle(node: SplitNode): string {
   switch (node.type) {
     case 'SPLIT_JOB':
@@ -80,8 +81,13 @@ export function splitNodeTitle(node: SplitNode): string {
       return node.partName || '未知部位'
     case 'SPLIT':
       return node.productName || node.batchNo || '未知部位'
-    default:
-      return node.batchNo || '未知批次' // CARCASS 根
+    default: {
+      // CARCASS 根：批次号后面标「这批是什么猪」。品种可能不止一种（同批混养），
+      // 逐种列出；养殖侧查不到就不标 —— 品种是展示信息，缺了不拦树，更不许编一个兜底。
+      const base = node.batchNo || '未知批次'
+      const breeds = (node.pigBreeds || []).filter(Boolean)
+      return breeds.length > 0 ? `${base}（${breeds.join('、')}）` : base
+    }
   }
 }
 

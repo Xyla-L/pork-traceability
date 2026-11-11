@@ -10,7 +10,13 @@
 import { USE_MOCK } from './mock'
 import { getDeviceId } from '@/utils/device'
 
-const BASE_URL = import.meta.env.VITE_API_BASE || '/api/v1'
+let BASE_URL = import.meta.env.VITE_API_BASE || '/api/v1'
+
+// #ifdef H5
+// H5 开发态走 vite 代理（vite.config.js 里 /api → 网关）：直连 8080 会撞跨域，
+// 而小程序端不支持相对路径，所以这段只在 H5 生效。
+if (import.meta.env.DEV) BASE_URL = '/api/v1'
+// #endif
 
 const request = (url, options = {}) => {
   return new Promise((resolve, reject) => {

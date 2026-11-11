@@ -1,0 +1,1 @@
+import{r as i}from"./request-BUG2J4wM.js";import"./index-BQcn-L4K.js";const o={getList(t){return i.get("/notification/list",{params:t,skipAuthRedirect:!0})},markRead(t){return i.put(`/notification/${t}/read`)},markAllRead(){return i.put("/notification/read-all")}};export{o as notificationApi};

@@ -7,7 +7,7 @@ import com.pork.breeding.entity.Farm;
 import com.pork.breeding.vo.FarmVO;
 
 public interface FarmService extends IService<Farm> {
-    Page<FarmVO> pageQuery(Long current, Long size, String farmName);
+    Page<FarmVO> pageQuery(Long current, Long size, String farmName, Long scopedFarmId);
     void addFarm(FarmDTO dto);
     void updateFarm(FarmDTO dto);
     FarmVO getDetail(Long id);

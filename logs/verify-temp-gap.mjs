@@ -17,7 +17,9 @@
  *   超了至少看得见，空白是假装有数据。
  *
  *   断言分组：
- *     A. 准备：同一台车的两张运单（T1 发车后用于测温度、T2 留在待发车用于测「未发车不得采温度」）
+ *     A. 准备：**两台车**各一张运单（T1 发车后用于测温度、T2 留在待发车用于测「未发车不得采温度」）
+ *        —— 2026-10-22 起「一车一趟」：一辆车同一时间只能挂一张未完成的运单，
+ *        所以这两个状态不能用同一台车构造（见下面 VEHICLE_T1 / VEHICLE_T2 的说明）
  *     B. 硬前置：未发车运单报温度 → 转人工；温度值缺失 → 拒绝
  *     C. 断档检测：首条 / 正常间隔 / 超长间隔(断档) / 补传历史(不判)
  *     D. 落库事实：sample_interval_seconds 固化、gap_seconds 与 is_gap 与预期一一对应
@@ -73,9 +75,14 @@ if (!token) process.exit(1)
 
 const LOAD_DEVICE = 'LOADER-001'
 const TEMP_DEVICE = 'TEMP-001'
-// ⚠ 用**测试专用车牌**：2026-10-10 起装车口会把同车牌的货并进那张还没发车的运单
-//   （同一趟车继续装），而演示车牌 京A·12345 名下常年挂着待发车运单，用它会被并进去
-const VEHICLE = '京A·T0005'
+// ⚠ 用**测试专用车牌**，且本用例必须用**两台**：
+//   ① 一车一趟（2026-10-22）：一辆车同一时间只能挂一张未完成（待发车/运输中/待签收）的运单。
+//      本用例要同时存在「运输中」和「待发车」两张单，同车已经被业务规则挡住 —— 硬用同车，
+//      第二张单会被拒（车牌名下还有未完成的运单）。
+//   ② 不借演示车牌 京A·12345（名下常年挂业务运单）；也不借 京A·T0005
+//      （verify-temp-auto.mjs 在用，两个脚本会互相踩）。
+const VEHICLE_T1 = '京A·T0006'   // 发车后采温度（在途监控）
+const VEHICLE_T2 = '京A·T0007'   // 一直停在待发车，验证「未发车不得采温度」
 const ST_MANUAL = 1
 const ST_ACCEPTED = 2
 const ST_REJECTED = 3
@@ -84,13 +91,13 @@ const planIds = []
 const transportIds = []
 const stagingIds = []
 
-/** 装车口上报：先把「待发车」的运单造出来 */
-async function loadReport(batchNo) {
+/** 装车口上报：先把「待发车」的运单造出来（车牌必须与计划一致，否则现场值与计划值不一致会转人工） */
+async function loadReport(batchNo, vehicleNo) {
   const res = await api('/ingest/demo/report', {
     method: 'POST', token,
     // 装车口不读卡（现场只在上车那一刻刷一次卡），所以这里不带卡号：
     // 司机由计划那侧带上（见上面的建计划）
-    body: { deviceNo: LOAD_DEVICE, data: { loadTime: tick(), vehicleNo: VEHICLE, batchNos: [batchNo] } },
+    body: { deviceNo: LOAD_DEVICE, data: { loadTime: tick(), vehicleNo, batchNos: [batchNo] } },
   })
   const id = res?.data?.stagingId
   if (id) stagingIds.push(id)
@@ -139,12 +146,12 @@ check('机构树里能取到门店', stores.length > 0, `门店数=${stores.leng
 if (!stores.length) process.exit(1)
 const store = stores[0]
 
-async function createPlan(batch, idx) {
+async function createPlan(batch, idx, vehicleNo) {
   const res = await api('/distribution/delivery-plans', {
     method: 'POST', token,
     body: {
       planDate: today(), storeId: store.id, storeName: store.name, splitBatchIds: [batch.id],
-      vehicleNo: VEHICLE, vehicleType: '冷藏车', refrigeration: '机械制冷',
+      vehicleNo, vehicleType: '冷藏车', refrigeration: '机械制冷',
       driverName: '张师傅', driverPhone: '13700000002',
       origin: null, plannedDepart: null, plannedArrive: null, remark: `断档回归-P${idx}`,
     },
@@ -154,40 +161,43 @@ async function createPlan(batch, idx) {
   return plan
 }
 
-const pA = await createPlan(b1, 1)
-const pB = await createPlan(b2, 2)
-check('★ 准备：两张计划（各 1 批货、同一台车）', !!pA?.id && !!pB?.id, `${pA?.planNo} / ${pB?.planNo}`)
+const pA = await createPlan(b1, 1, VEHICLE_T1)
+const pB = await createPlan(b2, 2, VEHICLE_T2)
+check('★ 准备：两张计划（各 1 批货、分属两台车 —— 一车一趟，同车挂不了两张未完成的运单）',
+  !!pA?.id && !!pB?.id, `${pA?.planNo} / ${pB?.planNo}`)
 if (!pA?.id || !pB?.id) { console.log('计划建不出来，退出'); process.exit(1) }
 
 /** 建出「待发车」运单并返回 { id, transportNo } */
-async function buildPending(batch) {
-  const res = await loadReport(batch.batchNo)
+async function buildPending(batch, vehicleNo) {
+  const res = await loadReport(batch.batchNo, vehicleNo)
   if (statusOf(res) !== ST_ACCEPTED) {
-    check(`★ 准备：装车口为批次 ${batch.batchNo} 建出待发车运单`, false, brief(res))
+    check(`★ 准备：装车口为批次 ${batch.batchNo}（${vehicleNo}）建出待发车运单`, false, brief(res))
     return null
   }
   const id = targetIdOf(res)
   if (id) transportIds.push(id)
   const d = await api(`/distribution/transports/${id}`, { token })
-  return { id, transportNo: d?.data?.transportNo }
+  return { id, transportNo: d?.data?.transportNo, vehicleNo }
 }
 
-const t1 = await buildPending(b1)
+const t1 = await buildPending(b1, VEHICLE_T1)
 if (!t1?.id) { console.log('T1 建不出来，退出'); process.exit(1) }
 
 // T1 先发车 → 运输中：这是温度采集的前置状态。
-// ⚠ 顺序在本轮（2026-10-10）被刻意调换过：装车口现在会把**同车牌**的货并进那张
-//   「还没发车」的运单（同一趟车继续装），若先建 T2 再发车，T2 会被并进 T1 ——
-//   脚本要的「一辆待发车 + 一辆运输中」就只剩一辆了（而且两者的 transportNo 相同，
-//   还会让下面 notIntransit 与 r1 的报文变成同一份、被判重）。所以先让 T1 离开「待发车」。
+// 两台车互不相干，所以这里不再有 2026-10-10 那会儿「同车建单会被并进上一张」的顾虑；
+// 但顺序仍保持「先发车、再建第二张」，读起来就是现场顺序：一辆车装满走了，另一辆还在装。
 await api(`/distribution/transports/${t1.id}/depart`, { method: 'PUT', token })
 const t1After = await api(`/distribution/transports/${t1.id}`, { token })
 check('★ T1 发车 → 运输中(2)（温度采集的前置状态）', t1After?.data?.status === 2, `status=${t1After?.data?.status}`)
 
-// 同一台车的第二张单：T1 已经发走，所以这次不会被并进 T1
-const t2 = await buildPending(b2)
-check('★ 准备：同车两张运单（T1 运输中用于测温度、T2 仍待发车用于测「未发车不得采温度」）',
-  !!t2?.id && t2.id !== t1.id, `T1=${t1?.transportNo} T2=${t2?.transportNo}`)
+// 另一台车的第二张单：留在待发车，用来验证「未发车不得采温度」
+const t2 = await buildPending(b2, VEHICLE_T2)
+// 车牌取库里的实际值，不用脚本里的常量 —— 断言要盯住「两张单确实挂在不同车上」这件事本身
+const t2Detail = t2?.id ? (await api(`/distribution/transports/${t2.id}`, { token }))?.data : null
+check('★ 准备：两台车各一张运单（T1 运输中用于测温度、T2 待发车用于测「未发车不得采温度」）',
+  !!t2?.id && t2.id !== t1.id
+    && t1After?.data?.vehicleNo === VEHICLE_T1 && t2Detail?.vehicleNo === VEHICLE_T2,
+  `T1=${t1?.transportNo}(${t1After?.data?.vehicleNo}) T2=${t2?.transportNo}(${t2Detail?.vehicleNo})`)
 if (!t2?.id || t2.id === t1.id) { console.log('T2 建不出来（或被并进了 T1），退出'); process.exit(1) }
 
 // ── B. 硬前置 ──

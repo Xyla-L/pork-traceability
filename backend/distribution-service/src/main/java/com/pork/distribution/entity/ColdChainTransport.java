@@ -84,12 +84,48 @@ public class ColdChainTransport {
     /** 已签收站点数（口径同上，取 {@code transport_stop.status = 2} 的行数） */
     @TableField(exist = false)
     private Integer receivedStopCount;
+    /** 已拒收站点数（口径同上，取 {@code transport_stop.status = 3} 的行数）：冷链异常货物的正式出口 */
+    @TableField(exist = false)
+    private Integer rejectedStopCount;
+    /**
+     * 本单「已到达但未签收」的站点数。
+     * <p>
+     * 批量签收要回答一个很实际的问题：这一单点下去会签哪家店？
+     * 0 站 = 车没到或已签完；1 站 = 可以批量签；超过 1 站 = 有歧义，得回单行逐站确认。
+     * 所以列表要能显示这个数，而不是等提交后才在回执里报错。
+     */
+    @TableField(exist = false)
+    private Integer signableStopCount;
+    /** 批量签收会落到的门店（站点数 > 1 时为空：有歧义不替人猜） */
+    @TableField(exist = false)
+    private Long signableStoreId;
+    @TableField(exist = false)
+    private String signableStoreName;
     /** 数据来源 MANUAL=人工建单 / PLAN=计划生成 / DEVICE=装车口自动生成 */
     private String source;
     /** 来源设备号（装车口自动生成记设备编号，如 LOADER-001；发车终端如 DEPART-001） */
     private String sourceRef;
     /** 设备原始报文（装车口上报的完整报文，供逐字段核对） */
     private String rawPayload;
+    /** 运单段落 NORMAL=正常配送 / RETURN=取回段(门店→冷链中心) / DISPOSAL=回运段(冷链中心→无害化处理中心) */
+    private String transportKind;
+    /** 收货方机构 id：取回段=冷链中心 / 回运段=无害化处理中心；正常配送为空 */
+    private Long receiverOrgId;
+    /** 取回入库确认人（冷链中心登录用户实名；确认后货物进入隔离、可被回运段挑走） */
+    private String intakeBy;
+    /** 回运入库确认时刻 */
+    private LocalDateTime intakeTime;
+
+    /** 回运装车扫码时刻（专用扫码枪上报；为空 = 未扫码确认，不阻塞发车，只在详情里标出） */
+    private LocalDateTime loadScanTime;
+
+    /** 回运装车扫码设备编号（如 RETURN-SCAN-001） */
+    private String loadScanDevice;
+
+    /** 扫码核对摘要：命中几件、扫到但不属于本车的货（转人工时的依据） */
+    private String loadScanNote;
+    /** 操作机构（sys_org.id）：记录归属的屠宰场；NULL=平台操作/未知，不猜。只埋点暂不过滤。 */
+    private Long orgId;
     /**
      * 本次操作是「把货追加进一张还没发车的运单」而不是新建（<b>不是表里的列</b>）。
      * <p>

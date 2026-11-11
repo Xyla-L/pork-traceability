@@ -96,21 +96,25 @@ const stamp = Date.now()
 const batchX = `B-RB-${stamp}-X`
 const batchY = `B-RB-${stamp}-Y`
 const batchZ = `B-RB-${stamp}-Z`
-const cleanup = { pigs: [], applies: [], entries: [], inspections: [], stamps: [], carcassBatches: [], tests: [] }
+const cleanup = { batches: [], pigs: [], applies: [], entries: [], inspections: [], stamps: [], carcassBatches: [], tests: [] }
 
 const farms = await api('/breeding/farms?current=1&size=1', { token })
-const farmName = farms?.data?.records?.[0]?.farmName
-check('取到一个已登记养殖场', !!farmName, `farmName=${farmName}`)
+const farmId = farms?.data?.records?.[0]?.id
+check('取到一个已登记养殖场', !!farmId, `farmId=${farmId}`)
 
 /** 造一头能入场的猪：建档 → 出证 → 出栏称重登记 → 审批通过 → 入场查验 */
 async function setupPig(suffix, batchNo) {
   const earTagNo = `ET-RB-${stamp}-${suffix}`
   const certNo = `QC-RB-${stamp}-${suffix}`
 
-  const tag = track(await report(TAG_DEVICE, {
-    earTagNo, farmName, birthDate: dateText(-90), breed: '三元杂', gender: 1, penNo: '回归验证舍', origin: '自繁',
-  }))
-  const pigId = tag?.data?.targetId
+  // 2026-10-25 起档案按批次登记：测试猪登记为单头批次（耳标区间 = 该猪自身）
+  const created = await api('/breeding/pigs/batches', {
+    method: 'POST', token,
+    body: { batchNo: `PB-RB-${stamp}-${suffix}`, farmId, earTagStart: earTagNo, earTagEnd: earTagNo, breed: '三元杂', entryDate: dateText(-90), source: '自繁' },
+  })
+  if (created?.data) cleanup.batches.push(created.data)
+  const pigPage = await api(`/breeding/pigs?earTagNo=${encodeURIComponent(earTagNo)}&current=1&size=1`, { token })
+  const pigId = pigPage?.data?.records?.[0]?.id
   if (pigId) cleanup.pigs.push(pigId)
 
   track(await report(CERT_DEVICE, {
@@ -344,6 +348,7 @@ console.log('\n== 6) 来源策略表里「瘦肉精检测」的说明已带上�
 
 console.log(`\n===== 结果：${pass} 项通过，${fail} 项失败 =====`)
 console.log('清理用 —— 接入流水 ID：' + stagingIds.join(','))
+console.log('清理用 —— 临时批次 ID：' + cleanup.batches.join(','))
 console.log('清理用 —— 临时猪 ID：' + cleanup.pigs.join(','))
 console.log('清理用 —— 出栏申报 ID：' + cleanup.applies.join(','))
 console.log('清理用 —— 入场查验 ID：' + cleanup.entries.join(','))

@@ -125,9 +125,21 @@ check('未产出叶子数 = 作业节点切出数与字典的差（12 项：字�
   `页面 ${(missingGroup?.children || []).length} / 接口 ${rawMissing.length}`)
 
 console.log('\n== 5) 标题 / 编号 / 重量的口径 ==')
-check('根节点标题就是批次号（编号位不再重复一遍）',
-  splitNodeTitle(pageTree) === pageTree.batchNo && splitNodeNo(pageTree) === '',
-  `${splitNodeTitle(pageTree)} / no="${splitNodeNo(pageTree)}"`)
+// 根节点标题 = 批次号，品种标注在批次号后面（2026-10-22：CB…（品种））。
+// 品种来自养殖侧档案，属于「展示信息」：接口给了就按「批次号（品种1、品种2）」渲染，
+// 查不到（养殖侧不可用/档案没填）就退回纯批次号 —— 不许编一个兜底品种。
+const rawRoot = rawTree?.data || rawTree || {}
+check('接口根节点带 pigBreeds（数组，品种由养殖侧带出）',
+  Array.isArray(rawRoot.pigBreeds), `pigBreeds=${JSON.stringify(rawRoot.pigBreeds)}`)
+const expectRootTitle = Array.isArray(rawRoot.pigBreeds) && rawRoot.pigBreeds.filter(Boolean).length > 0
+  ? `${pageTree.batchNo}（${rawRoot.pigBreeds.filter(Boolean).join('、')}）`
+  : pageTree.batchNo
+check('根节点标题 = 批次号（有品种则标在批次号后：CB…（品种）），编号位不再重复一遍',
+  splitNodeTitle(pageTree) === expectRootTitle && splitNodeNo(pageTree) === '' && splitNodeTitle(pageTree).startsWith(pageTree.batchNo),
+  `${splitNodeTitle(pageTree)} / 期望 ${expectRootTitle} / no="${splitNodeNo(pageTree)}"`)
+check('页面树根节点保留了 pigBreeds（归一化只剥对账字段，不剥品种）',
+  JSON.stringify(pageTree.pigBreeds || []) === JSON.stringify((rawRoot.pigBreeds || []).filter(Boolean)),
+  `页面 ${JSON.stringify(pageTree.pigBreeds)} / 接口 ${JSON.stringify(rawRoot.pigBreeds)}`)
 check('部位节点标题是部位名、编号是部位号（SP 开头）',
   produced.every((n) => splitNodeTitle(n) && splitNodeNo(n).startsWith('SP')),
   JSON.stringify(produced.map((n) => `${splitNodeTitle(n)}(${splitNodeNo(n)})`)))

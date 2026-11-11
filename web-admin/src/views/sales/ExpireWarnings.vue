@@ -2,6 +2,7 @@
   <div class="page-container">
     <!-- 搜索与统计 -->
     <div class="search-panel">
+      <StoreScopeTag />
       <el-form :model="searchForm" inline>
         <el-form-item label="产品名称">
           <el-input v-model="searchForm.productName" placeholder="请输入" clearable @keyup.enter="handleSearch" />
@@ -115,6 +116,7 @@
 import { ref, reactive, h, onMounted } from 'vue'
 import { Search, Refresh } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import StoreScopeTag from '@/components/common/StoreScopeTag.vue'
 import { useRouter } from 'vue-router'
 import { salesApi } from '@/api/modules/sales'
 

@@ -21,26 +21,28 @@
       <!-- 安心购面板 -->
       <SafeBuyPanel
         :verified="blockchainVerified"
+        :on-chain="blockchainOnChain"
+        :count="blockchainCount"
         :certs="safeBuyCerts"
         :reports="safeBuyReports"
       />
 
       <!-- 安心购详情入口 -->
       <view class="safe-buy-entry" @click="handleSafeBuy">
-        <text class="entry-text">查看完整安心购详情（证章画廊 / 检测报告 / 链上时间轴）</text>
+        <text class="entry-text">查看完整安心购详情（证章画廊 / 检测报告 / 存证时间轴）</text>
         <text class="entry-arrow">›</text>
       </view>
 
       <!-- 区块链记录 -->
       <view class="card">
-        <view class="section-title">区块链存证</view>
+        <view class="section-title">{{ blockchainOnChain ? '区块链存证' : '存证记录' }}</view>
         <view class="chain-count">
           共 {{ normalizedChain.blockchain.recordCount }} 条存证记录
         </view>
         <view v-for="(rec, idx) in normalizedChain.blockchain.records" :key="idx" class="chain-item">
           <text class="chain-type">{{ rec.type }}</text>
-          <text class="chain-tx">{{ rec.txHash }}</text>
-          <text class="chain-block">区块 {{ rec.blockNumber }}</text>
+          <text class="chain-tx">{{ shortHash(rec.txHash) }}</text>
+          <text class="chain-block">{{ blockchainOnChain ? '区块' : '序号' }} {{ rec.blockNumber }}</text>
         </view>
       </view>
 
@@ -48,9 +50,9 @@
       <view class="bottom-space"></view>
     </view>
 
-    <!-- 空/错误状态 -->
+    <!-- 空/错误状态：后端的人话要显示出来，别一律说「找不到」 -->
     <view v-else class="card">
-      <EmptyState icon="" text="未找到该产品的溯源信息" show-retry @retry="load" />
+      <EmptyState icon="" :text="errorText || '未找到该产品的溯源信息'" show-retry @retry="load" />
     </view>
 
     <!-- 底部悬浮操作栏 -->
@@ -59,7 +61,7 @@
         <text>举报</text>
       </view>
       <view class="bar-verify" @click="handleVerify">
-        <text>一键区块链验真</text>
+        <text>{{ blockchainOnChain ? '一键区块链验真' : '一键存证核对' }}</text>
       </view>
     </view>
   </view>
@@ -74,15 +76,26 @@ import ProductInfoCard from '@/components/ProductInfoCard.vue'
 import TraceTimeline from '@/components/TraceTimeline.vue'
 import SafeBuyPanel from '@/components/SafeBuyPanel.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import { bizTypeLabel, shortHash } from '@/utils/bizType'
 
 const productStore = useProductStore()
 const loading = ref(false)
 const qrCode = ref('')
 const keyword = ref('')
 const safeBuy = ref(null)
+const errorText = ref('')
 
 const scanResult = computed(() => productStore.scanResult)
 const blockchainVerified = computed(() => safeBuy.value?.blockchain?.verified ?? scanResult.value?.verification?.verified ?? false)
+// 后端自报载体：本地存证模式下 verified 只代表平台内哈希一致，不能显示成「区块链已验证」
+const blockchainOnChain = computed(() => (safeBuy.value?.blockchain?.onChain ?? scanResult.value?.verification?.onChain) === true)
+// 存证条数：用于区分「暂无存证」与「核对未通过」，不能都显示成后者
+const blockchainCount = computed(() => {
+  const fromSafeBuy = safeBuy.value?.blockchain?.recordCount
+  if (typeof fromSafeBuy === 'number') return fromSafeBuy
+  const records = scanResult.value?.traceChain?.blockchain
+  return Array.isArray(records) ? records.length : null
+})
 const safeBuyCerts = computed(() => safeBuy.value?.certChain || [])
 const safeBuyReports = computed(() => safeBuy.value?.reports || [])
 
@@ -109,6 +122,7 @@ onLoad(async (options) => {
 
 async function load() {
   loading.value = true
+  errorText.value = ''
   try {
     if (qrCode.value) {
       // 扫码 / 二维码搜索
@@ -126,27 +140,15 @@ async function load() {
       addRecentScan({ qrCode: keyword.value, name: productStore.scanResult?.product?.name, type: 'batch' })
       safeBuy.value = null
     }
+  } catch (e) {
+    // 已作废、已售出、码不存在……后端给的是人话，直接显示比「找不到」有用
+    errorText.value = e?.message || '未找到该产品的溯源信息'
   } finally {
     loading.value = false
   }
 }
 
-// 区块链存证类型 → 中文展示名（未收录的类型原样展示）
-const BIZ_TYPE_LABEL = {
-  QUARANTINE_CERT: '检疫证明',
-  PIG_INDIVIDUAL: '生猪档案',
-  VACCINE_RECORD: '疫苗记录',
-  ENTRY_INSPECTION: '入场查验',
-  SLAUGHTER_INSPECT: '屠宰检验',
-  RACTOPAMINE_TEST: '瘦肉精检测',
-  CARCASS_STAMP: '检疫盖章',
-  SPLIT_BATCH: '批次分割',
-  COLD_CHAIN_TRANSPORT: '冷链运输',
-  STORE_RECEIPT: '门店签收',
-  RETAIL_SALE: '销售激活',
-  RECALL_ORDER: '产品召回',
-  CARCASS_BATCH: '屠宰分割',
-}
+// 存证类型中文名与 web 端共用同一份口径（见 utils/bizType.js）
 
 /**
  * 把后端 traceChain（upstream/downstream/breeding/slaughter/blockchain）
@@ -219,7 +221,7 @@ function normalizeTraceChain(tc) {
   const blockchain = {
     recordCount: chainArr.length,
     records: chainArr.map((r) => ({
-      type: BIZ_TYPE_LABEL[r.bizType] || r.bizType,
+      type: bizTypeLabel(r.bizType),
       txHash: r.txHash,
       blockNumber: r.blockNumber,
     })),

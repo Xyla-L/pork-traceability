@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -134,7 +135,7 @@ public final class DistributionRequests {
      * 刷卡/人脸=本人确认，车牌反查=推定，人工录入=非本人确认。
      */
     public record LoadSite(String vehicleNo, String vehicleType, String driverName, String driverPhone,
-                           String driverSource, String sourceRef, String rawPayload) { }
+                           String driverSource, String sourceRef, String rawPayload, Long orgId) { }
 
     public record TemperatureCreate(@NotNull BigDecimal temperature, String recorder,
                                     BigDecimal tempRangeMin, BigDecimal tempRangeMax, String recordMethod) { }
@@ -143,4 +144,66 @@ public final class DistributionRequests {
                                 @NotBlank String storeName, @NotBlank String receiver, String receiverPhone,
                                 Integer qtyCheck, String qtyDiffNote, Integer tempCheck, BigDecimal tempValue,
                                 Integer packageIntact, List<String> receiptPhoto, String eSignature) { }
+
+    /**
+     * 批量签收：一次勾选多张「待签收」运单，按统一核验结果逐单签收。
+     * <p>
+     * 门店不由前端指定 —— 每张运单签的是它自己「已到达且未签收」的那一站；
+     * 零售商的站点边界由服务端按令牌归属收敛（见 OrgScope），请求里给不了别家门店。
+     * 一回最多 50 单，是「一次卸货作业的合理上限」，不是性能限制。
+     */
+    public record ReceiptBatch(@NotEmpty(message = "请选择要签收的运单") @Size(max = 50, message = "一次最多签收 50 单")
+                               List<Long> transportIds,
+                               @NotBlank(message = "请输入签收人姓名") String receiver, String receiverPhone,
+                               Integer qtyCheck, String qtyDiffNote, Integer tempCheck, BigDecimal tempValue,
+                               Integer packageIntact, List<String> receiptPhoto, String eSignature) { }
+
+    /**
+     * 门店拒收：冷链货物有异常时门店验货后拒绝接收。
+     * <p>
+     * 理由必填（随拒收事件上链留档）；storeId 供管理端代登记时指明门店，
+     * 零售商调用时服务端按令牌门店边界覆写 —— 门店只能拒自己那站的货。
+     */
+    public record StopReject(Long storeId, @NotBlank(message = "拒收必须填写理由") String reason) { }
+
+    /**
+     * 拒收后的处置登记：货去哪由人决定，系统只记事实（退回供应商/就地销毁/折价接收）。
+     */
+    public record StopDisposal(@NotBlank(message = "请选择处置方式") String disposalType, String note) { }
+
+    // ==================== 拒收回运链（2026-11-02）====================
+
+    /**
+     * 回运/处置计划生成：可选指定每辆车的司机；不指定则系统自动选车（按核定载重贪心装箱），
+     * 司机留空 —— 发车闸门要求补录司机（或司机在车载终端刷卡发车）。
+     */
+    public record LegPlanGenerate(java.util.List<VehicleAssign> vehicles) {
+        public record VehicleAssign(@NotBlank String vehicleNo, String driverName, String driverPhone) { }
+    }
+
+    // ==================== 召回收运（2026-11-04）====================
+
+    /**
+     * 召回登记（销售服务 → 配送服务，内部接口）：把召回单涉及的「门店 × 批次」写进待收运池。
+     * <p>
+     * 传的是召回单的事实（门店、批次、涉及条数与货重），不传车牌/司机 ——
+     * 收运运单是冷链中心排车时的事，召回发起时还没有车。
+     */
+    public record RecallCollectRegister(@NotNull Long recallId,
+                                        @NotBlank String recallNo,
+                                        String reason,
+                                        @NotEmpty(message = "召回范围为空") java.util.List<RecallCollectItem> items) {
+        public record RecallCollectItem(@NotNull Long storeId, String storeName,
+                                        @NotNull Long splitBatchId, java.math.BigDecimal weightKg,
+                                        Integer saleCount) { }
+    }
+
+    /**
+     * 生成收运运单（冷链中心页面）：把待收运池里的召回货按门店分站排成一张运单，
+     * 路线是「冷链中心 → 门店1 … 门店N → 无害化处理中心」。
+     * <p>
+     * 车牌必填：收运是一趟真实的车，谁去收必须落到具体车；司机可留空，发车由车载终端刷卡落人。
+     */
+    public record RecallTransportGenerate(@NotBlank(message = "请选择收运车辆") String vehicleNo,
+                                          String driverName, String driverPhone) { }
 }

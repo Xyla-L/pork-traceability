@@ -37,6 +37,12 @@ public class PigIndividual {
     private Long farmId;
 
     /**
+     * 所属生猪批次ID，关联 pig_batch 表。
+     * 个体行是批次成员：由批次登记按耳标区间自动展开生成，不再有人工逐头建档入口。
+     */
+    private Long batchId;
+
+    /**
      * 品种：长白猪/大白猪/杜洛克/二元杂/三元杂
      */
     private String breed;

@@ -32,7 +32,9 @@
 
 ## 五、环节前置与三道判定器
 - **ENTRY 两条硬前提**（force 也绕不过）：出栏审批已通过 + 生猪状态 ∈{1在养,2已出栏}（3已屠宰/4异常为终态，一猪只进厂一次）。顺序：审批→状态→时间/pigId→幂等→落库。唯一来源 `GET /breeding/internal/applies/by-pig?pigId=` 与 `/breeding/internal/pigs/{id}/state`；**查不到/不可用一律转人工**（绝不默认正常）；已驳回不自动复活。
-- 判定器唯一在 `slaughter-service/support/`：`RactopamineGuard`/`PreSlaughterGate`/`StampGuard`。**禁止各写一份。**
+- 判定器分布（**禁止各写一份**）：屠宰侧 `slaughter-service/support/` = `RactopamineGuard`/`PreSlaughterGate`/`StampGuard`；养殖侧 `breeding-service/support/` = `ImmunityGate`（产地检疫的免疫前置，人工出证与设备扫码两个入口共用）；冷链温度唯一口径仍是 `TemperatureRecorder`。
+- **「数据不成立」类硬拦 vs「条件没到位」转人工**（判据：下游是否依赖 / 法规是否明文前置 / 错了能不能回退）。2026-10-26 补齐的四条全部 `rejected`（不进人工队列，人工一放行就把矛盾写进链）：`QUARANTINE` 证面时间倒挂（有效期早于签发日）、签发时间在未来；`VACCINE` 非「在养」（已出栏/已屠宰）、注射时间在未来；`EXIT_APPLY` 称重时间在未来；`TEMPERATURE` 记录时间在未来。**检疫出证必须有有效免疫档案**（`ImmunityGate`：一条都没有 → 拦；全部晚于出证时间，5 分钟容差 → 拦；不按病种匹配，疫苗名是自由文本）。
+- **时间闸门只卡「未来」，不往回卡**：补传历史数据、装车前预冷都是合法能力，拿时间往回卡（早于发车/早于建单）一定误伤；「这条温度属于哪一趟」由报文 `transportNo` 归属，不靠时间猜。`verify-temp-gap`（26 条断档曲线全量补传）就是这条边界的回归。
 - **瘦肉精**：批批检，阳性整批受控；「未检不得屠宰」= 该猪或其所属批次有「出结果」记录；所属批次 = 报文 `batchNo` ∪ 入场查验批次 ∪ 检测记录 `batch_no`（别只信上报批次号）。只约束宰后类(2,3)；宰前不受限但阳性不得判「合格」。阻断一律 `rejected`（force 不放行），阳性记录照常入账留证。三道关卡：`ingestInspection`（幂等前）、`ingestStamp`、`DistributionServiceImpl.createBatch/updateBatch`（跨服务 `/slaughter/internal/ractopamine-blocked`，核不到抛 `REMOTE_CALL_ERROR`）。
 - **宰后口径**：`inspect_type` 2=宰后检验 与 3=同步检验**同一环节** → 一律 `IN (2,3)`（`POST_SLAUGHTER_TYPES`）；展示 3→「宰后检验（同步）」。`PreSlaughterGate`：有合格宰前→放行；有宰前但无一条合格→「结论为不合格」；一条都没有→「尚未做宰前检查」。**盖章收紧**：`ingestStamp` 必须有宰后类 `(2,3)` 且 `result=1`。顺序：瘦肉精→宰前门槛→幂等→落库。
 - 回归 `verify-ractopamine-block` / `verify-preslaughter-gate` / `verify-entry-gate` / `verify-exit-apply-device`（.mjs 各带 `-db.sh`）。
@@ -451,3 +453,448 @@
 - **设备不能自作主张的字段**：`recorder`/`source=DEVICE`/`sourceRef`/`rawPayload`/`sampleIntervalSeconds`（台账带）/`tempRangeMin|Max`（服务配置）由系统补；反之 `operator`/`inspector`/`veterinary`/`receiver` 人名字段设备必须给，**系统不许用设备名兜底**（缺 → 转人工）。
 - **想真正新增/改字段** = 改后端（channel handler + 业务服务 DTO）后重建部署，**契约在服务端手里**，设备多加字段不会自动生效。可配置项：温度允许区间/最小间隔（`INGEST_TEMP_MIN` 等）、探头额定间隔（台账 `sample_interval_seconds`）、`ingest.load.merge-window-minutes`、`ingest.carcass-batch.max-pigs`、`ingest.split-snapshot.retention`。
 - **单条报文保护**：上限 64KB（超限在落档前 400 返回）、设备时间超前 >10 分钟视为时钟错误、通道与台账登记不一致直接参数错误（同组车载终端除外）。
+
+## 十八、重复上报改为「提示已存在 + 拒绝入账」（2026-10-19 10:25–10:55）
+
+**用户要求**：设备上报不应重复；重复的信息要提示「该信息已存在」，并拒绝入账。
+
+**旧行为的坑**：重复命中走 `toResponse(exists, true)`，`accepted` 照抄**原记录**的值 → 重推一条已入账数据，回执照样「已入账 / accepted=true」，前端还显示「已写入，记录编号 xxx」——重推一次看着像又写了一条。
+
+**新语义（三层都改）**
+- `IngestStatus.DUPLICATED = 5`（label「重复上报」）。**回执层状态**，队列里永远不会出现 5——重复上报不新建流水（否则重推几次队列就被刷满），原记录原样不动。
+- `DeviceIngestService.duplicateResponse(original, how)`：`accepted=false`、`duplicate=true`、`status=5`、`originalStatus/originalStatusLabel` 回带原状态、`targetTable/targetId` 指回原业务记录、`discardLocalCopy=true`（给设备端的安全信号：别因为看到「拒绝」就无限重推，数据已在系统里，可删本地缓存；只有 status=3 才是「改完再报」）、message =「该信息已存在（<how>，原上报编号 #id，当前状态：…），本次拒绝入账」。三处命中统一走它：同 bizKey / 同报文兜底 / 并发 `DuplicateKeyException`。
+- `toResponse` 去掉恒 false 的 duplicate 参数。
+- Controller 回执语义注释补 `status=5`。
+- 前端：`INGEST_STATUS_LABELS/TAGS` 补 5（warning 色）；回执区重复时显示「该信息已存在，本次拒绝入账（未写入任何业务数据）」，**不再显示「已写入」**；toast 提示「该信息已存在，本次拒绝入账」；`demoReportLocked` 对重复同样置灰；上报编号 placeholder 改为「填同一个值再报一次，会被判重复上报并拒绝入账」。
+
+**保留的放行**：第二道兜底仍只覆盖 待处理/待人工/已入账 三态——「已拒绝/已降采样」不判重复，外部条件补上后重发同报文要能过（verify-duplicate-report 用例 4 仍验证这一点）。
+
+**回归**
+- 新增 `logs/verify-duplicate-reject.mjs` + `-db.sh`（自驱）：同 bizKey 重推 / 换号同报文 / 已入账重推 → 全部 status=5、accepted=false、指回原记录、原状态如实回带、discardLocalCopy=true；报文改一个字段 → 正常新建（防误伤）；重复不新增队列行、不写业务表；落库核验（只建 2 条真新数据行、全库无 status=5、(device_no,biz_key) 无重复）+ 清理回基线。HTTP 21 断言 + 落库 7 断言全绿。
+- `verify-batch-autogroup.mjs` 第 6 节断言改为 `accepted=false && status=5 && targetId=原批次`；`verify-duplicate-report.mjs` 补 status=5 断言。42/0、17 项全绿。
+- `verify-reconcile.mjs` 生猪基线 27 → 29（307/308 是 2026-10-12 15:30/15:55 界面演示补建的，上次更新基线时还没产生）。
+
+**部署**：15 模块离线编译通过 → `ingest-service` 镜像 `--no-cache` 重建 + `--force-recreate`（healthy）；前端两次 build（第二次补 placeholder）。
+
+**踩坑记录**：直接跑 `verify-batch-autogroup.mjs` 会留残留，且**手动清理时必须连 `db_common.blockchain_record` 一起删**——否则批次号当日复用后，封批上链命中 `batchNo:action:pigId` 幂等少写一条，`-db.sh` 的「上链 3 条」断言会红（本次实际踩到，清掉 5 条残留后 42/0 全绿）。正确入口始终是 `-db.sh`。
+
+## 十九、AI Agent 接入方案（2026-10-19 11:05，纯答疑，未改代码）
+
+用户问「给工作台加 agent 分析数据、给管理员角色加 agent 协助工作，代码怎么改」。
+
+**现状核实**
+- 全仓库**无任何大模型/Agent 集成**（grep openai/llm/agent 只命中 user-agent 之类）。
+- 工作台：`web-admin/src/views/dashboard/DashboardView.vue`（489 行，4 图 + 2 表）；数据唯一来源 `GET /api/v1/dashboard/overview` → `trace-service` 的 `DashboardService.overview()`，已聚合 statCards / sankey / 两个 distribution / chainTxTrend / recentWarnings / todoList —— **可直接作为 agent 的事实上下文，不需要模型自己算数**。
+- 权限：JWT 由网关解析后透传 `X-User-Id / X-User-Role / X-User-Name`（`AuthGlobalFilter`）；**除 auth-service 的 `.requestMatchers("/system/**").hasRole("ADMIN")` 外，各业务服务没有统一的服务级角色注解**；前端权限靠 `router meta.roles` + `menuConfig.ts` + `authStore.hasAnyRole`。
+- 角色表 `sys_role`/`sys_permission` 齐全（6 角色 9 权限码）。
+- 服务间调用惯例：各服务自建 `*RemoteClient`（Spring `RestClient` + `services.*-url` 配置），如 `trace/client/TraceRemoteClient.java`。
+- 基础设施已有 Redis（会话/限流）、RabbitMQ（异步）、Nacos（注册）、`backend/Dockerfile` 用 `ARG SERVICE` 一套多服务。
+
+**推荐方案（要点，供后续落地）**
+1. **新建 `ai-service`**，不把 LLM 塞 trace-service、更不前端直连。网关加 `Path=/api/v1/ai/** → lb://ai-service`；**不进 PUBLIC_PATHS**，自动 JWT 鉴权并带 X-User-* 头。`backend/pom.xml` 加 module、`Dockerfile` 加 `COPY ai-service`、`docker-compose.yml` 照 trace-service 模板（`LLM_BASE_URL/LLM_API_KEY/LLM_MODEL` 走 .env，不进镜像）。
+2. **两条链路共用一套内核**：工作台分析＝固定 prompt + `overview()` 数据（建议非流式 + 缓存 5 分钟）；管理员助手＝多轮 + 工具调用（SSE 流式）。
+3. **工具只调各服务既有接口**（照 RemoteClient 写），不直连业务库 —— 与「接入层不碰业务库」同一口径。
+4. **权限 = 登录人权限子集**：工具转发原始 X-User-* 头由下游判权；ADMIN 专属工具在 ai-service 内部读 `X-User-Role` 判断（**不改 common-web**，避免踩「改 common 须重建全部依赖服务」红线）。
+5. **写操作必须过确认闸门**：agent 只产 `ai_action_audit(status=pending)`，管理员点确认 → 以**本人身份 + 实名**（`ManualOperator.hasRealName()`）执行 → 回填结果并上链（bizType 如 `AI_ACTION`）。模型不得直接落库。
+6. 前端：新增 `api/modules/ai.ts`；`components/ai/AiAnalysisPanel.vue`（工作台抽屉）、`components/ai/AiAssistantDrawer.vue`（AdminLayout 全局）；`views/system/AgentConsole.vue` + 路由/menuConfig 加 ADMIN 菜单。**SSE 不能用 axios 拦截器**（假定 `{code,data}` 信封），用 fetch + ReadableStream 或 `@microsoft/fetch-event-source`，token 取 pinia。
+7. 表：`ai_conversation` / `ai_message` / `ai_action_audit`（utf8mb4 + 幂等迁移，编号接 42）。
+8. 中文透传头仍须 `OperatorHeader.encode/decode`（本仓红线）。
+
+## 二十、工作台按角色分视图（2026-10-19 11:20–12:00）
+
+**需求**：不同角色看到的工作台不一样（例：零售商看销量）。要点是**后端按角色裁剪**，不是前端过滤。
+
+**实现**
+- `trace-service`：
+  - `DashboardController` 读 `X-User-Role`（网关从 JWT 解出透传），未带角色头（直连/未认证兜底）按监管视角返回 —— 只给合规指标，不给经营明细。
+  - `DashboardServiceImpl` 重写为 6 个视图方法（ADMIN/FARMER/SLAUGHTER_OP/DISTRIBUTOR/RETAILER/SUPERVISOR），每个角色返回**同一套结构**：`role/roleLabel/scopeLabel + statCards(key,label,value,unit) + blocks + todoList + degraded`。
+  - `blocks` 通用协议：`sankey`（data={nodes,links}）/`pie`/`bar`/`barH`（data=[{name,value}]）/`table`（columns+rows+emptyText+link）；`span=2` 整行。**前端一套渲染器**（`DashboardView.vue` 重写为数据驱动），新增角色只改后端。
+  - **降级不冒充 0**：每个下游调用经 `safe()`，失败记进 `degraded`（页面顶部黄字提示「部分数据暂不可用」），指标保持 0 但用户知道是「取不到」不是「没有」。
+- `sales-service`：新增内部统计接口 `GET /sales/internal/stats/summary?days=30`（`SalesServiceImpl.statsSummary`）：近 N 日销售额/销量(kg)/件数、按日趋势（补齐缺日）、部位销量 TOP5（productName 经 `DistributionClient.requireSplit` 缓存取，上限 500 次）、在售/临期数。**只认 status=2 已售且未作废**。
+- 前端：`DashboardView.vue` 数据驱动渲染（图标/渐变按 key 映射，`barH` 用于排行，`v-loading`，全 0 或空数据的图表显示「暂无可展示的数据」而不是空图环）；`types/dashboard.d.ts` 重写。
+
+**踩坑**
+- **block key 必须唯一**：分销商两个运单表都用 `transportTable` 作 key，Vue `v-for :key` 撞车 → 拆成 `waitingTable`/`movingTable`，回归补了「key 唯一」断言。
+- **不能伪造 X-User-Role 测 SUPERVISOR**：网关会覆盖该头，必须真账号。种子数据独缺监管角色 → 补 `supervisor_user`/123456（org=1 市监局，密码哈希与盐直接复用 farm_user 的，同密码）。
+- 零售商「在售商品」恒 0（库内 status=1 的为 0，全是已售/过期/召回）→ 卡片改成「近 30 天售出件数」，避免演示时看着像坏。
+- **构建启动后再改源码不进镜像**：本轮 trace-service 白建了一次（改 soldCount/key 修复在 build 启动后），又按红线重建第二次才生效。
+- 数据现实：生猪在养仅 2 头（27 头已屠宰）、今日屠宰/入场/盖章均为 0、门店 ID 历史脏数据（store_id=1 混在 1001-1014 中）→ 0 都是真实口径，空态文案写「今日暂无入场记录」这类业务话。
+
+**已知边界（未做）**：机构级数据隔离。JWT 无 orgId 声明，养殖户/零售商仍看全平台数据（与各列表页既有行为一致）；要做需 JWT 加 orgId + 网关透传 + 各服务按机构过滤，属下一阶段。
+
+**验证**：新增 `logs/verify-dashboard-roles.mjs`（**140/0**：6 角色登录各自断言卡片/区块、结构完整性、key 唯一、15 对角色两两不同、零售商销量口径与 30 天趋势、未登录 401、监管无经营明细）+ `logs/shot-dashboard-roles.cjs`（六张全页截图 `page-dashboard-{admin,supervisor,slaughter,distributor,retailer,farmer}.png`）。既有回归 reconcile 18/0、channel-label、stage-order 全绿。部署：`trace-service`+`sales-service` 镜像 no-cache 重建 + force-recreate（healthy），前端 build 生效。
+
+## 二十一、零售商只看自己门店的数据（2026-10-19 12:10–13:00）
+
+### 背景
+上一轮把工作台做成按角色分视图时，零售商看的是**全平台**销量（462 元），列表页的
+`storeId` 只是普通查询参数——换个数字就能翻别家。属于「页面不显示」而非隔离。
+
+### 改动
+**令牌与网关**
+- `JwtUtil` 新增 `generateToken(subject, role, userName, orgId)` 与 `getOrgId(token)`；
+  `AuthServiceImpl.tokensFor` 写入 `sys_user.org_id`。
+- `AuthGlobalFilter`：公开路径与认证路径都剥离 `X-User-Org`（防伪造）；
+  认证后从令牌取 `orgId` 注入 `X-User-Org`；`ORG_REQUIRED_ROLES={RETAILER}` 的令牌
+  缺机构 → 401「登录信息缺少所属门店，请重新登录」（前端有 refresh 自动换新令牌，无感升级）。
+
+**common-web 新增 `com.pork.web.scope.OrgScope`（@Component）**
+- `role()/orgId()/retailer()` 读 `X-User-Role` / `X-User-Org`（RequestContextHolder）。
+- `storeId()`：零售商=orgId；**零售商但无机构 → 403**（防绕网关直连服务端口）；其他角色=null。
+- `storeOr(requested)`：零售商覆盖为本人门店；其他角色原样返回。
+- `requireStore(actual, subject)`：记录级校验，写操作必须过。
+
+**sales-service**
+- `SalesService` 签名加 storeId：`pageQrs`/`pageWarnings`/`activate`/`sell`/`generateQrs`/`handleWarning`；
+  `pageSales`/`statsSummary` 原有 storeId 参数改由 `scopedStore()` 解析。
+- 预警表无门店列，用 `inSql(saleId, "SELECT id FROM retail_sale WHERE store_id=X")` 下推（分页 total 才对）。
+- `statsSummary` 的 `onSale`/`expiring` 计数同步按门店（原来只按全平台数）。
+- `/sales/internal/stats/summary` 虽为内部接口但网关可达，同样过 `scopedStore`。
+- 越权文案：`【数据隔离】该商品不属于当前登录门店，无权查看或操作`。
+
+**distribution-service**
+- `pageTransports(status, keyword, storeId, …)`：`inSql(id, "SELECT transport_id FROM transport_stop WHERE store_id=X")`
+  —— 零售商的「待签收」只出现含本店站点的运单。
+- `createReceipt(request, storeId)`：请求门店 ≠ 本人门店 → 403「只能为本门店签收」。
+- `/receipts` 列表 `storeOr`；`/receipts/{id}` 详情 `requireStore`。
+- `DistributionServiceImpl` 加 `@Slf4j`（原来没有 log）。
+
+**trace-service（工作台）**
+- `DashboardController.overview(role, X-User-Org)` → `retailerView(storeId)`。
+- 零售商门店识别不出：卡片全 0 + `degraded=["所属门店"]`，**不退回全平台**。
+- `scopeLabel`＝门店名 + 「 · 近 30 天」，门店名走 `TraceRemoteClient.org(id)` →
+  auth 内部接口 `/auth/internal/orgs/{id}`（`services.auth-url`，compose `SERVICES_AUTH_URL` 已有）；
+  取不到退「门店 #ID」不猜名字。
+- `TraceRemoteClient` 新增 `salesStats(days, storeId)`、`warningsForStore(storeId)`、`org(id)`。
+
+**前端**
+- 新组件 `components/common/StoreScopeTag.vue`：仅 RETAILER 显示「当前仅显示本门店：安心生鲜门店」；
+  挂在 SaleRecords（header-actions）、QrcodeManage、ExpireWarnings（search-panel 顶部）、StoreReceipt（页顶）。
+- SaleRecords 的「门店」输入框对零售商隐藏（是数据边界不是筛选项）。
+
+**数据修复 `init-sql/42-store-scope.sql`（幂等，已在现库执行）**
+- 历史脏数据：`retail_sale`/`store_receipt`/`transport_stop` 早期 store_id=1 或 NULL。
+- 修复口径：只动「store_id 不是任何零售机构」的行，按本行 store_name 反查 sys_org（type='retail'）**唯一命中**才改；
+  「示范一店」（11 个站点）机构不存在，不猜、保留原样，对零售商不可见。
+- 回填前预检：确认新 (transport_id, store_id) 不撞 `uk_transport_store` 唯一键、每个名字只命中一家机构。
+
+### 部署
+`auth/gateway/sales/distribution/trace` 五个镜像 `--no-cache` 重建 + `--force-recreate`，全 healthy；
+前端 build 生效。其余服务未动（OrgScope 对它们是惰性新类）。
+
+### 验证
+- `logs/verify-store-scope.mjs` **36/0**：令牌含 orgId；四列表只含本门店；传 storeId=1002 不换视角；
+  两门店无交集；写操作（sell/activate/建码）拿别家记录被拒；管理员仍全量；
+  工作台卡片销售额 == `stats/summary?storeId=1001` 且 ≠ 全平台、临期数 == 预警接口 total。
+- `logs/verify-store-scope-db.sh` **11/0**（只读）：三类表无未归属行；名字可命中的站点 store_id 必已填；
+  一ID一名；零售账号 org 必为 retail 类型且每店有账号。
+- 既有回归全绿：`verify-dashboard-roles.mjs` 140/0、`verify-reconcile.mjs` 18/0、
+  `verify-channel-label.mjs`、`verify-stage-order.mjs`。
+- 截图 `logs/shot-store-scope.cjs` → `page-scope-{dash,sales,receipt,warnings}.png`；
+  实测零售商工作台 77.00 元 / 1.50 kg / 2 件 / 3 临期（30 天口径，历史作废行不计），
+  销售记录 7 条全为安心生鲜门店，待签收只剩含本店站点的那 1 单。
+
+### 实测口径说明
+孙店长（1001）库里有 19 条销售记录，其中 12 条 `void_flag=1`（历史回归作废），
+有效为 4 售 / 1 过期 / 2 召回 = 7 条列表 + 工作台 30 天内 77.00 元 —— 与作废口径一致，不是丢数据。
+
+## 二十二、删除批次人工入口 + 门店签收批量签收 + 零售商站点边界（2026-10-19 13:20–14:40）
+
+### 需求
+① 删除胴体批次的「创建批次」「添加关联生猪」按钮；② 门店签收加批量签收；③ 零售商只能看到自己店的签收状况。
+
+### 改动
+**前端**
+- `CarcassBatch.vue`：删工具栏两个按钮 + 创建弹窗 + 追加弹窗 + 相关脚本（batchForm/slaughterhouseOptions/occupancyMap/append* 等）与样式，删 `highlight-current-row`；页面留搜索/列表/详情/封批/分割。列表页顶注释说明「批次只由分拣台归集」。
+- `SplitBatch.vue`：空态不再给「前往创建批次」按钮（入口已删），改为说明批次由分拣台自动归集。
+- `StoreReceipt.vue`：待签收页加勾选列 + 「批量签收（已选 N 单）」按钮 + 批量弹窗（统一 签收人/到货温度/数量核验/温度核验/包装状态，签收人默认当前登录人 realName）；提交后弹窗内展示逐单结果表（运单号/签收门店/已签收/未签收/说明）；新增「本次签收门店」列（signableStoreName，「多站待签」打灰 tag + tooltip）；零售商隐藏「门店名称」筛选（是数据边界不是筛选项）。
+- `api/modules/distribution.ts`：`batchReceipts`。
+
+**后端 distribution-service**
+- DTO `ReceiptBatch`（transportIds @NotEmpty @Size(max=50)、receiver @NotBlank，核验项与单张签收同形）。
+- `DistributionService.batchReceipts(request, storeId)`：循环每单 → `planReceiptStop`（0/多候选给原因，不猜）→ 经 `ObjectProvider<DistributionService>` 自身代理调 `createReceipt`（**逐单独立事务**；自调用会绕过 @Transactional）→ 逐单结果 `success/message/receiptId`；BusinessException 记原因，RuntimeException log.error +「签收失败，请稍后重试」。
+- `ReceiptPlan` record（stop/problem）；跳过原因：无站点台账 / N 站同时待签 / 没有本店站点 / 本店已签 / 车未到 / 站点未记录门店。
+- `ColdChainTransport` 新增 transient：`signableStopCount/signableStoreId/signableStoreName`；`fillStopProgress(records, storeId)` 改收站点实体分组，可签站点数==1 给门店名，>1 且带门店边界时取本店那站。
+- `pageTransports` 门店子查询：status=3 时追加 `AND status < 2`（排掉本店已签站点——本店签完这张车即使别家没签也不再出现在本店待签收里）。
+- `/transports/{id}/stops`：零售商只返回本店那一站（防拉别家运单站点清单泄露门店名/签收人）。
+- 控制器 `POST /receipts/batch` → `{total, successCount, failedCount, items[]}`。
+
+### 部署
+distribution-service 镜像 `--no-cache` 重建 ×2（第一次构建启动后又改了 planReceiptStop 的「没有本店站点」文案，按红线重建）+ `--force-recreate`；前端 build ×2（同因）。
+
+### 验证
+- `logs/verify-batch-receipt.mjs` **27/0**：列表字段 / 零售商边界（别家运单站点为空、批量签别家全失败且不落单）/ 空入参 1001 / 正例签一单（store=1001、签收人正确、再签「本门店已签收」、本店待签收不再出现）/ admin 删签收回退（站点回已到达、运单回待签收）/ 最新批次 source=DEVICE。
+- `logs/verify-batch-receipt-db.sh` **8/0**（只读不变量）：签收单↔站点互相咬合、运单状态↔站点汇总、(运单,门店) 唯一、已签必有到达时刻、签收门店在站点里（只判「站点有 store_id」的行；12 张「示范一店」历史签收单 [INFO] 不计失败）。
+- `logs/shot-batch-receipt.cjs` **11/0**：批次页无两按钮、签收页有批量入口与「本次签收门店」列、零售商范围标签/本店列/勾选计数/弹窗打开。截图 `page-carcass-batch.png`、`page-receipt-admin.png`、`page-receipt-retailer.png`、`page-receipt-batch-dialog.png`。
+- 既有回归全绿：reconcile 18/0、channel-label、stage-order、store-scope 36/0、no-hint-banner 8/0、dashboard-roles 140/0、batch-autogroup-db 42/0（自清理）。
+
+## 二十三、冷链温度定时自动打卡（2026-10-22 10:25–11:05）
+
+### 背景与口径
+此前温度只有设备推送一条路（`ingestTemperature`，要求 status=2），系统不轮询，在途运单温度为 0 条。
+本轮落地「发车后固定间隔自动打卡、送达后结束」，三条硬口径：
+1. **采集窗口 = status=2**：运单状态由站点汇总推导（全部站点到达→3、全部签收→4），
+   「车在跑」与 status=2 是同一件事；不需要开关，也不会出现签收后还在写温度的账。
+2. **真机优先**：运单只要有 `source=DEVICE` 的温度记录，模拟采集对它永久停手——
+   模拟值混进真实温度里，事后分不清哪条是车厢温度、哪条是程序编的。
+3. **不补历史**：错过的间隔就是空白（is_gap 标出来）；一次补齐十条「当时没采到」的读数
+   = 替探头编造它没采过的数据。
+
+### 改动
+- `support/TemperatureRecorder`（新）：温度落库**唯一口径**（越界/断档/间隔固化），
+  `ingestTemperature` 重构为调它；删掉类内重复的断档判定与 `defaultSampleIntervalSeconds`/
+  `gapToleranceMultiplier` 两个 @Value 字段。
+- `service/TemperatureAutoSampler`（新）：@EnableScheduling + @Scheduled(fixedDelay 30s)；
+  每 30 秒扫一次 status=2，到点（距上一条 ≥ interval）才落一条；读数 -18~-16℃ 正弦缓变、
+  按运单号错相位（不编越界值——异常必须来自真实探头）；
+  `source=SIMULATED` / `recordMethod=AUTO` / `recorder=模拟探头` / sourceRef=`PROBE-SIM-01/{运单号}`。
+- 控制器 `POST /distribution/internal/temperature/sample?force=true`：忽略「未到间隔」立即采一条，
+  只给回归/演示；状态窗口与真机让位两条约束照样生效；force 记录 sourceRef 带 `#force` 后缀，
+  回归收尾按后缀精确删（按间隔猜会误删定时任务的正常记录）。
+- 配置：`distribution.temperature.auto-sample.enabled=true / interval-seconds=300 / scan-interval-ms=30000`。
+- 前端：`SOURCE_LABELS.SIMULATED='模拟探头'`（tag=danger）；TransportMonitor 温度卡头
+  「自动采集 · 每 X」（取最后一条固化的 sampleIntervalSeconds，无记录时兜底 5 分钟）；
+  采集设备列 tooltip：DEVICE=探头自动采集，SIMULATED=真机接入前用于演示、不代表真实车厢温度。
+
+### 部署
+distribution-service 镜像 --no-cache 重建 ×2（第一次构建后又改了 force 参数，按红线重建）+ force-recreate；
+前端 build 一次（nginx 只读挂载即生效）。
+
+### 验证
+- `verify-temp-auto.mjs` 27/0：采一条（落库/来源/间隔固化/区间内不标异常/条数+1）→
+  节流（立刻再扫不写、原因「未到采样间隔」）→ 停采边界（待发车/待签收/已签收均不在范围且条数不变）→ 升序返回。
+- `verify-temp-auto-db.sh` 9/0：间隔固化、读数区间、无「真机+模拟」混单、
+  到达后无新增、落库时刻≈记录时刻（不补历史）、近 10 分钟新增只来自运输中单、#force 清理。
+- 实测定时节奏：10:40:57 → 10:46:08（310s）→ 10:51:38（329s）；日志 `temperature_auto_sample written=2 scanned=3`
+  （第 3 张是被真机让位的单）。
+- 既有回归全绿：temp-gap-db 34/0（口径重构未破坏设备路径）、reconcile 18/0、channel-label、
+  stage-order、store-scope 36/0、dashboard-roles 140/0、batch-receipt 27/0。
+- 截图 `page-temp-auto.png` / `page-temp-records.png`。
+
+### 踩坑
+- Edit 重复插入 `temperatureRecorder` 字段 → javac 在该处早退 → **Lombok 整个没跑**，
+  报出满屏 `cannot find symbol getXxx()` 假错误；真错只有一条。遇到满屏 getter 报错先找
+  「already defined / 语法错」这一条。
+- force 参数是镜像构建启动后才补的 → 按红线重建第二次。
+
+### 顺手修
+- store-scope「门店销售额>0」哨兵断言随种子数据老化（9 月销售滚出 30 天窗口→真实为 0）：
+  断言改为「统计接口有数才要求卡片有数」；1001 店 4 条种子销售 sell_time 刷到 10-16~10-20。
+
+## 二十四、一车一趟：一辆车同一时间只能挂一张未完成的运单（2026-10-22 12:00–16:30）
+
+### 需求与边界
+用户原话：「在冷链运输部分，运输车名下有未完成的订单时，应该不能再接受新的运单，解决并且把有多个运单的删除，只留下一个待完成的运单」。
+两件事：①**加约束**（新单不受理）②**清存量**（同车牌多余的未完成单只留一张）。
+
+**关键边界（别弄错）**：
+- 不能把「并入」一起禁掉。分界线是「**要不要新开一张单**」：同一趟车继续装货走 `appendToTransport`（往里加货，仍是一张单）**必须放行**；只有「要再开一张」才拦。
+- **只有 `status=4` 已签收才算「车回来了」**。1 待发车 / 2 运输中 / 3 待签收 都算未完成 —— 车还在外面，接不了新单。
+- `DEPART` / `ARRIVE` 里「同车牌多张 → 转人工」的兜底代码**保留不动**：那是给脏数据留的，不是在造局。
+
+### 实现（后端）
+- 新增 `distribution-service/support/ActiveTransportGuard.java`：
+  `ACTIVE_STATUS = List.of(1,2,3)`；`activeOf(vehicleNo, excludeId)`；`assertFree(vehicleNo, excludeId, action)` 抛 `BusinessException`，文案带**既有运单号 + 中文状态 + 两条出路**（送到门店签收 / 核对作废后删单）。`statusLabel()` 给中文状态，不把枚举码甩给用户。
+- 三处调用（只有这三处会**新开单**）：
+  1. `createTransport` 首行（人工建单）；
+  2. `updateTransport` 内**只在该单的车牌真的变了**才查，且 `excludeId=自己`（否则改个目的地也会拦自己）；
+  3. `generateTransportFromPlans` 放在 `findOpenLoadTransport` **并入判断之后**、`transportMapper.insert` 之前 —— 顺序反了就会连并入一起拦死。
+- 没有动：`appendToTransport`（并入）、`deleteTransport`（删单本来就要能删）、站点/签收逻辑。
+
+### 存量清理脚本 `init-sql/43-single-active-transport.sql`（幂等，已执行）
+- 留哪张：`ROW_NUMBER() OVER (PARTITION BY vehicle_no ORDER BY status DESC, create_time DESC, id DESC)` 取 `rn>1` 删 —— 留**离完成最近**的那张（已到门店待签收 > 运输中 > 待发车）。
+- **有 `store_receipt` 的运单不删**：门店签收单是下游凭证，删了会让已发生的货权转移失去出处。
+- 连带（与 `deleteTransport` 同口径）：温度日志 → 计划明细退回（`shipped=0/transport_id=NULL/shipped_time=NULL`）→ 按剩余量重算计划状态（全未发 1 / 全发走 2 / 否则 4，`status<>3` 不复活已取消）→ 装载明细 → 站点台账 → 运单。
+- 三段核对：同车多张未完成=0、孤儿装载明细=0、孤儿站点=0。
+- 踩坑：①临时表要先前置 `USE db_distribution;`，否则 `ERROR 1046 No database selected`；②`delivery_plan` **没有** `cancel_reason` 列。
+- 实测（清前 京A·12345 名下 276 待签收 / 277 运输中）：删 277（含 14 条模拟温度、1 批 11kg 装载明细、计划 389 的排车）；计划 389 回 `status=1`、`transport_id=NULL`；明细 582 回 `shipped=0`。幂等重跑无输出。
+
+### 回归改造（本轮最花时间的部分）
+新脚本 `logs/verify-one-vehicle.mjs` 10/0（一次性车牌 `京A·GV/GW+时间戳`，A 建单成功 → B 同车牌被拒 → C 换车牌成功 → D 改挂被拒且车牌未变 → E 删旧单后可再接单 → F 收尾回池）。
+
+受新约束影响、必须跟着改的既有回归：
+
+| 脚本 | 原构造 | 为什么坏 | 改法 |
+|---|---|---|---|
+| `verify-load.mjs` | 主力车牌 京A·12345；K 组「C1 发走就另开一张」 | 12345 名下常年挂业务单 276；新规则下 C1 运输中就不许再开 | 车牌换 京A·T0002；K 组改成「发车→同车牌再装被拒→到达→创建签收单→status=4→同车牌扫另一批另开一张」（报文加 `returnTrip` 破兜底判重） |
+| `verify-depart.mjs` | F 组人工造第二张同车牌待发车 → 倒查出多张 → 转人工 | 那个局面程序上已造不出来（人工建单也过闸门） | F 组改为「T1 在路上 → 同车牌再装被拒 + T1 未动」 |
+| `verify-temp-auto.mjs` | A 组借种子 `status=2` 运单采温度 | 那些单早有真机读数 → 模拟永久让位，断言必然红 | 改成自建对象（`京A·T0005`+待发运池首批→建计划→LOAD→depart），收尾删运单+取消计划 |
+| `verify-multistop.mjs` | 收尾只删运单 | 有 `store_receipt` 时 `deleteTransport` 拒删 → 残留堵住车牌，后续连跑全废 | 收尾补 `DELETE /distribution/receipts/{id}`（先删签收单再删运单） |
+| `verify-temp-gap.mjs` + `-db.sh` | 同一台车建 T1 运输中 + T2 待发车 | 第二张被「一车一趟」拒 → 后续 16 项连锁失败 | 改**两台车**（`京A·T0006`/`京A·T0007`），db 侧新增「两张单分属两台车」「全库同车多张未完成=0」两条断言；终端 A 暂存行 6→5、转人工 7→6、运单 3→1、全库 +3→+1 |
+
+**三条教训（写进纪律）**：
+1. **回归必须自持**：凡「独占型写入」（一车一趟下的车牌/运单），必须自带一次性主体，用完自己删；借演示台账迟早被业务数据或新约束打死。
+2. **新约束会打断「借现成台账」的构造**：加约束时同步遍历所有 `verify-*`，逐个核对它假设的「同一主体能有几张单」。
+3. **删运单的连带顺序固定为**：温度/签收/站点/装载明细 → 计划明细退回 → 重算计划 → 运单；漏一个子表就删不掉，删不掉就留下堵路子的残留。
+
+### 验证（全绿）
+one-vehicle 10/0｜load 53/0 + load-db 55/0｜depart 22/0 + depart-db 34/0｜multistop 44/0 + multistop-db 47/0｜arrive-stop 44/0 + arrive-stop-db 67/0｜temp-auto 32/0 + temp-auto-db 32/0+9/0｜temp-gap 26/0 + temp-gap-db 36/0｜batch-receipt 27/0 + db 8/0｜delivery-plan-db 26/0｜order-intake-db 31/0｜reconcile 18/0｜dashboard-roles 140/0｜store-scope 36/0｜channel-label / stage-order 全部通过｜no-hint-banner 8/0｜transport-page 13/0｜nav-actions 18/0。
+
+## 二十五、分割树根节点标注猪的品种（2026-10-22 13:05–13:45）
+
+### 需求
+「分割操作页面的父节点在 CB20261012-001 这种编号后面添加猪的种类」→ 树根标题变为 **`CB20261012-001（三元杂）`**。
+
+### 实现（口径：标题唯一出口仍是 `splitTree.ts` 的 `splitNodeTitle`）
+- **breeding-service** 新增内部端点 `GET /breeding/internal/pigs/breeds?ids=`：一条 SQL 只回品种字符串（去重、排序），刻意不复用按 id 逐头取详情的 `byIds`（N 次查询带整份档案，展示一个品种犯不着）。只查有效档案（逻辑删除过滤）。
+- **distribution-service**：
+  - `BreedingClient.breedsOf(pigIds)` —— 展示信息不是判定依据：养殖侧不可用/为空一律返回**空列表**，绝不因它把树渲染失败；
+  - `CarcassBatch` 加 `@TableField(exist=false) List<String> pigBreeds`（模式同 `splitCount`）；
+  - `getSplitTree` CARCASS 分支：猪 id 取**权威表 `carcass_batch_pig`**（不读 `pigIds` 快照，虽然两者必须相等）→ `setPigBreeds` → 跟 entity 一起序列化进 `data`。
+- **前端 `splitTree.ts`**：`SplitNode.pigBreeds?: string[]`；`splitNodeTitle` default 分支 = `批次号（品种1、品种2）`（同批混养逐种列出、顿号连接）；`pigBreeds` 空 → 退回纯批次号，**不许编兜底品种**。`normalizeSplitTree` 展开 Spread 自然带过，无需改。分割操作页（SplitBatch.vue）走这同一出口。
+
+### 验证
+- `verify-split-tree.mjs` **34/0**（原「根标题＝批次号」断言改为「＝批次号（品种）」+ 接口带 `pigBreeds` + 归一化不剥品种 三条）。
+- 新 `logs/verify-split-tree-breed.cjs` **7/0**（浏览器实测页面根标题含「CB20261012-001（三元杂）」+ 截图 `page-split-tree-breed.png`）。
+- 波及面复跑全绿：one-vehicle 10/0、batch-receipt 27/0、reconcile 18/0、trace-void 正常。breeding/distribution `--no-cache` 重建 + force-recreate，前端 build 生效。
+
+### ⚠ 顺带发现的存量问题（与本改动无关，未修，待拍板）
+`verify-split-camera.cjs` 4 项红：**分割示例值是全确定性报文**（无时间字段 —— LOAD/DEPART/ARRIVE/VACCINE 的示例都有「取当前时间」字段，SPLIT 的 data 里没有任何时间），同批次第二次演示必命中兜底判重（`status=5`），回执照样显示「原记录状态：已入账」，但**相机连拍不会触发**（`accepted=false` 走不到 `autoShootAfterSplit`）。库里证据：SPLIT 通道最新暂存行停在 2026-10-12 13:39（DEMO-1791783557656），此后任何重放都是重复。修法方向二选一：
+  1. 示例值挑**批次内还没切过的耳标**（一头白条一次分割，语义最正；重复演示自然受限于一圈的猪数）；
+  2. 回归自带一次性主体（但胴体批次键＝场+日，一天一场，重跑受限）。
+
+
+
+## 二十六、演示设备收敛：同通道重复设备只留一台（2026-10-24 14:20–15:00）
+
+### 背景与决策
+用户发现：ENTRY 通道三台设备（CERT-001 检疫证核验 / GATE-001 门禁地磅 / RFID-001 耳标识读器）
+报文逐字段相同（示例值按通道生成、不看设备）；车载终端三行、温度探头三行看着冗余。拍板收敛：
+- **ENTRY 只留 GATE-001**，删 CERT-001、RFID-001（三台走同一个 EntryChannelHandler，示例值一样，多台只是名字不同）；
+- **车载终端只留 ARRIVE-001**（通用、有意不绑车牌），删 DEPART-001、DEPART-003。
+  依据：DEPART/ARRIVE 同属 IngestChannel.deviceGroup() 能力组，**报文自带 channel**，
+  demoReport 显式传 channel 即可让一台终端兼任两个动作；「报文与台账都没有车牌 → 拒绝」
+  的红线用例正靠不绑车的终端成立，故留它而不是留绑车的 DEPART-001；
+- **温度探头只留 TEMP-001**（京A·12345），删 TEMP-002（冷库固定）、TEMP-003（二号车）。
+  依据：TemperatureAutoSampler 按「status=2 的运单」扫描，**完全不依赖设备表**，删探头不影响模拟采集。
+
+结论上「不区分冷藏车/其他车」无需改代码：vehicle_type 后端零业务判定（纯展示），温度采集门槛=运单运输中+绑探头。
+
+### 改动
+- 运行库：DELETE 六行 ingest_device（历史 ingest_staging 的 device_no 引用是历史事实，保留）。
+- 种子：11 号删四行设备；13 号删对应 UPDATE；31 号删 TEMP-003 绑定与 DEPART 插入段；
+  39 号重写（ARRIVE-001 remark 不再引用已删设备；对已删行的 UPDATE 落空 0 行无害，保留历史语句）。
+- 回归：verify-depart.mjs 的 departReport **必须显式带 channel:'DEPART'**（没传就按台账 channel=ARRIVE 走，
+  报文会被当成到站刷卡——第一跑 12 红就是这个）；DEPART_A/B 常量并入 ONBOARD='ARRIVE-001'；
+  E 组「台账兜底」正向用例（载体 DEPART-003 没了）改接「报文与台账都无车牌 → 拒绝(3)」红线用例。
+  verify-depart-db.sh：设备断言改「ARRIVE-001 一台不绑车牌 + DEPART 通道 0 台 + 无重复设备号」，
+  结论分布改「入账1/转人工5/拒绝1」。verify-arrive-stop-db.sh 三台系列断言改单台。
+  shot-duplicate-reject.cjs 下拉改选 GATE-001。
+
+### 验证（全绿）
+depart 22/0｜depart-db 30/0｜arrive-stop-db 68/0｜entry-gate 27/0 + db 21/0｜temp-gap 26/0｜判重演示出图正常。
+设备台账 18 台、无重复设备号。
+
+### 教训
+- **demo 上报不传 channel 就按设备台账的 channel 路由**：通用终端（承担多通道）上报时必须显式带 channel。
+- **共享 LOADER-001/ARRIVE-001 水位的 db 脚本不能并行跑**（arrive-stop-db 与 temp-gap 并行互踩，
+  窗口内装车暂存多出一条 + 基线配平少一条；串行重跑即绿）。
+
+## 二十七、TAG 通道能力边界收紧：设备只报耳标号，档案信息人工录入（2026-10-24 17:20–17:45 收尾）
+
+### 决策背景
+用户由「耳标读写器能读出品种/性别/出生日期吗」追问到生猪档案改造，最终拍板最小方案：
+**除了耳标号，其他的都要人工录入**（转群/圈舍流转管理明确砍掉——溯源系统只记事实不帮猪场管生产）。
+
+### 实现
+- ingest `TagChannelHandler`：validate 只剩 earTagNo；dispatch 只透传 earTagNo+source 三件套。
+- breeding `DeviceTag` DTO 瘦身（删 7 个人工字段）；`ingestTag` 重写：已建档→幂等返回；新耳标→manual「请先人工建档」。
+- **人工建档恢复**：`POST /pigs` → `PigIndividualServiceImpl.create`（data_source=MANUAL）；
+  `TraceStage.TAG` 默认策略 `DEVICE_ONLY→MANUAL_ALLOWED`（作废不受策略影响，已核实无其他消费点）。
+- 前端：PigList「人工建档」弹窗；模拟上报 TAG 示例=耳标号+**读取时刻 readTime（默认当前）**。
+  readTime 是关键：同一头猪再次经过读写器是常态不是重放，没有时刻字段必撞兜底判重（status=5）。
+- 历史脚本 `verify-tag-birthdate.mjs`（验证出生日期必填）已删——它验证的行为被有意废除。
+
+### 回归（全绿）
+tag-manual 12/0｜entry-gate 27/0｜preslaughter-gate 34/0｜ractopamine-block 43/0｜batch-autogroup 37/0｜
+channel-label / stage-order 通过｜reconcile 18/0。四脚本造猪改 `POST /breeding/pigs`（farmName→farmId）。
+
+### 清理
+两波残留按业务键级联清（17:2x 四脚本跑出的猪 347-368 全链 + 13:5x 连拍调试走全链的 pig 346、
+CB20261024-001、SP20261024-001-01~05、split_job 139、staging/chain 窗口行、unlock 12-14）；
+清后 reconcile 18/0 复核。
+
+### 教训
+- **设备通道塞不进人的知识**：TAG 曾要求报文带 birthDate 否则转人工——等于强制设备编造读不到的数。
+- **新语义通道要有「事件时刻」字段**：没有时间戳的报文，第二次真实上报就是「重复上报」。
+- demo 上报走了全链路调试（点示例值）会沿 TAG→检疫→出栏→入场→分割建出一整串业务数据，调试后要按链清。
+
+## 二十八、生猪档案批次化：批次档为主档，个体行自动展开（2026-10-25 15:20–17:00）
+
+**动机**：用户确认「除耳标号外都该人工录入」后追问现实口径——现实商品猪按批管理（同场同批进出），逐头建档既做不到也没人做；个体档只给种猪。用户拍板按批次改。
+
+**关键设计判断（为什么不是 carcass_batch_pig 直接挂批次 id）**：一个生猪批次会拆进多个胴体批次（分拣台逐条白条上报、按场+日归集），`carcass_batch_pig.pig_id` 唯一约束若改成批次 id，第二批白条就进不了新胴体批——红线「一头猪只归一批」会反过来挡死正常流程。所以落地为：**批次档（pig_batch）承载人的知识，个体行（pig_individual）降级为批次成员行，由批次登记按耳标区间自动展开**。下游逐头事实（入场查验、检疫证、瘦肉精、盖章、白条归批、trace）零改动，全部红线保持。
+
+- 新表 `pig_batch`（03-breeding.sql）：farm+batch_no 唯一、品种、entry_date、ear_tag_start/end、quantity、来源三件套、void 四件套；`pig_individual` 加 `batch_id` 列。
+- `POST /pigs/batches`（PigBatchController）：登记时校验 场存在/同场批次号唯一/区间不与已有耳标重叠，然后按区间展开成员行（dataSource=MANUAL，sourceRef=「生猪批次 xxx（按耳标区间自动生成）」）。
+- 耳标区间解析：同前缀+纯数字尾号、起≤止、≤2000 头；**例外：起=止的单头批次不要求尾号是数字**（种猪个体批 + 回归脚本单头用例都靠它）。
+- `POST /pigs` 个体建档入口删除（PigIndividualDTO.java、PigTable.vue 一并删）；`pigApi.create` 删，新增 `pigBatchApi`；PigList.vue 重写为批次档案页（登记弹窗=批次号/场/耳标起止/品种/进场日期/来源，列表列=耳标区间/数量/在养已出场）。
+- `ingestTag` 语义：耳标命中成员行→幂等入账；区间外→转待人工提示「登记批次（耳标区间含此号）」。**TAG 报文人工字段照旧一律不认**。
+- voidBatch：成员 status≥2（已出栏/屠宰）拒绝整批作废；通过则成员行一并 void + 上链 PIG_BATCH_VOID。
+- VO：PigIndividualVO 加 batchId/batchNo（列表/trace/mini-app 都能带出批次号）；菜单/路由标题改「生猪批次档案」；IngestMonitor TAG 提示改批次口径。
+
+**迁移与种子**：`logs/pig-batch-migrate-20261025.sql`（已执行）。教训：**按场 GROUP BY 归批会产生「区间空洞」**（farm8 只有 0013/0019 两头，区间却罩住 0013~0019，5 个不存在的号落在批次区间里）——测试/存量数据回填必须逐头单批（PB-T1-<tag>）或保证区间连续。07-demo 增加示范批 PB-DEMO-0001（0001~0003 连续成员）；08 增加 PB-TEST-0xx（按场，运行库已改为逐头）。
+
+**回归结果**：tag-manual 15/0（重写）、entry-gate 27/0+db 21/0、batch-autogroup 42/0、preslaughter 34/0、ractopamine 43/0、split-tree-breed 7/0、breed-dict 正常、reconcile 18/0（**基线 29→30**：示范批成员 ET-DEMO-0003 是新种子数据）、批次档案页截图 shot-pig-batch-list.cjs 6/0。残留按业务键级联清零（含链窗口 15:30 后 + 成员行 + 批次 + 胴体批 191）。
+
+**坑**：① vite build 清 dist 被 sandbox 拦 → 先 `rm -rf dist` 再 build；② blockchain_record 没有 payload 列，链清理只能按 biz_key 或时间窗；③ 脚本里耳标带 `-E` 之类非数字后缀，靠「单头批次豁免」兼容，不用改标签格式。
+
+## 二十九、门店拒收：冷链异常货物的正式出口（2026-10-25 18:25–19:10）
+
+**动机**：冷链运单此前只有「到达→签收」正向路，货有异常时门店无处可去（单悬着车被锁、删运单毁追溯链）。拒收是真实商业事实，给它正式状态通道而不是「取消」。
+
+- **站点终态**：`TransportStop.STOP_REJECTED=3`；`transport_stop` 加 10 列（reject_reason/by/time/source/source_ref、signed_after_reject、disposal_type/note/by/time），迁移 `44-stop-reject.sql`（information_schema 守卫幂等），32 号建表同步。
+- **三接口**（DistributionController）：`POST /transports/{id}/stops/reject`（理由必填≥2字+登录实名，借 SourceGuard 闸门）、`.../stops/disposal`（RETURN_SUPPLIER/DESTROY/DISCOUNT，结论字段保护：一经登记不可改）、`.../stops/convert-receipt`（协商改签收：复用 createReceipt 落凭证+signedAfterReject=1；已处置的站拒改签）。
+- **推导口径是关键设计**：REJECTED=3 ≥ STOP_SIGNED=2，`recomputeTransportStatus` 的 `>=` 比较天然把拒收视同「已终结」——单店拒收不卡别店签收、全部终结运单落 4，**ActiveTransportGuard（1/2/3 未完成）与温度采集窗（status=2）零改动**，车辆不会被锁死。
+- **天然排除**：`planReceiptStop` 候选 `< STOP_SIGNED` 天然不含拒收站；新增「本门店已拒收」分支文案。**补的洞**：createReceipt 原校验 `< STOP_ARRIVED` 拦不住拒收站（3≥1）——加显式守卫「已拒收，走改签收」；PDA ingestReceipt 同口径守卫（manual，设备无权翻案）。
+- **received 语义收紧**：transportStops 的 `received` 从 `>=SIGNED` 改为 `==SIGNED`——「拒了」不能冒充「收了」。fillStopProgress 加 rejectedStopCount；pageTransports 加 `rejected` 过滤参数（inSql 下推）供门店「拒收/处置」页签。
+- **前端**：StoreReceipt.vue 待签收行加「拒收」按钮（理由弹窗）+ 新「拒收/处置」页签（处置登记/协商改签收表单）；TransportMonitor.vue 时间轴/站点摘要区分「签 X/拒 X」，站点表「签收/拒收」列展示理由+处置；AuditLog 与 mini-app 加 STOP_REJECTED/STOP_DISPOSAL/STOP_REJECT_REVERSED 字典。
+- **链上**：STOP_REJECTED（bizKey=transportNo:STOP:stopNo）、STOP_DISPOSAL（…:DISPOSAL）、STOP_REJECT_REVERSED（…:CONVERT），hash=sha256Json。
+
+**坑**：① DistributionDeviceIngestService 是显式构造器（非 @RequiredArgsConstructor），加 final 字段必须同步构造参数——docker build 的 maven 抓出 `might not have been initialized`，本地 `mvn|tail; echo EXIT=$?` 的 EXIT 是 tail 的，**验退出码必须 `sh -c "mvn …; echo \$?"`**；② docker compose build --no-cache 起跑后改源码不进镜像，构建中途改码要停掉重建；③ web-admin `rm -rf dist` 后台跑会被 safe-delete 拦（107 文件超阈值），前台跑走升级通道。
+
+## 三十、养殖系统同步：外部 ERP 批次档案接入（2026-10-26 11:30–12:40）
+
+**动机**：批次档此前 100% 人工（data_source 恒 MANUAL）。现实中溯源系统不自己造养殖端数据——批次、品种、耳标区间、进场/出生日期本来就在养殖场 ERP 里，人工再抄一遍既费人又会抄错。「接过来」但「不信它」：走接入层管道（原始报文留档 + 判重 + 状态机 + 人工兜底），绝不直写档案表。
+
+- **DDL `45-farm-erp-ingest.sql`**：pig_batch 加 `external_system`(NULL=人工)/`external_id`/`birth_date`(批次级出生日期，ERP 给，日龄现算)/`void_source`(MANUAL/EXTERNAL)；唯一键 `uk_external(external_system, external_id)`。设备台账 FARM-ERP-001（密钥 farm-erp-demo-key-2026，注释写明生产须换）。03-breeding.sql 同步。
+- **通道**：`IngestChannel.FARM_ERP("pig_batch","养殖系统同步（外部ERP）")`，放枚举第一位（档案源头早于耳标建档）。Handler `FarmErpChannelHandler`：validate 结构性校验（action∈UPSERT/REVOKE、farmName/batchNo 必填、区间或 earTags 清单二选一、REVOKE 必须有 voidReason）；dispatch 调 breeding `/breeding/internal/ingest/farm-batch`。日期归一在 handler（2026/10/01、20261001 → ISO）。
+- **breeding `FarmBatchIngestService`**（回执 {written,id,reason,retryable}）：
+  - UPSERT：external 键查（**含作废行**，防重推覆盖撤销痕迹）→ 已作废转人工；新建前查同场批次号撞车（含作废）+ 耳标冲突（`selectAnyByEarTags` 含作废含 deleted，分批 300/次，limit 20）；更新时空字段跳过、**成员只增不删**、quantity 与 ear_tag_start/end 用 `batchMemberSummary`（COUNT/MIN/MAX）按成员重算。
+  - REVOKE：查不到转人工；已作废幂等 written；成员 status>=2 转人工（事实已发生外部撤不掉）；`voidByExternal`（void_source=EXTERNAL、operator「养殖系统(XXX)」）+ 成员一并作废 + 上链 PIG_BATCH_VOID bizKey=**批次号:REVOKE**（与人工 :VOID 区分）。
+  - 转人工四条：场名对不上（V1 场名精确匹配，同名多场也转——注释写明真实对接应换对码表）、同场批次号撞车、耳标被占、撤销后重推。结构性拒绝：缺成员、撤销无理由、日期格式不成立。
+- **人工复查红线**：`requireReviewerForCriticalStage` 扩展——FARM_ERP 待人工放行必须实名+理由（批次档不是溯源环节，不进 TraceStage，**改 ingest-service 本地而不动 common-core，避免全量重建**）。
+- **区间口径抽公共类** `com.pork.breeding.support.PigTagRange`（PigBatchServiceImpl 原私有 record 迁出）：人工登记与外部同步共用一套展开规则。**坑：record 跨类访问组件要用 accessor `range.start()`**，字段私有（编译器抓的）。
+- **前端**：① 通道中文名四处同步（ingest.ts CHANNEL_LABELS 首位 / IngestMonitor DEMO_FIELDS+CHANNEL_TABLES+TABLE_TARGET_OBJECTS.pig_batch「生猪批次档案（外部系统同步）」/ verify-channel-label.mjs / 后端 labelOf）；② fillSample 加 FARM_ERP 示例分支（批次号 ERP-<stamp>、耳标段带 stamp，防撞上一轮）；③ PigList.vue 加「日龄」列（today−birthDate 现算，空显示 -- 带 tooltip「人工登记不要求」）与「档案来源」列（el-tag 养殖系统同步=success / 人工登记=info plain，外部编号进 tooltip）。
+- **演示资产**：`logs/farm-erp/` 4 份报文模板（{{RUN}}/{{FARM}}/{{ENTRY}}/{{BIRTH}}/{{ENTRY_FIXED}}/{{NOW}} 占位符，报文来自文件不拼字符串）；`logs/farm-erp-demo.mjs` 六步演示（推批→同号重推→换号重推→撞耳标→源撤销→撤后重推，默认留数据供看页面）；`logs/shot-farm-erp.mjs` 界面验收 9/0（截图 page-farm-erp-pig-list.png / page-farm-erp-ingest.png）；`logs/verify-farm-erp.mjs` 26/0；`logs/verify-farm-erp-db.sh` 列级核验 15/0 + `--clean`。
+- **回归**：tag-manual 15/0（**顺手修老坑**：readTime 秒级精度，同轮两次上报落同一秒 → 报文全等撞兜底判重 → 改 tickText 每次前移 1s）、channel-label 全过（19 台设备 18 通道）、batch-autogroup 37/0、reconcile 18/0。breeding/ingest `docker compose build --no-cache` 重启，测试数据按业务键清零（外部批次/staging FARM-ERP-001/链 REVOKE 事件）。
+
+**坑**：① **撤销后重推的报文必须与首推有字段差异**——否则兜底判重（状态含 ACCEPTED）在第一道就拦掉，到不了「已撤销不自动复活」的业务检查，演示第 6 步会显示「重复上报」而非「已撤销」（04 模板因此改了 entryDate）；② 多表 DELETE（即使表名带库前缀）报 `No database selected`，必须 `USE` 后执行；③ data_source 沿用 14 期枚举取 `API`，不新造 EXTERNAL（void_source 才是新概念）；④ batchMemberSummary 的 quantity 断言要排除 void_flag=1 的批次（作废批次保留历史数量，有效成员为 0 是对的）。
+
+## 三十一、记录按批次分组视图：方案 A 展示层聚合（2026-10-26 14:30–15:10）
+
+**需求来源**：用户看到疫苗记录/产地检疫/出栏申报列表 30 头猪刷 30 行耳标，问「能不能只显示批次」。核实结论：三块数据模型都是逐头（vaccine_record/quarantine_certificate/slaughter_apply 各一头一条），且检疫证 39 条=39 个证号、申报 42 条=42 个单号——**底下没有「单据」层**，列表啰嗦不是前端展示错。屠宰端（入场/检验/盖章）必须逐头：一头不合格不能牵连整批，追溯最小可信单元就是这一头。
+
+- **方案 A（本次，展示层聚合）** vs 方案 B（补主单表）：A 不动表结构，join pig_individual 取 batch_id 分组；缺点是「推断的单据」——组键=批次+动作签名+日期，两批同天打同疫苗会并成一组（已知局限，接受）。B 是终态（免疫单/检疫证/申报单挂 N 明细），等对接证核销再上。
+- **后端**：`RecordGroupVO`（groupKey/batchNo/title/subTitle/happenedOn/headCount/tagStart/tagEnd/statusSummary/members[]）+ `RecordGroupService`：组键=批次+动作签名（疫苗名/出证机构/目标屠宰场）+发生日期；**未归批（batch_id null）按头独立成组，绝不互并**（F 组断言锁死）；分页按组算（G 组）。端点 `/breeding/records/{vaccines|certs|applies}`。
+- **前端**：VaccineTable/QuarantineCertList/ApplyTable 改主行=组、展开=members 逐头；疫苗页删掉「逐头并发拉 /pigs 再逐头拉 /vaccines/list」的 N+1；状态摘要后端算好（「有效 28 / 已作废 2」「待审 25」）；批量审批按钮 pendingCount(row) 由组内 approvalStatus===0 计数。
+- **回归 verify-batch-group.mjs 34/0**：自持（建场→30 头批→设备通道真报文疫苗×30 带 1x1 PNG 凭证→逐头出证→逐头申报→作废 2 条→改 2 头无批次→清场按耳标前缀+批次号）。坑：免疫是设备独占环节缺凭证照判待人工（fileIds 必须真上传）；execSync 里 grep -v Warning 无匹配返回 1 会当命令失败（末尾 || true）。
+- **两个残留坑**：① verify-batch-autogroup.mjs 两段式（mjs 打印 id、bash 清理），**只跑 mjs 不跑配套 verify-batch-autogroup-db.sh 会留全套残留**——14 头 ET-BAG 猪+14 个 PB-BAG 批+5 个胴体批+入场 14/盖章 8+链 2871–2936 连续段，reconcile 从 18/0 掉到 16/2（胴体批 29≠24、生猪 44≠30）。清法：链按 id 连续区间、业务表按 pig_id/batch_id，先查下游（split_job=0 才敢删）。② verify-batch-group 自身漏删链上 QC 事件（30 条幽灵凭证 biz_key=QC-<RUN>-<耳标>）——补删链语句+H4 断言。
+- **验收**：shot-batch-group.mjs 12/0（自推 6 头全链路→三页截图→自清含删链）；截图 page-group-vaccine/quarantine/apply.png，分页文案「共 N 组（按批聚合，点行首箭头看逐头）」。
+
+## 三十二、误删用户「处理计划」事故与恢复（2026-11-05 14:40–19:10）
+
+**事故**：收尾清理时把 `recall_collect` id=18（召回单 RC20261105374580「质量不达标」/ 宏图生鲜门店 / SP-TEST-0014 / 0.36kg / 1 件）当成回归残留删除，连带删除 `recall_order` id=33 与 2 条召回通知（`recall_store`→user 18、`recall_center`→user 4）。用户当场发现并质问。
+
+**误判链条**：① 回归跑「生成收运运单」时，并池规则把这行**别家召回的待收行**并进了测试车（status 0→1、transport_id=464）；② 脚本清理删掉测试车却不还池，行变成「指向已删运单」的悬空行；③ 次轮我看到 transport_id 悬空 + 批次名叫 SP-TEST-*，判定为残留直接删。**根因是并池污染 + 清理漏还池，不是这行本身有问题。**
+
+**恢复（binlog 取证，MySQL 8.4 默认 ROW format 有全行镜像）**：
+1. `docker exec mysql grep -qa '<业务键>' /var/lib/mysql/binlog.0000NN` 找所在 binlog（Git Bash 下要 `MSYS_NO_PATHCONV=1`，否则路径被改写）。
+2. `docker cp` 拷出 → `python -m pip install mysql-replication` → `BinLogStreamReader(server_id=9101, log_file=..., log_pos=4, only_events=[WriteRowsEvent, DeleteRowsEvent])`，DELETE 事件带 before-image＝删除前全列值，INSERT 事件带原始创建值。
+3. 按原 id/原字段 `INSERT` 写回（`SET NAMES utf8mb4` 保中文），**status 必须还原成语义值**：池子只认 `recall_collect.status=0`（我首次写成 1 = 已排车，页面仍不显示）。
+4. 校验：`GET /distribution/return-pool?stage=DISPOSAL` 出现该行（source=RECALL、state=PENDING_RETURN）+ 召回列表 status=1。
+
+**防复发**（`logs/verify-recall-collect.mjs`）：
+- 池里已有 `status=0` 的别家召回待收货 → 默认**跳过**并打印原因（`ALLOW_MERGE=1` 才跑并池场景），避免把用户货并进测试车；
+- `cleanup()` 末尾 `UPDATE recall_collect SET status=0, transport_id=NULL, stop_id=NULL WHERE transport_id=<测试车>`，把被并进来的货**还回池子**并打印行数（已实测：并 1 行→还 1 行）。
+- 教训：**删任何 `recall_collect` / `recall_order` 行前必须问用户**；「像测试数据」不是依据，业务键（RC…/门店/批次）才是。

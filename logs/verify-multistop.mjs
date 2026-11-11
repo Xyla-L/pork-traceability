@@ -67,10 +67,13 @@ const pad = (n) => String(n).padStart(2, '0')
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` }
 
 /** 每次上报给一个不同的装车时刻：同设备 + 同通道 + 同一份报文会被判重复上报 */
+// 每次运行整体前移一个随机分钟数：连跑两遍脚本时两次运行间隔可能不足 1 秒，
+// 若不加偏移，第 k 次上报的时间戳会在两轮里截断成同一秒，撞上一轮落库报文被判重
+const RUN_OFFSET = Math.floor(Math.random() * 600) * 1000
 let tickSeq = 0
 function nextLoadTime() {
   tickSeq += 1
-  const d = new Date(Date.now() - tickSeq * 1000)
+  const d = new Date(Date.now() - RUN_OFFSET - tickSeq * 1000)
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} `
     + `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }
@@ -335,6 +338,10 @@ check('★ 站点清单反映三站都已签收，且带签收人与时间',
 if (process.env.KEEP === '1') {
   console.log('\n  （KEEP=1：跳过收尾删除，交由 db 侧核验后清理）')
 } else {
+  // 先撤签收单再删运单：deleteTransport 遇到已生成门店签收的运单会直接拒绝，
+  // 运单删不掉 ⇒ 批次永远卡在「已发运」回不到待发运，而且 2026-10-22 起
+  // 这张残留运单还会把该车牌的下一趟装车整条堵死（一车一趟）
+  for (const id of receiptIds) await api(`/distribution/receipts/${id}`, { method: 'DELETE', token })
   for (const id of transportIds) await api(`/distribution/transports/${id}`, { method: 'DELETE', token })
   for (const id of planIds) {
     await api(`/distribution/delivery-plans/${id}/cancel`, { method: 'POST', token, body: { reason: '回归收尾' } })

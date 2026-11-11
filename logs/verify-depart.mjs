@@ -7,7 +7,8 @@
  *
  *   与 LOAD 同源的三条口径（本脚本逐条验证）：
  *     ① **设备只报「我（某车）发车了」**，运单号由系统倒查 —— 刷卡是「确认」不是「选择」；
- *        （车牌可以不报：设备台账的 vehicle_no 把终端与车绑死，结构化绑定，不靠设备名猜）
+ *        （车牌由报文带入；2026-10-24 设备收敛后车载终端只剩通用的一台、不绑车牌，
+ *         「报文与台账都没有车牌 → 拒绝」的红线用例见 E 组）
  *     ② **发车不产生业务判定**：哪台车发、发给谁，早就在运单里定死了；
  *     ③ **车牌只是找车的凭据、不是责任人**：司机必须由卡号换出具体的人，换不出人一律转人工。
  *
@@ -22,8 +23,7 @@
  *     用它做正向用例会既受演示数据干扰、又可能把演示运单发走。所以：
  *       · 正向/歧义用例走测试车牌，完全自持；
  *       · 需要「车牌反查常用司机」的用例才用 京A·12345（它在车辆备案里有常用主驾张师傅），
- *         且该用例在「司机落人」这步就转人工，**根本走不到倒查运单**，不碰演示数据；
- *       · 「车牌取自台账绑定」用 DEPART-003（绑定京A·12346，名下无运单），同样不碰。
+ *         且该用例在「司机落人」这步就转人工，**根本走不到倒查运单**，不碰演示数据。
  *
  *   用例顺序有讲究（后端判定顺序：司机落人 → 倒查待发车运单 → 与运单的人比对）：
  *     「司机不一致」与「正常发车」都要求该车牌名下**恰好只有一张**待发车运单，
@@ -59,10 +59,13 @@ const text = (r) => JSON.stringify(r ?? {})
 const pad = (n) => String(n).padStart(2, '0')
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` }
 /** 每次上报给一个递增的现场时刻：同设备 + 同通道 + 同一份报文会被判重复上报 */
+// 每次运行整体前移一个随机分钟数：连跑两遍脚本时两次运行间隔可能不足 1 秒，
+// 若不加偏移，第 k 次上报的时间戳会在两轮里截断成同一秒，撞上一轮落库报文被判重
+const RUN_OFFSET = Math.floor(Math.random() * 600) * 1000
 let tickSeq = 0
 function tick() {
   tickSeq += 1
-  const d = new Date(Date.now() - tickSeq * 1000)
+  const d = new Date(Date.now() - RUN_OFFSET - tickSeq * 1000)
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} `
     + `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }
@@ -73,18 +76,18 @@ check('管理员登录', !!token)
 if (!token) process.exit(1)
 
 const LOAD_DEVICE = 'LOADER-001'
-/** 车载终端 A：台账绑定 京A·12345（演示车牌，只用于「车牌反查常用司机」这一例） */
-const DEPART_A = 'DEPART-001'
-/** 车载终端 B：台账绑定 京A·12346（专用于验证「车牌取自台账绑定」，名下没有任何运单） */
-const DEPART_B = 'DEPART-003'
+/** 车载终端：2026-10-24 设备收敛后只剩这一台（通用，不绑车牌，车牌由报文带入）。
+ *  DEPART/ARRIVE 同属一个设备能力组（IngestChannel.deviceGroup()），一台终端兼任两个动作 */
+const ONBOARD = 'ARRIVE-001'
 /** 测试专用车牌：库里的运单与计划都不用它，保证「唯一命中」可构造 */
 const TEST_PLATE = '京A·T0001'
 /** 种子里的演示车牌：在车辆备案里有常用主驾「张师傅」，用于「车牌反查推定」用例 */
 const SEED_PLATE = '京A·12345'
-/** DEPART_B 台账绑定的车牌 */
+/** B1 用例用的车牌（该车牌名下没有任何运单） */
 const BOUND_PLATE = '京A·12346'
 const ST_MANUAL = 1
 const ST_ACCEPTED = 2
+const ST_REJECTED = 3
 
 const planIds = []
 const transportIds = []
@@ -103,11 +106,13 @@ async function loadReport(batchNo) {
   if (id) stagingIds.push(id)
   return res
 }
-/** 车载终端上报发车 */
-async function departReport(over, deviceNo = DEPART_A) {
+/** 车载终端上报发车（2026-10-24 起统一走通用终端 ARRIVE-001：
+ *  一台终端承担 DEPART+ARRIVE 两个动作，报文必须自带 channel 说清这次是哪个，
+ *  没说就按设备台账的 channel（ARRIVE）走 —— 会变成「到站刷卡」而不是发车） */
+async function departReport(over, deviceNo = ONBOARD) {
   const res = await api('/ingest/demo/report', {
     method: 'POST', token,
-    body: { deviceNo, data: { departTime: tick(), ...over } },
+    body: { deviceNo, channel: 'DEPART', data: { departTime: tick(), ...over } },
   })
   const id = res?.data?.stagingId
   if (id) stagingIds.push(id)
@@ -206,8 +211,8 @@ check('★ 装车口只报了司机姓名、没刷卡 → 记「人工录入、�
   `driverSource=${t1Res?.data?.driverSource} driverConfirmed=${t1Res?.data?.driverConfirmed}`)
 
 // ── B. 转人工四例（注意：这些**不是**「拒绝」——条件没到位可以重推） ──
-// B1. 台账绑定京A·12346 的终端报「这台车发车」，该车牌名下没有任何运单
-const noPending = await departReport({ vehicleNo: BOUND_PLATE, cardNo: '8801' }, DEPART_B)
+// B1. 报文带一个名下没有任何运单的车牌（京A·12346），报「这台车发车」
+const noPending = await departReport({ vehicleNo: BOUND_PLATE, cardNo: '8801' })
 check('★ 该车牌名下没有待发车运单 → 转人工（不是拒绝：条件没到位，外部重推是合理的）',
   statusOf(noPending) === ST_MANUAL && text(noPending).includes('没有待发车'), brief(noPending))
 
@@ -250,35 +255,24 @@ const again = await departReport({ vehicleNo: TEST_PLATE, cardNo: '8801' })
 check('★ 该车已无待发车运单，再报一次 → 转人工（外系统重推不会造成二次发车）',
   statusOf(again) === ST_MANUAL && text(again).includes('没有待发车'), brief(again))
 
-// ── E. 车牌可来自设备台账绑定（报文不带车牌也能定位到车） ──
-//    用 DEPART-003（台账绑定京A·12346，名下无运单）：回执里出现的车牌必须是
-//    台账绑定的那个 —— 这就证明了「车牌是结构化读出来的」，不是从设备名里猜的。
-const boundPlate = await departReport({ vehicleNo: null, cardNo: '8801' }, DEPART_B)
-check('★ 报文不带车牌 → 取设备台账绑定的车牌（回执里出现 京A·12346，不是设备名里的字符串）',
-  statusOf(boundPlate) === ST_MANUAL && text(boundPlate).includes(BOUND_PLATE), brief(boundPlate))
+// ── E. 车牌是哪趟车的唯一凭据：报文与台账都给不出 → 直接拒绝 ──
+//    （2026-10-24 设备收敛后不再有绑车终端，「台账兜底」没有了正向载体；
+//     原用例由这条红线用例接位：车载终端未绑车牌 + 报文不带车牌 ⇒ 拒绝，猜不得。）
+const noPlate = await departReport({ vehicleNo: null, cardNo: '8801' })
+check('★ 报文不带车牌、终端也没绑车牌 → 直接拒绝（没有车牌就找不到是哪一趟，猜不得）',
+  statusOf(noPlate) === ST_REJECTED && text(noPlate).includes('车牌'), brief(noPlate))
 
-// ── F. 同一车牌名下多张待发车运单 → 转人工 ──
-const t2 = await buildPendingTransport(b2)
-// 第二张走**人工建单**：装车口同车牌的货会被并进 t2（同一趟车继续装），
-// 只有人工排车才造得出「同车牌两张待发车」—— 而那正是这一组要验的局面。
-// 手工建单前必须先把 b3 的待发货计划取消掉：**计划占用中的批次不许手工抢发**
-// （`createTransport` 的两道拦截之一），不释放就建不出 t3。
-if (plans[2]?.id) {
-  await api(`/distribution/delivery-plans/${plans[2].id}/cancel`, {
-    method: 'POST', token, body: { reason: 'F 组：释放 b3 用于人工建单' },
-  })
-}
-const t3 = await buildPendingByHand(b3)
-check('★ 准备：再建两张同车牌的待发车运单（第二张人工建，装车口已经不会这么裂单了）',
-  !!t2 && !!t3 && t2 !== t3, `t2=${t2} t3=${t3}`)
-if (t2 && t3) {
-  const ambiguous = await departReport({ vehicleNo: TEST_PLATE, cardNo: '8801' })
-  check('★ 同一车牌名下有两张待发车运单 → 转人工（不敢猜发的是哪一趟）',
-    statusOf(ambiguous) === ST_MANUAL && text(ambiguous).includes('同时有'), brief(ambiguous))
-  const stillPending = await api(`/distribution/transports/${t2}`, { token })
-  check('★ 说不清的那次没有擅自把运单发走（仍停在待发车）',
-    stillPending?.data?.status === 1, `status=${stillPending?.data?.status}`)
-}
+// ── F. 「一车一趟」（2026-10-22）──
+// 原用例是「人工建第二张同车牌待发车 → DEPART 倒查出多张 → 转人工」。
+// 现在人工建单也要过 ActiveTransportGuard（一车同时只跑一趟），那个局面**程序上已经造不出来**
+// （存量由 init-sql/43-single-active-transport.sql 清掉）。DEPART 侧「多张 → 转人工」的代码
+// 保留着，那是给脏数据兜底的，不再有正向用例 —— 这里改成验证「第二趟装不上去」。
+const dupLoad = await loadReport(b2.batchNo)
+check('★ T1 还在路上（运输中）→ 同车牌再装一趟被拒、转人工（车没回来就装不了）',
+  statusOf(dupLoad) === ST_MANUAL && text(dupLoad).includes('未完成的运单'), brief(dupLoad))
+
+const t1Still = await api(`/distribution/transports/${t1}`, { token })
+check('★ 被拒的那次没有动 T1（仍在运输中）', t1Still?.data?.status === 2, `status=${t1Still?.data?.status}`)
 
 // ── G. 收尾 ──
 if (process.env.KEEP === '1') {

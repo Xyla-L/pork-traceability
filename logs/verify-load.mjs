@@ -84,10 +84,13 @@ const pad = (n) => String(n).padStart(2, '0')
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` }
 
 /** 每次上报给一个不同的装车时刻：同设备 + 同通道 + 同一份报文会被判重复上报而直接回既有结论 */
+// 每次运行整体前移一个随机分钟数：连跑两遍脚本时两次运行间隔可能不足 1 秒，
+// 若不加偏移，第 k 次上报的时间戳会在两轮里截断成同一秒，撞上一轮落库报文被判重
+const RUN_OFFSET = Math.floor(Math.random() * 600) * 1000
 let tickSeq = 0
 function nextLoadTime() {
   tickSeq += 1
-  const d = new Date(Date.now() - tickSeq * 1000)
+  const d = new Date(Date.now() - RUN_OFFSET - tickSeq * 1000)
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} `
     + `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }
@@ -107,6 +110,7 @@ const ST_REJECTED = 3
 
 const planIds = []
 const transportIds = []
+const receiptIds = []
 const stagingIds = []
 
 /** 代设备上报（走完整链路：鉴权/校验/防重复/写入业务），并记录暂存 id 供清理 */
@@ -185,7 +189,12 @@ check('★ 准备：建计划 B（车牌 京A·99999 / 司机 李四）',
   planB?.status === 1 && planB?.vehicleNo === '京A·99999', `planNo=${planB?.planNo}`)
 if (!planB?.id) { console.log('计划 B 建不出来，退出'); process.exit(1) }
 
-// 计划 C：车人留空，用于分车（先扫一批，再扫剩下那批）
+// ⚠ 主力车牌统一用 京A·T0002（车辆备案里有、且不与演示数据抢车）：
+//   2026-10-22 起「一辆车同一时间只跑一趟」，而 京A·12345 名下常年挂着一张待签收的业务运单
+//   （TR20261012019402），拿它做正向用例第一张装车就会被拦。T0001~T0005 是回归专用牌照，
+//   与演示数据、与 DEPART 脚本（用 T0001）都错得开。
+
+// 计划 C：车人留空，用于分车（先扫一批，收尾后再扫剩下那批）
 const planC = await createPlan([b6.id, b7.id], { remark: '装车口回归-C（分车）' })
 check('★ 准备：建计划 C（两批货，留作分车用）',
   planC?.status === 1 && planC?.itemCount === 2, `planNo=${planC?.planNo} itemCount=${planC?.itemCount}`)
@@ -195,13 +204,13 @@ if (!planC?.id) { console.log('计划 C 建不出来，退出'); process.exit(1)
 const noPlate = await loadReport({ batchNos: [b1.batchNo], driverName: '张师傅' })
 check('★ 缺车牌号 → 拒绝', statusOf(noPlate) === ST_REJECTED, brief(noPlate))
 
-const noBatch = await loadReport({ vehicleNo: '京A·12345', driverName: '张师傅' })
+const noBatch = await loadReport({ vehicleNo: '京A·T0002', driverName: '张师傅' })
 check('★ 一个批次号都没扫到 → 拒绝', statusOf(noBatch) === ST_REJECTED, brief(noBatch))
 
 // 装车口**没有读卡器**（现场只在上车那一刻刷一次卡）：报了卡号说明设备接错点位
 // （把驾驶室里的读卡器算到了装车位）。这是「报文不成立」而不是「条件没到位」，
 // 所以是**拒绝**（不是转人工）：早报错早修，别让一个读不到的身份悄悄混进运单。
-const cardAtLoad = await loadReport({ vehicleNo: '京A·12345', cardNo: '8801', batchNos: [b1.batchNo] })
+const cardAtLoad = await loadReport({ vehicleNo: '京A·T0002', cardNo: '8801', batchNos: [b1.batchNo] })
 check('★ 装车口报司机卡号 → 拒绝（这条通道没有读卡器，报了说明设备接错点位）',
   statusOf(cardAtLoad) === ST_REJECTED && text(cardAtLoad).includes('没有读卡器'), brief(cardAtLoad))
 
@@ -212,7 +221,7 @@ check('★ 装车口报司机卡号 → 拒绝（这条通道没有读卡器，�
 // 具体断言并到 E 组一起做（那一组正是不报司机的装车）。
 
 // ── D. 两种「说不清」一律转人工，绝不猜 ──
-const orphan = await loadReport({ vehicleNo: '京A·12345', driverName: '张师傅', batchNos: [b8.batchNo] })
+const orphan = await loadReport({ vehicleNo: '京A·T0002', driverName: '张师傅', batchNos: [b8.batchNo] })
 check('★ 批次不属于任何待发货计划 → 转人工（设备不猜目的地）',
   statusOf(orphan) === ST_MANUAL && text(orphan).includes('不属于任何待发货计划'), brief(orphan))
 
@@ -226,7 +235,7 @@ check('★ 车牌不一致的那次没有偷偷建出运单',
 
 // ── E. 命中：计划 A 三批一起装车（**不报司机** —— 装车口不采集司机，这才是常态） ──
 const okA = await loadReport({
-  vehicleNo: '京A·12345', driverPhone: '13700000002',
+  vehicleNo: '京A·T0002', driverPhone: '13700000002',
   batchNos: [b1.batchNo, b2.batchNo, b3.batchNo],
 })
 check('★ 扫到的货属于唯一一张待发货计划 → 自动建单成功（已入账）',
@@ -247,7 +256,7 @@ check('★ 运单目的地 = 计划里的门店（不是设备猜的）',
 check('★ 运单状态 = 待发车（1），可直接进入生命周期',
   transportA?.status === 1, `status=${transportA?.status}`)
 check('★ 车牌取自现场；司机如实留空、来源也留空（没人是本人来证明身份，别假装「人工录入」）',
-  transportA?.vehicleNo === '京A·12345' && !transportA?.driverName
+  transportA?.vehicleNo === '京A·T0002' && !transportA?.driverName
   && !transportA?.driverSource && transportA?.driverConfirmed === 0,
   `vehicleNo=${transportA?.vehicleNo} driverName=${transportA?.driverName} `
   + `driverSource=${transportA?.driverSource} driverConfirmed=${transportA?.driverConfirmed}`)
@@ -267,7 +276,7 @@ const planD = await createPlan([b9.id], { remark: '装车口回归-D（同门店
 check('★ 准备：建计划 D（与计划 A 同一家店，单批）',
   planD?.status === 1 && planD?.itemCount === 1, `planNo=${planD?.planNo}`)
 
-const mergeSameStore = await loadReport({ vehicleNo: '京A·12345', batchNos: [b9.batchNo] })
+const mergeSameStore = await loadReport({ vehicleNo: '京A·T0002', batchNos: [b9.batchNo] })
 // 判据只能是**落库/详情里的事实**：成功回执按老规矩只报「已入账」+ 去向（targetId），
 // 不回带业务附言（附录里的那句「并入运单 X」是给日志看的，不是数据源）。
 // 所以这里认两件事：回执指向的就是 A 那一张，且它随后真的多了这批货（下一条按站点核）。
@@ -290,7 +299,7 @@ const planE = await createPlan([b10.id], { storeOverride: storeB, remark: '装�
 check('★ 准备：建计划 E（另一家门店，单批）',
   planE?.status === 1 && planE?.storeName === storeB.name, `planNo=${planE?.planNo}`)
 
-const mergeNewStore = await loadReport({ vehicleNo: '京A·12345', batchNos: [b10.batchNo] })
+const mergeNewStore = await loadReport({ vehicleNo: '京A·T0002', batchNos: [b10.batchNo] })
 check('★ ★ [并入] 同车牌再扫另一家店的货 → 还是那张运单（不会另开一张）',
   statusOf(mergeNewStore) === ST_ACCEPTED && targetIdOf(mergeNewStore) === transportAId,
   brief(mergeNewStore))
@@ -316,11 +325,11 @@ check('★ 计划 A 三条明细全部标记已排车，且都指向本次运单
   itemsA.length === 3 && itemsA.every((i) => i.shipped === 1 && i.transportId === transportAId),
   `明细：${itemsA.map((i) => `${i.batchNo}:${i.shipped}/${i.transportId}`).join(', ')}`)
 check('★ 车牌由现场补齐；司机在计划与现场都是空的（装车口不采集），如实留空',
-  detailA?.data?.plan?.vehicleNo === '京A·12345' && !detailA?.data?.plan?.driverName,
+  detailA?.data?.plan?.vehicleNo === '京A·T0002' && !detailA?.data?.plan?.driverName,
   `vehicleNo=${detailA?.data?.plan?.vehicleNo} driverName=${detailA?.data?.plan?.driverName}`)
 
 // ── G. 重复装车 → 拒绝 ──
-const again = await loadReport({ vehicleNo: '京A·12345', driverName: '张师傅', batchNos: [b1.batchNo] })
+const again = await loadReport({ vehicleNo: '京A·T0002', driverName: '张师傅', batchNos: [b1.batchNo] })
 check('★ 已由运单发运过的批次再扫 → 拒绝（一批货只能上一次车）',
   statusOf(again) === ST_REJECTED && text(again).includes('已由运单发运过'), brief(again))
 
@@ -385,8 +394,39 @@ const c1AfterDepart = await api(`/distribution/transports/${transportC1Id}`, { t
 check('★ 分车第一车先发车（车没开走就不会有第二车）',
   c1AfterDepart?.data?.status === 2, `depart=${brief(departC1)} status=${c1AfterDepart?.data?.status}`)
 
-const okC2 = await loadReport({ vehicleNo: PLATE_C, driverName: '张师傅', batchNos: [b7.batchNo] })
-check('★ 分车第二车：第一车已发走，同车牌再扫 → **另开一张**（不并进已发走的那张）',
+// 「一车一趟」（2026-10-22）：C1 发车后还在路上，这辆车根本没回来 ——
+// 同车牌再扫不可能装上第二趟。这一条必须先验，否则后面的「分车」会看起来像随便裂单。
+const samePlateAgain = await loadReport({ vehicleNo: PLATE_C, driverName: '张师傅', batchNos: [b7.batchNo] })
+check('★ 车还在路上（运输中）→ 同车牌再装一趟被拒、转人工（一辆车同一时间只跑一趟）',
+  statusOf(samePlateAgain) === ST_MANUAL && text(samePlateAgain).includes('未完成的运单'),
+  brief(samePlateAgain))
+
+// 车到店 → 门店签收：签收完成（status=4）才是这辆车「回来了」的开关。
+// 一车一趟不等于「一张计划只能一车」—— 货多分两车仍然要做，只是两趟之间必须有一趟收尾。
+const arriveC1 = await api(`/distribution/transports/${transportC1Id}/arrive`, { method: 'PUT', token })
+check('★ 分车第一车到达门店', !text(arriveC1).includes('"code":5000'), brief(arriveC1))
+const stopsC1 = await api(`/distribution/transports/${transportC1Id}/stops`, { token })
+const stopC1 = (stopsC1?.data || [])[0] || {}
+const receiptC1 = await api('/distribution/receipts', {
+  method: 'POST', token,
+  body: {
+    transportId: transportC1Id, storeId: stopC1.storeId, storeName: stopC1.storeName,
+    receiver: '回归签收人', qtyCheck: 1, tempCheck: 1, packageIntact: 1,
+  },
+})
+const receiptC1Id = receiptC1?.data?.id
+if (receiptC1Id) receiptIds.push(receiptC1Id)
+const c1Signed = await api(`/distribution/transports/${transportC1Id}`, { token })
+check('★ 第一车签收完成（status=4）——车回来了，同一台车才谈得上第二趟',
+  c1Signed?.data?.status === 4, `status=${c1Signed?.data?.status} receipt=${brief(receiptC1)}`)
+
+// 报文必须与「车在路上被拒」那一次区分开：接入层除 bizKey 外还有一道
+// 「同设备 + 同通道 + 同一份报文」的兜底判重，装的是同一批货、车牌也一样，
+// 不加这个回到标记就会被判成重复上报（status=5），拿不到真正的建单结果。
+const okC2 = await loadReport({
+  vehicleNo: PLATE_C, driverName: '张师傅', batchNos: [b7.batchNo], returnTrip: 'C1-SIGNED',
+})
+check('★ 分车第二车：第一车已签收完成，同车牌再扫 → 另开一张（不是同车第二单）',
   statusOf(okC2) === ST_ACCEPTED && targetIdOf(okC2) !== transportC1Id, brief(okC2))
 const transportC2Id = targetIdOf(okC2)
 if (transportC2Id) transportIds.push(transportC2Id)
@@ -416,7 +456,7 @@ check('★ 被拦之后运单仍停在「待发车」，没有偷偷发出去',
 const filled = await api(`/distribution/transports/${transportAId}`, {
   method: 'PUT', token,
   body: {
-    splitBatchId: b1.id, vehicleNo: '京A·12345', vehicleType: '冷藏车', refrigeration: '机械制冷',
+    splitBatchId: b1.id, vehicleNo: '京A·T0002', vehicleType: '冷藏车', refrigeration: '机械制冷',
     driverName: '张师傅', driverPhone: '13700000002',
     // destination 取运单当前值：E2/E3 并入之后它已经是「途经 2 站：…」，
     // 这一组验的是司机补录，不拿目的地字段做别的文章
@@ -443,6 +483,11 @@ check('★ 补齐司机后装车口生成的运单可正常发车（状态 待�
 if (process.env.KEEP === '1') {
   console.log('\n  （KEEP=1：跳过收尾删除，交由 db 侧核验后清理）')
 } else {
+  // 顺序要紧：签收单是运单的下游凭证，deleteTransport 遇到它会直接拒绝删单，
+  // 所以先撤签收单再删运单（K 组为了验证「车回来了才能再装」自己造了一张）
+  for (const id of receiptIds) {
+    await api(`/distribution/receipts/${id}`, { method: 'DELETE', token })
+  }
   for (const id of transportIds) {
     await api(`/distribution/transports/${id}`, { method: 'DELETE', token })
   }

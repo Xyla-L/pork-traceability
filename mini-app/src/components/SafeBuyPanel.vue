@@ -2,7 +2,7 @@
   <view class="safe-buy-panel">
     <view class="sbp-header">
       <text class="sbp-title">安心购</text>
-      <BlockchainBadge :verified="verified" />
+      <BlockchainBadge :verified="verified" :on-chain="onChain" :count="count" />
     </view>
 
     <view class="sbp-section">
@@ -26,6 +26,16 @@ defineProps({
   verified: {
     type: Boolean,
     default: false,
+  },
+  /** 是否真的写入了区块链：false 时徽章只说「平台存证已核对」 */
+  onChain: {
+    type: Boolean,
+    default: false,
+  },
+  /** 存证条数；0 表示暂无存证，与「核对未通过」不是一回事 */
+  count: {
+    type: Number,
+    default: null,
   },
   certs: {
     type: Array,

@@ -14,6 +14,20 @@ VALUES ('ET-DEMO-0001', @farm_id, '长白猪', DATE_SUB(CURDATE(), INTERVAL 180 
 ON DUPLICATE KEY UPDATE farm_id = VALUES(farm_id), status = VALUES(status);
 SET @pig_id := (SELECT id FROM pig_individual WHERE ear_tag_no = 'ET-DEMO-0001');
 
+-- 示范批：批次档案 + 按耳标区间展开成员行（示范批 3 头，链上事实挂在 ET-DEMO-0001 这头）
+INSERT INTO pig_batch (batch_no, farm_id, breed, entry_date, ear_tag_start, ear_tag_end, quantity, source,
+                       data_source, source_ref)
+VALUES ('PB-DEMO-0001', @farm_id, '长白猪', DATE_SUB(CURDATE(), INTERVAL 180 DAY),
+        'ET-DEMO-0001', 'ET-DEMO-0003', 3, '自繁', 'MANUAL', '人工登记批次')
+ON DUPLICATE KEY UPDATE breed = VALUES(breed);
+SET @demo_batch_id := (SELECT id FROM pig_batch WHERE batch_no = 'PB-DEMO-0001');
+INSERT INTO pig_individual (ear_tag_no, farm_id, batch_id, breed, birth_date, pen_no, source, status, data_source, source_ref)
+VALUES ('ET-DEMO-0002', @farm_id, @demo_batch_id, '长白猪', NULL, 'A-01', '自繁', 1, 'MANUAL', '生猪批次 PB-DEMO-0001（按耳标区间自动生成）'),
+       ('ET-DEMO-0003', @farm_id, @demo_batch_id, '长白猪', NULL, 'A-01', '自繁', 1, 'MANUAL', '生猪批次 PB-DEMO-0001（按耳标区间自动生成）')
+ON DUPLICATE KEY UPDATE batch_id = VALUES(batch_id);
+UPDATE pig_individual SET batch_id = @demo_batch_id, source_ref = COALESCE(source_ref, '生猪批次 PB-DEMO-0001（按耳标区间自动生成）')
+WHERE ear_tag_no = 'ET-DEMO-0001';
+
 INSERT INTO vaccine_record (pig_id, vaccine_name, batch_no, manufacturer, inject_time, dosage, inject_site, operator, file_ids)
 SELECT @pig_id, '猪瘟活疫苗', 'VAC-DEMO-001', '示范动物药业', DATE_SUB(NOW(), INTERVAL 120 DAY),
        '2ml', '颈部肌肉', '李牧', JSON_ARRAY()

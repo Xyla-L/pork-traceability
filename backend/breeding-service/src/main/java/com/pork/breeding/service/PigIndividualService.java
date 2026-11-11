@@ -2,7 +2,6 @@ package com.pork.breeding.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.pork.breeding.dto.PigIndividualDTO;
 import com.pork.breeding.entity.PigIndividual;
 import com.pork.breeding.vo.PigIndividualVO;
 
@@ -21,7 +20,10 @@ public interface PigIndividualService extends IService<PigIndividual> {
      */
     List<String> breedOptions();
 
-    /* 人工建档与修改方法均已删除：养殖建档为设备独占环节，写入只走设备通道。 */
+    /**
+     * 个体建档入口已取消：档案按批次登记（/pigs/batches），
+     * 个体行由批次按耳标区间自动展开，不再有人工逐头建档路径。
+     */
 
     PigIndividualVO getDetail(Long id);
 

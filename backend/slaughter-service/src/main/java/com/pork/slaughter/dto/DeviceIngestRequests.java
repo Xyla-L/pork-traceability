@@ -65,6 +65,8 @@ public final class DeviceIngestRequests {
         private String source;
         private String sourceRef;
         private String rawPayload;
+        /** 设备所属机构（sys_org.id）：接入层按设备台账带出，NULL=未绑定，不猜 */
+        private Long orgId;
     }
 
     /**
@@ -106,6 +108,8 @@ public final class DeviceIngestRequests {
         private String source;
         private String sourceRef;
         private String rawPayload;
+        /** 设备所属机构（sys_org.id）：接入层按设备台账带出，NULL=未绑定，不猜 */
+        private Long orgId;
     }
 
     /**
@@ -145,6 +149,8 @@ public final class DeviceIngestRequests {
         private String source;
         private String sourceRef;
         private String rawPayload;
+        /** 设备所属机构（sys_org.id）：接入层按设备台账带出，NULL=未绑定，不猜 */
+        private Long orgId;
     }
 
     /**
@@ -177,5 +183,7 @@ public final class DeviceIngestRequests {
         private String source;
         private String sourceRef;
         private String rawPayload;
+        /** 设备所属机构（sys_org.id）：接入层按设备台账带出，NULL=未绑定，不猜 */
+        private Long orgId;
     }
 }

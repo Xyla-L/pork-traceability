@@ -84,17 +84,30 @@ console.log('\n== 1) 来源策略：产地检疫是否已挂设备通道 ==')
   check('策略仍是「设备优先」（人工出证保留但须兜底解锁）', row?.policy === 'DEVICE_PREFERRED', `policy=${row?.policy}`)
 }
 
-console.log('\n== 2) 找一头尚未出证的在养猪 ==')
+console.log('\n== 2) 找一头尚未出证、且已有有效免疫记录的在养猪 ==')
+// 产地检疫要查验有效免疫档案（ImmunityGate），所以这里必须挑「打过疫苗」的猪：
+// 挑一头没免疫的去出证，测到的只会是拦截规则，而不是这条通道本身。
+const vaccinatedPigIds = await (async () => {
+  const g = await api('/breeding/records/vaccines?current=1&size=200', { token })
+  const ids = new Set()
+  for (const grp of (g?.data?.records || [])) {
+    for (const m of (grp.members || [])) {
+      if (m.voidFlag !== 1 && m.pigId) ids.add(m.pigId)
+    }
+  }
+  return ids
+})()
 const pig = await (async () => {
-  const res = await api('/breeding/pigs?current=1&size=10&status=1', { token })
+  const res = await api('/breeding/pigs?current=1&size=50&status=1', { token })
   const pigs = res?.data?.records || []
   for (const p of pigs) {
+    if (!vaccinatedPigIds.has(p.id)) continue
     const cert = await api(`/breeding/pigs/${p.id}/quarantine-cert`, { token })
     if (!cert?.data) return p
   }
   return null
 })()
-check('取到「尚未出证」的在养猪', !!pig?.id, pig ? `耳标 ${pig.earTagNo}` : '没有可用的猪')
+check('取到「已免疫 + 尚未出证」的在养猪', !!pig?.id, pig ? `耳标 ${pig.earTagNo}` : '没有可用的猪')
 if (!pig?.id) process.exit(1)
 
 const certNo = `QC-VERIFY-${Date.now()}`

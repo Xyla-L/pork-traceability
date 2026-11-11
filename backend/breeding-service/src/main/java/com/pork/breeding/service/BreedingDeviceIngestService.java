@@ -3,16 +3,15 @@ package com.pork.breeding.service;
 import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.pork.breeding.dto.BreedingDeviceIngestRequests;
-import com.pork.breeding.entity.Farm;
 import com.pork.breeding.entity.PigIndividual;
 import com.pork.breeding.entity.QuarantineCertificate;
 import com.pork.breeding.entity.SlaughterApply;
 import com.pork.breeding.entity.VaccineRecord;
-import com.pork.breeding.mapper.FarmMapper;
 import com.pork.breeding.mapper.PigIndividualMapper;
 import com.pork.breeding.mapper.QuarantineCertMapper;
 import com.pork.breeding.mapper.SlaughterApplyMapper;
 import com.pork.breeding.mapper.VaccineRecordMapper;
+import com.pork.breeding.support.ImmunityGate;
 import com.pork.core.util.BusinessNoGenerator;
 import com.pork.core.util.HashUtil;
 import com.pork.mq.ChainEventPublisher;
@@ -51,46 +50,40 @@ public class BreedingDeviceIngestService {
     private static final int APPLY_STATUS_PENDING = 0;
     private static final int APPLY_STATUS_APPROVED = 1;
 
+    /** 生猪状态：1 在养 / 2 已出栏 / 3 已屠宰 / 4 异常淘汰 */
+    private static final int PIG_STATUS_FARMING = 1;
+    private static final int PIG_STATUS_SLAUGHTERED = 3;
+
     private final PigIndividualMapper pigMapper;
     private final VaccineRecordMapper vaccineMapper;
-    private final FarmMapper farmMapper;
     private final QuarantineCertMapper certMapper;
     private final SlaughterApplyMapper applyMapper;
     private final ChainEventPublisher chainEvents;
+    private final ImmunityGate immunityGate;
 
-    /** 养殖建档：耳标读写器，佩戴即建档；耳标已存在按幂等返回既有档案 */
+    /**
+     * 养殖建档：耳标读写器。
+     * <p>
+     * 设备能力边界：读写器只提供耳标号，批次信息（养殖场、批次号、品种、进场日期）
+     * 是人的知识，由人工按批次登记。个体行由批次按耳标区间自动展开，
+     * 所以设备上报只有两种结局：耳标落在某个批次区间内 → 幂等返回既有档案；
+     * 耳标不在任何区间 → 转待人工（人工登记批次后重放/确认即入账）。
+     * <b>设备不再直接建档，个体也不再逐头建档</b>。
+     */
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> ingestTag(BreedingDeviceIngestRequests.DeviceTag request) {
-        Farm farm = farmMapper.selectOne(Wrappers.<Farm>lambdaQuery()
-                .eq(Farm::getFarmName, request.getFarmName()).last("LIMIT 1"));
-        if (farm == null) {
-            // 养殖场未登记是业务事实，人工在页面登记后可确认入账（retryable）
-            return manual("养殖场「" + request.getFarmName() + "」未登记，请先到养殖场管理登记后再建档");
-        }
-
         PigIndividual exists = pigMapper.selectOne(Wrappers.<PigIndividual>lambdaQuery()
                 .eq(PigIndividual::getEarTagNo, request.getEarTagNo()).last("LIMIT 1"));
         if (exists != null) {
             log.info("ingest_tag_duplicate earTagNo={} id={}", request.getEarTagNo(), exists.getId());
-            return written(exists.getId(), "该耳标已建档，返回既有档案");
+            return written(exists.getId(), "该耳标已在批次档案中，返回既有档案");
         }
 
-        PigIndividual pig = new PigIndividual();
-        pig.setEarTagNo(request.getEarTagNo());
-        pig.setFarmId(farm.getId());
-        pig.setBreed(request.getBreed());
-        pig.setBirthDate(request.getBirthDate());
-        pig.setGender(request.getGender() == null ? 1 : request.getGender());
-        pig.setPenNo(request.getPenNo());
-        pig.setSource(request.getOrigin());
-        pig.setStatus(1);
-        pig.setDataSource(SOURCE_DEVICE);
-        pig.setSourceRef(request.getSourceRef());
-        pig.setRawPayload(request.getRawPayload());
-        pig.setCreateTime(LocalDateTime.now());
-        pig.setUpdateTime(LocalDateTime.now());
-        pigMapper.insert(pig);
-        return written(pig.getId(), "生猪档案已建立（耳标 " + request.getEarTagNo() + "）");
+        // 新耳标：批次信息（养殖场、批次号、品种、进场日期）设备给不出，也不该给 ——
+        // 转待人工，人在生猪批次档案登记批次（耳标区间覆盖该号）后再确认入账。
+        return manual("读写器只读到耳标号 " + request.getEarTagNo()
+                + "，该耳标不在任何已登记批次区间内：请先到「生猪批次档案」登记批次（耳标区间含此号），"
+                + "再到接入监控确认入账");
     }
 
     /** 免疫注射：疫苗批号必填（缺批号拒收），同一头猪同批号同时间已记录则幂等返回 */
@@ -98,6 +91,14 @@ public class BreedingDeviceIngestService {
     public Map<String, Object> ingestVaccine(BreedingDeviceIngestRequests.DeviceVaccine request) {
         if (request.getPigId() == null) {
             return manual("未关联到生猪档案（耳标 " + request.getEarTagNo() + "），请人工核对");
+        }
+
+        // 只有「在养」的猪能记录免疫：已出栏/已屠宰的猪打疫苗在逻辑上不成立，
+        // 撞上这一条说明耳标读错、报文串号或设备重放了历史报文 —— 一律拒绝，不留待人工
+        PigIndividual pig = pigMapper.selectById(request.getPigId());
+        if (pig != null && pig.getStatus() != null && pig.getStatus() != PIG_STATUS_FARMING) {
+            return refused("该生猪当前状态为「" + pigStatusLabel(pig.getStatus())
+                    + "」，不能再记录免疫（在养状态才能接种）");
         }
 
         VaccineRecord exists = vaccineMapper.selectOne(Wrappers.<VaccineRecord>lambdaQuery()
@@ -129,6 +130,16 @@ public class BreedingDeviceIngestService {
         record.setRawPayload(request.getRawPayload());
         record.setCreateTime(LocalDateTime.now());
         vaccineMapper.insert(record);
+        // 免疫记录上链存证：检疫出证（ImmunityGate）认的就是这些档案，事实必须可追
+        Map<String, Object> vacPayload = Map.of(
+                "pigId", record.getPigId(),
+                "vaccineName", record.getVaccineName(),
+                "vaccineBatchNo", StringUtils.hasText(record.getBatchNo()) ? record.getBatchNo() : "",
+                "injectTime", record.getInjectTime() == null ? "" : record.getInjectTime().toString(),
+                "operator", StringUtils.hasText(record.getOperator()) ? record.getOperator() : "未记录");
+        chainEvents.publish(ChainTxMessage.create("VACCINE_RECORD", record.getId(),
+                record.getPigId() + ":" + record.getVaccineName(),
+                HashUtil.sha256Json(request), vacPayload));
         return written(record.getId(), "免疫记录已入账");
     }
 
@@ -146,6 +157,24 @@ public class BreedingDeviceIngestService {
     public Map<String, Object> ingestQuarantineCert(BreedingDeviceIngestRequests.DeviceQuarantineCert request) {
         if (request.getPigId() == null) {
             return manual("未关联到生猪档案（耳标 " + request.getEarTagNo() + "），请人工核对");
+        }
+
+        // 0) 业务前置：扫码登记的是「一张已经开出的证」，但证的前提必须成立，否则等于给违规调运补凭据。
+        //    三条判定按确定性排序：已屠宰（不可能调运）> 未出栏但已调运（人判断）> 无免疫档案（法定前置缺失）
+        PigIndividual pig = pigMapper.selectById(request.getPigId());
+        if (pig != null && pig.getStatus() != null) {
+            if (pig.getStatus() == PIG_STATUS_SLAUGHTERED) {
+                return refused("该生猪已屠宰，不能再登记产地检疫证（产地检疫是调运前置，猪已不在场）");
+            }
+            if (pig.getStatus() != PIG_STATUS_FARMING) {
+                return manual("该生猪当前状态为「" + pigStatusLabel(pig.getStatus())
+                        + "」，已不在养殖场，产地检疫证应在出栏前签发，请人工核对纸质证与调运记录");
+            }
+        }
+        LocalDateTime certIssueTime = request.getIssueTime() == null ? LocalDateTime.now() : request.getIssueTime();
+        String immunityBlock = immunityGate.blockReason(request.getPigId(), certIssueTime);
+        if (immunityBlock != null) {
+            return refused(immunityBlock);
         }
 
         // 1) 同一张证重复登记：设备重发或网络重试都会走到这里，幂等返回既有记录，不新建
@@ -168,7 +197,7 @@ public class BreedingDeviceIngestService {
         cert.setPigId(request.getPigId());
         cert.setCertNo(request.getCertNo());
         cert.setIssueOrg(request.getIssueOrg());
-        cert.setIssueTime(request.getIssueTime() == null ? LocalDateTime.now() : request.getIssueTime());
+        cert.setIssueTime(certIssueTime);
         cert.setValidUntil(request.getValidUntil());
         // 签发人只能是证面上的官方兽医：拿不到就如实记「未记录」，绝不用设备名顶替 ——
         // 否则追溯链上「谁签发的这张证」查到的是一台机器
@@ -267,6 +296,17 @@ public class BreedingDeviceIngestService {
 
     private Map<String, Object> written(Long id, String reason) {
         return result(true, id, reason, false);
+    }
+
+    /** 生猪状态的中文名：拒绝原因要给现场看得懂的词，不能把数字抛回去 */
+    private String pigStatusLabel(Integer status) {
+        return switch (status) {
+            case 1 -> "在养";
+            case 2 -> "已出栏";
+            case 3 -> "已屠宰";
+            case 4 -> "异常/淘汰";
+            default -> "状态未知";
+        };
     }
 
     private Map<String, Object> manual(String reason) {

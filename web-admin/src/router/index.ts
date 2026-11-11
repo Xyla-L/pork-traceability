@@ -152,6 +152,26 @@ const routes: RouteRecordRaw[] = [
           roles: ['DISTRIBUTOR', 'RETAILER', 'SUPERVISOR', 'ADMIN'],
         },
       },
+      {
+        path: 'distribution/return',
+        name: 'ReturnDisposal',
+        component: () => import('@/views/distribution/ReturnDisposal.vue'),
+        meta: {
+          title: '处理运输',
+          icon: 'RefreshLeft',
+          roles: ['DISTRIBUTOR', 'SUPERVISOR', 'ADMIN'],
+        },
+      },
+      {
+        path: 'disposal/confirm',
+        name: 'DisposalConfirm',
+        component: () => import('@/views/disposal/DisposalConfirm.vue'),
+        meta: {
+          title: '处理签收',
+          icon: 'CircleCheck',
+          roles: ['DISPOSAL', 'SUPERVISOR', 'ADMIN'],
+        },
+      },
 
       // ========== 销售管理 ==========
       {

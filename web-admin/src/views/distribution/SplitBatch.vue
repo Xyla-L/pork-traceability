@@ -82,8 +82,12 @@
       </div>
     </el-card>
 
-    <el-empty v-else description="暂无批次数据，请先创建胴体批次" :image-size="80">
-      <el-button type="primary" @click="$router.push('/admin/distribution/batch')">前往创建批次</el-button>
+    <!-- 批次只由分拣台归集：人工建批入口已删除，所以空态里不能再给「去创建批次」的按钮 -->
+    <el-empty description="暂无胴体批次：分拣台还没有上报白条" :image-size="80">
+      <div class="empty-hint">
+        胴体批次由分拣台在白条下线时识读挂钩标签并过磅后自动归集（按「屠宰场 + 屠宰日」成批），
+        无需人工建批。等分拣台上报后刷新本页即可看到。
+      </div>
     </el-empty>
 
     <!-- 分割车间监控：展示**当前这批货**在分割线上的现场照片。
@@ -650,6 +654,8 @@ function stopSnapshotPolling() {
 
 // 哈希面板
 :deep(.hash-panel) { margin-bottom: 16px; padding: 12px; background: #f5f7fa; border-radius: 6px; }
+
+.empty-hint { max-width: 620px; font-size: 13px; line-height: 1.7; color: #909399; text-align: center; }
 
 @keyframes highlightPulse {
   0%, 100% { box-shadow: 0 0 12px rgba(64,158,255,0.3); }

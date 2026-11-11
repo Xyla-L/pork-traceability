@@ -45,14 +45,15 @@
       @voided="fetchList"
     />
 
-    <!-- 分页 -->
+    <!-- 分页：total 是「组数」不是「头数」——列表按批聚合，一头一行会让翻页错位 -->
     <div class="pagination-wrapper">
+      <span class="group-total">共 {{ pagination.total }} 组（按批聚合，点行首箭头看逐头）</span>
       <el-pagination
         v-model:current-page="pagination.pageNum"
         v-model:page-size="pagination.pageSize"
         :page-sizes="[10, 20, 50, 100]"
         :total="pagination.total"
-        layout="total, sizes, prev, pager, next, jumper"
+        layout="sizes, prev, pager, next, jumper"
         background
         @size-change="handleSizeChange"
         @current-change="handlePageChange"
@@ -65,7 +66,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { Search, Refresh } from '@element-plus/icons-vue'
-import request from '@/utils/request'
+import { recordGroupApi } from '@/api/modules/breeding'
 import VaccineTable from './VaccineTable.vue'
 
 // ==================== 搜索相关 ====================
@@ -89,58 +90,25 @@ const pagination = reactive({
   total: 0
 })
 
-// 获取疫苗记录列表
+// 获取疫苗记录列表（按批次分组：一次免疫一行，展开看逐头）
+//
+// 改造前是「先拉 100 头猪、再逐头并发调 /vaccines/list 在前端拼接」——同一批 30 头
+// 打一次疫苗会刷成 30 行，而且请求数是 O(头数)。现在换成后端分组查询，
+// 一次请求拿回「主行 + 逐头明细」，分页按组算。
 const fetchList = async () => {
   tableLoading.value = true
 
   try {
-    const pigParams = { size: 100 }
-    if (searchForm.earTagNo) {
-      pigParams.earTagNo = searchForm.earTagNo
-    }
-
-    const pigRes = await request.get('/breeding/pigs', { params: pigParams, timeout: 5000 })
-    const pigs = pigRes?.records || pigRes?.list || []
-
-    if (pigs.length === 0) { tableData.value = []; pagination.total = 0; tableLoading.value = false; return }
-
-    const allVaccines = []
-    const promises = pigs.map(async (pig) => {
-      try {
-        // 走 /list 全量取回：分页接口默认每页 10 条，一头猪的免疫记录会被截断；
-        // includeVoid 让已作废的记录留在原位（由表格打标），而不是整条消失。
-        const vacRes = await request.get(`/breeding/pigs/${pig.id}/vaccines/list`, {
-          params: { includeVoid: searchForm.includeVoid },
-          timeout: 5000,
-        })
-        const vaccines = Array.isArray(vacRes) ? vacRes : vacRes?.records || vacRes?.list || []
-        vaccines.forEach((v) => {
-          allVaccines.push({ ...v, earTagNo: pig.earTagNo, pigId: pig.id })
-        })
-      } catch { /* skip */ }
+    const res = await recordGroupApi.vaccines({
+      pageNum: pagination.pageNum,
+      pageSize: pagination.pageSize,
+      earTagNo: searchForm.earTagNo || undefined,
+      vaccineName: searchForm.vaccineName || undefined,
+      includeVoid: searchForm.includeVoid,
     })
-
-    await Promise.all(promises)
-
-    // 按疫苗名称过滤
-    let filtered = allVaccines
-    if (searchForm.vaccineName) {
-      filtered = filtered.filter((v) => v.vaccineName?.includes(searchForm.vaccineName))
-    }
-
-    // 上面的数据是「逐头猪并发拉取再拼接」的，天然没有顺序（谁先返回谁在前）。
-    // 不排序时刚上报的记录可能落到第 2、3 页，看起来像「上报成功却没入账」，
-    // 因此统一按入账时间倒序，最新的排第一页。
-    filtered.sort((a, b) => {
-      const ta = String(a.createTime || a.injectTime || '')
-      const tb = String(b.createTime || b.injectTime || '')
-      if (ta !== tb) return tb.localeCompare(ta)
-      return (b.id || 0) - (a.id || 0)
-    })
-
-    pagination.total = filtered.length
-    const start = (pagination.pageNum - 1) * pagination.pageSize
-    tableData.value = filtered.slice(start, start + pagination.pageSize)
+    const list = res?.records || res?.list || []
+    tableData.value = Array.isArray(list) ? list : []
+    pagination.total = res?.total || 0
   } catch (error) {
     console.error('获取疫苗记录列表失败:', error)
     tableData.value = []
@@ -201,10 +169,17 @@ onMounted(() => {
 
   .pagination-wrapper {
     display: flex;
-    justify-content: center;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
     padding-top: 16px;
     margin-top: 16px;
     border-top: 1px solid #ebeef5;
+
+    .group-total {
+      font-size: 13px;
+      color: #909399;
+    }
   }
 }
 </style>

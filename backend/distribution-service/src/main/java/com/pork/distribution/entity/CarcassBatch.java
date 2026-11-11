@@ -39,6 +39,15 @@ public class CarcassBatch {
     @TableField(exist = false)
     private Integer splitCount;
     /**
+     * 批次内生猪的品种（去重）。
+     * <p>
+     * 非库表字段，拆分树查询时从养殖侧带出：品种是「这批肉是什么猪」的第一眼信息，
+     * 树根只在批次号（CB…）后面标注它，不参与任何判定。查不到（养殖侧不可用/档案无品种）
+     * 就留空 —— 品种是装饰性信息，缺了不拦树。
+     */
+    @TableField(exist = false)
+    private List<String> pigBreeds;
+    /**
      * 归集状态：1=归集中 2=已封。
      * <p>
      * 批次必须有上限，否则它不是批次——真实屠宰场日屠宰量几百到几千头，

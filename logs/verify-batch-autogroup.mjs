@@ -117,11 +117,11 @@ const track = (r) => {
 const stamp = Date.now()
 const HOUSE_A = '归集验证屠宰场-甲'
 const HOUSE_B = '归集验证屠宰场-乙'
-const cleanup = { pigs: [], applies: [], entries: [], inspections: [], stamps: [], carcassBatches: [] }
+const cleanup = { batches: [], pigs: [], applies: [], entries: [], inspections: [], stamps: [], carcassBatches: [] }
 
 const farms = await api('/breeding/farms?current=1&size=1', { token })
-const farmName = farms?.data?.records?.[0]?.farmName
-check('取到一个已登记养殖场', !!farmName, `farmName=${farmName}`)
+const farmId = farms?.data?.records?.[0]?.id
+check('取到一个已登记养殖场', !!farmId, `farmId=${farmId}`)
 
 /**
  * 造一头猪。
@@ -132,10 +132,14 @@ async function setupPig(suffix, batchNo, slaughterhouse, stage = 'stamped') {
   const certNo = `QC-BAG-${stamp}-${suffix}`
   const carcassNo = `CS-BAG-${stamp}-${suffix}`
 
-  const tag = track(await report(TAG_DEVICE, {
-    earTagNo, farmName, birthDate: dateText(-90), breed: '三元杂', gender: 1, penNo: '胴体批次归集验证舍', origin: '自繁',
-  }))
-  const pigId = tag?.data?.targetId
+  // 2026-10-25 起档案按批次登记：测试猪登记为单头批次（耳标区间 = 该猪自身）
+  const created = await api('/breeding/pigs/batches', {
+    method: 'POST', token,
+    body: { batchNo: `PB-BAG-${stamp}-${suffix}`, farmId, earTagStart: earTagNo, earTagEnd: earTagNo, breed: '三元杂', entryDate: dateText(-90), source: '自繁' },
+  })
+  if (created?.data) cleanup.batches.push(created.data)
+  const pigPage = await api(`/breeding/pigs?earTagNo=${encodeURIComponent(earTagNo)}&current=1&size=1`, { token })
+  const pigId = pigPage?.data?.records?.[0]?.id
   if (pigId) cleanup.pigs.push(pigId)
 
   track(await report(CERT_DEVICE, {
@@ -281,11 +285,14 @@ check('★ P3 另建了一个批次（屠宰场不同不并入）',
   `P1批次=${autoBatchId} P3目标=${b3?.data?.targetId}`)
 if (b3?.data?.targetId) cleanup.carcassBatches.push(b3.data.targetId)
 
-console.log('\n== 6) ★ 重复上报：回既有批次，不新建也不重复入批 ==')
+console.log('\n== 6) ★ 重复上报：明确拒绝入账，不新建也不重复入批 ==')
 const b1Again = track(await batchReport(P1.earTagNo, HOUSE_A))
-check('★ P1 重复上报回既有批次（幂等，不报错）',
-  b1Again?.data?.accepted === true && b1Again?.data?.targetId === autoBatchId,
-  `targetId=${b1Again?.data?.targetId} 期望=${autoBatchId}`)
+// 2026-10-19 起：重复上报不再「回照已入账」，而是回 status=5 重复上报 + accepted=false，
+// 但仍指回原批次（targetId 不变），证明没有新建、也没有把同一头重复计进批次。
+check('★ P1 重复上报被拒绝入账（该信息已存在）',
+  b1Again?.data?.accepted === false && b1Again?.data?.status === 5
+    && b1Again?.data?.targetId === autoBatchId,
+  `accepted=${b1Again?.data?.accepted} status=${b1Again?.data?.status} targetId=${b1Again?.data?.targetId} 期望批次=${autoBatchId}`)
 check('★ 回执标出这是重复上报', b1Again?.data?.duplicate === true, `duplicate=${b1Again?.data?.duplicate}`)
 const autoBatch3 = autoBatchId ? await batchById(autoBatchId) : null
 check('★ 重推后批次里仍是 2 头（同一头没有被重复计进去）',
@@ -405,6 +412,7 @@ if (FULL_HOUSE && FULL_BATCH_ID && FULL_LIMIT) {
 
 console.log(`\n===== 结果：${pass} 项通过，${fail} 项失败 =====`)
 console.log('清理用 —— 接入流水 ID：' + stagingIds.join(','))
+console.log('清理用 —— 临时批次 ID：' + cleanup.batches.join(','))
 console.log('清理用 —— 临时猪 ID：' + cleanup.pigs.join(','))
 console.log('清理用 —— 出栏申报 ID：' + cleanup.applies.join(','))
 console.log('清理用 —— 入场查验 ID：' + cleanup.entries.join(','))

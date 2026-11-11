@@ -13,6 +13,7 @@ COPY ingest-service ./ingest-service
 COPY trace-service ./trace-service
 COPY blockchain-service ./blockchain-service
 COPY file-service ./file-service
+COPY agent-service ./agent-service
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
     mvn -B -pl "${SERVICE}" -am install -DskipTests \
     && mvn -B -pl "${SERVICE}" dependency:copy-dependencies -DoutputDirectory=/runtime-libs

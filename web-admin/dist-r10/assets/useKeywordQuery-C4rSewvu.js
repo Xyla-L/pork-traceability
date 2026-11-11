@@ -1,0 +1,1 @@
+import{o as u,R as s,a as y}from"./index-BpDWUKgR.js";function a(t){const o=y(),e=()=>{const r=typeof o.query.keyword=="string"?o.query.keyword.trim():"";r&&t(r)};u(e),s(()=>o.query.keyword,e)}export{a as u};

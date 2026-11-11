@@ -2,6 +2,7 @@
   <div class="page-container">
     <!-- 搜索 -->
     <div class="search-panel">
+      <StoreScopeTag />
       <el-form :model="searchForm" inline>
         <el-form-item label="批次号">
           <el-input v-model="searchForm.batchNo" placeholder="请输入" clearable @keyup.enter="handleSearch" />
@@ -139,6 +140,7 @@
 import { ref, reactive, onMounted, nextTick, computed } from 'vue'
 import { Search, Refresh, PictureFilled, Download } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import StoreScopeTag from '@/components/common/StoreScopeTag.vue'
 import QRCode from 'qrcode'
 import type { EpTagType } from '@/types/common'
 import { salesApi } from '@/api/modules/sales'

@@ -79,15 +79,11 @@ export const mockScanResult = {
       packageIntact: '完好',
     },
     blockchain: {
-      verified: true,
-      recordCount: 5,
-      records: [
-        { type: '产地检疫', txHash: '0x7a3b...', blockNumber: 1234567 },
-        { type: '屠宰双检', txHash: '0x8c4d...', blockNumber: 1234890 },
-        { type: '批次分割', txHash: '0x9e5f...', blockNumber: 1235100 },
-        { type: '门店签收', txHash: '0xa1b2...', blockNumber: 1235300 },
-        { type: '销售激活', txHash: '0xb3c4...', blockNumber: 1235500 },
-      ],
+      // 示例数据不含真实存证：写死 verified=true + 假哈希会被当成「区块链已验证」的证据
+      verified: false,
+      onChain: false,
+      recordCount: 0,
+      records: [],
     },
   },
 }
@@ -95,7 +91,8 @@ export const mockScanResult = {
 /** 安心购：全链条检疫章 + 检测报告摘要 + 区块链徽章 */
 export const mockSafeBuy = {
   qrCode: 'QR-PORK-2024071500101-A001',
-  blockchain: { verified: true, recordCount: 5 },
+  // 示例数据不伪造存证：没有记录就是没有记录，不写 verified: true
+  blockchain: { verified: false, chainMode: 'local', onChain: false, recordCount: 0, records: [] },
   certChain: [
     { type: '产地检疫合格证明', certNo: 'QC2024070100123', issueOrg: 'XX县动物卫生监督所', issueTime: '2024-07-01 10:30', photo: '' },
     { type: '动物检疫合格证明（动物B）', certNo: 'QB2024070200101', issueOrg: 'XX市动物卫生监督所', issueTime: '2024-07-02 08:00', photo: '' },
@@ -129,26 +126,18 @@ export const mockSafeBuy = {
     },
   ],
   chainRecords: [
-    { time: '2024-07-01 10:30', desc: '产地检疫证明上链', txHash: '0x7a3b...', blockNumber: 1234567 },
-    { time: '2024-07-02 12:00', desc: '屠宰双检报告上链', txHash: '0x8c4d...', blockNumber: 1234890 },
-    { time: '2024-07-15 08:30', desc: '批次分割信息上链', txHash: '0x9e5f...', blockNumber: 1235100 },
-    { time: '2024-07-15 11:45', desc: '门店签收信息上链', txHash: '0xa1b2...', blockNumber: 1235300 },
-    { time: '2024-07-15 12:00', desc: '销售激活信息上链', txHash: '0xb3c4...', blockNumber: 1235500 },
+    // 示例数据不伪造交易哈希：空的记录列表比假哈希诚实
   ],
 }
 
 /** 一键验真结果 */
 export const mockVerifyResult = {
-  verified: true,
-  chainStatus: '区块链已验证',
-  detail: '全部 5 条存证记录与链上哈希一致',
-  details: [
-    { type: '产地检疫', localHash: 'a3f5c8e2', chainHash: 'a3f5c8e2', match: true },
-    { type: '屠宰双检', localHash: 'b7d1e9a4', chainHash: 'b7d1e9a4', match: true },
-    { type: '批次分割', localHash: 'c9e2f0b6', chainHash: 'c9e2f0b6', match: true },
-    { type: '门店签收', localHash: 'd4a8b1c3', chainHash: 'd4a8b1c3', match: true },
-    { type: '销售激活', localHash: 'e5b9c2d7', chainHash: 'e5b9c2d7', match: true },
-  ],
+  verified: false,
+  chainMode: 'local',
+  onChain: false,
+  chainStatus: '示例数据不含存证记录',
+  detail: '示例数据未接存证服务，无法核对',
+  details: [],
 }
 
 /** 举报列表 */

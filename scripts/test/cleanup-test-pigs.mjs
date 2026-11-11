@@ -150,6 +150,26 @@ async function main() {
   console.log(`清理完成：猪档案 ${voidedPigs}/${pigs.length}，`
     + `免疫 ${counts.vaccine} 条，检验 ${counts.inspection} 条，盖章 ${counts.stamp} 条均转为「已作废」`)
   console.log('记录仍在库中且带作废理由与实名操作人，追溯侧可核对，未做物理删除。')
+
+  // 2026-10-25 起档案按批次登记：验收残留还有对应的 PB-ACC-* 批次档，一并处理。
+  // 批次内已有猪出栏/屠宰时后端拒绝整批作废（下游事实不能被一句作废抹掉），
+  // 这种批次只能列出来留人工按业务键清理（DELETE FROM db_breeding.pig_batch WHERE batch_no LIKE 'PB-ACC-%'）。
+  const batches = listOf(await api('/breeding/pigs/batches?batchNo=PB-ACC-&current=1&size=100'))
+    .filter((b) => String(b.batchNo || '').startsWith('PB-ACC-'))
+  let voidedBatches = 0
+  let blockedBatches = []
+  for (const b of batches) {
+    const res = await api(`/breeding/pigs/batches/${b.id}/void`, {
+      method: 'POST',
+      body: JSON.stringify({ reason: REASON }),
+    })
+    if (ok(res)) { voidedBatches++; console.log(`    ✅ 批次 ${b.batchNo} 已作废`) }
+    else blockedBatches.push(b.batchNo)
+  }
+  if (batches.length) {
+    console.log(`批次档：${voidedBatches}/${batches.length} 已作废；`
+      + (blockedBatches.length ? `成员已出场的批次 API 拒绝整批作废，需按业务键手工清理：${blockedBatches.join('、')}` : '无阻塞'))
+  }
 }
 
 main().catch((error) => {

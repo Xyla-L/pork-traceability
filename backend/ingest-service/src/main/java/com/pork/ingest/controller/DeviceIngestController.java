@@ -29,6 +29,9 @@ import java.util.Map;
  *   <li>{@code status=1} —— 已收到但需人工处理，可以删除本地缓存（不要重推）</li>
  *   <li>{@code status=3} —— 数据本身不成立被拒绝，不要重推，需人工修正后重录</li>
  *   <li>{@code status=4} —— 非异常值降采样丢弃，可以删除本地缓存</li>
+ *   <li>{@code status=5} —— <b>重复上报</b>：该信息已存在，本次拒绝入账
+ *       （{@code accepted=false}、{@code duplicate=true}、{@code discardLocalCopy=true}）。
+ *       数据已经在系统里，可以删除本地缓存，<b>绝对不要重推</b>；原数据状态见 {@code originalStatus}</li>
  * </ul>
  */
 @Slf4j

@@ -1,0 +1,1 @@
+import{r}from"./request-YU1bgDVC.js";import"./index-BWISC814.js";const o={login(t){return r.post("/auth/login",t)},logout(){return r.post("/auth/logout")},refreshToken(t){return r.post("/auth/refresh",t)},getMe(){return r.get("/auth/me")},updateProfile(t){return r.put("/auth/me",t)},updatePassword(t){return r.put("/auth/password",t)}};export{o as authApi};

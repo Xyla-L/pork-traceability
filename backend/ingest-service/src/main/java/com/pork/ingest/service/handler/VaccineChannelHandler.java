@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -31,6 +32,9 @@ import java.util.Map;
 @Slf4j
 @Component
 public class VaccineChannelHandler implements ChannelHandler {
+
+    /** 生猪状态：1 在养 */
+    private static final int PIG_STATUS_FARMING = 1;
 
     private final BizClient bizClient;
     private final String breedingUrl;
@@ -82,6 +86,23 @@ public class VaccineChannelHandler implements ChannelHandler {
             return DispatchResult.manual(table, "耳标查到的生猪档案缺少主键，无法自动入账");
         }
 
+        // 只有「在养」的猪能记录免疫：已出栏/已屠宰的猪打疫苗在逻辑上不成立。
+        // 撞上这一条不是「条件没到位」，而是报文与事实对不上（耳标读错、串号、设备重放历史报文），
+        // 属于确定性错误 —— 拒绝，不留待人工，否则人工一放行就把矛盾写进了溯源链。
+        Integer status = Handlers.intValue(pig.get("status"));
+        if (status != null && status != PIG_STATUS_FARMING) {
+            return DispatchResult.rejected(table, "该生猪当前状态为「" + pigStatusLabel(status)
+                    + "」，不能再记录免疫（只有「在养」的猪能接种），请核对耳标与报文");
+        }
+
+        // 注射时间不能跑到未来：设备时钟错乱会把整条免疫档案的时间轴带歪，
+        // 而免疫时间正是检疫出证时判断「先免疫后出证」的依据，错进一条就污染一条判断
+        LocalDateTime injectTime = Payloads.time(data, "injectTime");
+        if (injectTime != null && injectTime.isAfter(LocalDateTime.now().plusDays(1))) {
+            return DispatchResult.rejected(table, "免疫注射时间 " + injectTime.toString().replace('T', ' ')
+                    + " 晚于当前时间，疑似注射器时钟错误或报文串号，禁止入库");
+        }
+
         // 操作人必须是现场操作注射器的兽医本人。注射器只是工具，不能把它写进操作人字段 ——
         // 否则追溯链上「谁给这头猪打的疫苗」查到的是一台机器。缺人就转人工补录。
         String operator = Payloads.str(data, "operator");
@@ -112,7 +133,7 @@ public class VaccineChannelHandler implements ChannelHandler {
         body.put("vaccineName", Payloads.str(data, "vaccineName"));
         body.put("vaccineBatchNo", Payloads.str(data, "vaccineBatchNo"));
         body.put("manufacturer", Payloads.str(data, "manufacturer"));
-        body.put("injectTime", Payloads.time(data, "injectTime") == null ? Handlers.time(ctx.reportTime()) : Handlers.time(Payloads.time(data, "injectTime")));
+        body.put("injectTime", injectTime == null ? Handlers.time(ctx.reportTime()) : Handlers.time(injectTime));
         body.put("dosage", Payloads.str(data, "dosage"));
         body.put("injectSite", Payloads.str(data, "injectSite"));
         body.put("operator", operator == null ? "未记录" : operator);
@@ -130,5 +151,15 @@ public class VaccineChannelHandler implements ChannelHandler {
             }
             throw e;
         }
+    }
+
+    private String pigStatusLabel(Integer status) {
+        return switch (status) {
+            case 1 -> "在养";
+            case 2 -> "已出栏";
+            case 3 -> "已屠宰";
+            case 4 -> "异常/淘汰";
+            default -> "状态未知";
+        };
     }
 }

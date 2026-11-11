@@ -311,7 +311,7 @@
         </el-form-item>
 
         <el-form-item label="上报编号">
-          <el-input v-model="demoForm.bizKey" placeholder="留空自动生成；填同一个值再报一次，可验证系统不会重复入账" clearable />
+          <el-input v-model="demoForm.bizKey" placeholder="留空自动生成；填同一个值再报一次，会被判重复上报并拒绝入账" clearable />
         </el-form-item>
         <el-form-item label="采集时间">
           <el-input v-model="demoForm.reportTime" placeholder="留空取当前时间（yyyy-MM-dd HH:mm:ss）" clearable />
@@ -323,6 +323,10 @@
         <!-- 取不到示例值时，若差的只是「生成运单」这一步，直接把入口递过去 -->
         <el-button v-if="sampleJump" link type="primary" @click="router.push(sampleJump.to)">
           {{ sampleJump.text }}
+        </el-button>
+        <!-- 差的只是一张业务单（处理计划里的召回货还没排车）时，就地出单，不用跳页面再回来 -->
+        <el-button v-if="sampleAction" link type="primary" :loading="sampling" @click="sampleAction.run()">
+          {{ sampleAction.text }}
         </el-button>
         <span v-if="sampleHint" class="sub-cell">{{ sampleHint }}</span>
       </div>
@@ -829,6 +833,21 @@ interface DemoField {
 
 /** 各通道最少必填字段——与后端 ChannelHandler.validate 的要求一一对应 */
 const DEMO_FIELDS: Record<string, DemoField[]> = {
+  FARM_ERP: [
+    // 外部养殖系统同步：这条通道模拟的不是设备，而是「养殖场 ERP 把批次档案推过来」。
+    // 字段就是 ERP 侧本来记着的那几项（场、批次号、品种、耳标区间、进场/出生日期）；
+    // 现实里没人为了溯源再抄一遍，所以这里也没有「录入人」——数据是系统给的，责任在系统。
+    { key: 'action', label: '动作', type: 'select', required: true,
+      options: [{ label: '新建/更新批次', value: 'UPSERT' }, { label: '源系统撤销', value: 'REVOKE' }] },
+    { key: 'farmName', label: '养殖场名称', required: true, placeholder: '必须与本系统养殖场名称一致（对不上转人工，不猜场）' },
+    { key: 'batchNo', label: '批次号', required: true, placeholder: '外部系统自己的批次号，如 ERP-20261026-01；场内唯一' },
+    { key: 'breed', label: '品种', placeholder: '如 三元杂' },
+    { key: 'entryDate', label: '进场日期', type: 'date', placeholder: '外购为进场日，自繁为转育肥日' },
+    { key: 'birthDate', label: '出生日期', type: 'date', placeholder: '批次共用的出生日期，日龄由它现算（人工登记一般填不出）' },
+    { key: 'earTagStart', label: '耳标起号', placeholder: '与止号一起圈定成员区间；也可在报文里改用耳标明细清单' },
+    { key: 'earTagEnd', label: '耳标止号', placeholder: '与起号同前缀' },
+    { key: 'voidReason', label: '撤销理由', placeholder: '仅「源系统撤销」时必填，如 录错批次/退养' },
+  ],
   TEMPERATURE: [
     { key: 'transportNo', label: '运输单号', required: true, placeholder: '需是「运输中」的运单' },
     // 允许区间与后端 ingest.temperature.range-min/max 一致（-18~0）：落在区间内走正常路径，
@@ -836,7 +855,7 @@ const DEMO_FIELDS: Record<string, DemoField[]> = {
     { key: 'temperature', label: '温度(℃)', required: true, type: 'number', placeholder: '如 -2；允许区间 -18~0，越界会被标为「温度异常」（仍入账）' },
   ],
   ENTRY: [
-    { key: 'earTagNo', label: '耳标号', required: true, placeholder: '需在生猪档案中存在，且该猪的出栏审批已通过' },
+    { key: 'earTagNo', label: '耳标号', required: true, placeholder: '需在生猪批次档案中存在，且该猪的出栏审批已通过' },
     { key: 'batchNo', label: '入场批次号', required: true, placeholder: '如 B-20260921-01' },
     // 入场查验的两道硬前提：① 该猪的出栏审批已通过（未经审批不得入厂）；② 检疫证要存在、未过期、
     // 且证上耳标与闸口扫描的一致。缺任一，设备上报都不会自动入账。
@@ -869,16 +888,17 @@ const DEMO_FIELDS: Record<string, DemoField[]> = {
     { key: 'packageIntact', label: '包装完好', type: 'select', options: [{ label: '完好', value: 1 }, { label: '破损', value: 0 }] },
   ],
   TAG: [
-    { key: 'earTagNo', label: '耳标号', required: true, placeholder: '新耳标号，已存在的会返回既有档案' },
-    { key: 'farmName', label: '养殖场名称', required: true, placeholder: '需是已登记的养殖场' },
-    { key: 'birthDate', label: '出生日期', required: true, type: 'date', placeholder: '请选择出生日期' },
-    { key: 'breed', label: '品种', placeholder: '如 三元杂' },
-    { key: 'gender', label: '性别', type: 'select', options: [{ label: '公', value: 1 }, { label: '母', value: 2 }] },
-    { key: 'penNo', label: '圈舍编号', placeholder: '如 1号舍-03' },
-    { key: 'origin', label: '来源', placeholder: '自繁 或 外购-供应商名' },
+    // 读写器能力边界：耳标芯片里只有一个编号，设备只能提供耳标号和读取时刻。
+    // 批次信息（养殖场、批次号、品种、进场日期）是人的知识 —— 由人工在「生猪批次档案」
+    // 登记批次（耳标区间圈定成员），报文带了也不认。区间外的耳标上报会转「待人工」，
+    // 人工登记批次（区间覆盖该号）后回这里确认入账。
+    { key: 'earTagNo', label: '耳标号', required: true, placeholder: '已登记批次区间内的耳标会幂等返回既有档案；区间外转待人工' },
+    // 读取时刻默认取当前时间：让每次演示都是一份「新的采集报文」——同一头猪
+    // 再次经过读写器是常态（不是重复上报），没有时刻字段就会撞兜底判重。
+    { key: 'readTime', label: '读取时刻', type: 'datetime', placeholder: '读写器读到耳标的时刻' },
   ],
   VACCINE: [
-    { key: 'earTagNo', label: '耳标号', required: true, placeholder: '需在生猪档案中存在' },
+    { key: 'earTagNo', label: '耳标号', required: true, placeholder: '需在生猪批次档案中存在' },
     { key: 'vaccineName', label: '疫苗名称', required: true, placeholder: '如 猪瘟兔化弱毒疫苗' },
     { key: 'vaccineBatchNo', label: '疫苗批号', required: true, placeholder: '缺批号会被拒绝入库' },
     { key: 'dosage', label: '剂量', placeholder: '如 2ml' },
@@ -893,7 +913,7 @@ const DEMO_FIELDS: Record<string, DemoField[]> = {
   ],
   QUARANTINE: [
     // 扫码登记：字段全部来自检疫单证面（二维码），设备不产生任何检疫结论
-    { key: 'earTagNo', label: '耳标号', required: true, placeholder: '证面登记的耳标，需在生猪档案中存在' },
+    { key: 'earTagNo', label: '耳标号', required: true, placeholder: '证面登记的耳标，需在生猪批次档案中存在' },
     { key: 'certNo', label: '检疫证编号', required: true, placeholder: '证号全局唯一，重复登记会返回既有记录' },
     { key: 'issueOrg', label: '签发机构', required: true, placeholder: '如 顺义区动物卫生监督所' },
     { key: 'issueTime', label: '签发时间', required: true, type: 'datetime', placeholder: '证面签发时刻' },
@@ -904,7 +924,7 @@ const DEMO_FIELDS: Record<string, DemoField[]> = {
   ],
   EXIT_APPLY: [
     // 出栏口地磅：机器能给的只有「哪头猪、多重、什么时候称的」
-    { key: 'earTagNo', label: '耳标号', required: true, placeholder: '地磅读到的耳标，需在生猪档案中且状态为在养' },
+    { key: 'earTagNo', label: '耳标号', required: true, placeholder: '地磅读到的耳标，需在生猪批次档案中且状态为在养' },
     { key: 'weightKg', label: '出栏体重(kg)', required: true, type: 'number', placeholder: '地磅实测读数，合理范围 20–400' },
     // 采集时刻：与注射时间同理，让每次演示都是一份新的采集报文，避免被判重复上报
     { key: 'weighTime', label: '称重时间', type: 'datetime', placeholder: '地磅采集的称重时刻' },
@@ -912,7 +932,7 @@ const DEMO_FIELDS: Record<string, DemoField[]> = {
     { key: 'targetSlaughterhouse', label: '目标屠宰场', placeholder: '去向声明，留空会转「待人工确认」由人工补录' },
   ],
   INSPECTION: [
-    { key: 'earTagNo', label: '耳标号', required: true, placeholder: '需在生猪档案中存在' },
+    { key: 'earTagNo', label: '耳标号', required: true, placeholder: '需在生猪批次档案中存在' },
     { key: 'batchNo', label: '批次号', required: true },
     { key: 'inspectType', label: '检验类型', type: 'select', options: [{ label: '宰前检验', value: 1 }, { label: '宰后检验', value: 2 }, { label: '宰后检验（同步）', value: 3 }] },
     { key: 'result', label: '检验结论', required: true, type: 'select', options: [{ label: '1 合格', value: 1 }, { label: '0 不合格', value: 0 }], placeholder: '判定权在兽医，终端只录入' },
@@ -995,6 +1015,25 @@ const DEMO_FIELDS: Record<string, DemoField[]> = {
     // 到达时刻：与其它通道同理，让每次演示都是一份新的采集报文，避免被判重复上报
     { key: 'arriveTime', label: '到达时间', type: 'datetime', placeholder: '车载终端采集的到达时刻，留空取服务器当前时间' },
   ],
+  RETURN_LOAD: [
+    // 拒收回运装车：冷链中心装车位上的**专用**扫码枪，对齐装车口的「车牌 + 货码 → 倒查」。
+    // 2026-11-03 起扫码前移到排车之前：现场装车时还没有处理运单号，扫完才生成处理运单。
+    { key: 'vehicleNo', label: '车牌号', required: true, placeholder: '相机识别到的车牌，如 京A·12345：这批货上了哪台车，就装到哪台车上' },
+    // 货物码：拒收包装上就这两种标签（原运单号 / 分割批次号），扫到哪个报哪个
+    { key: 'scanCodes', label: '货物码', required: true, placeholder: '扫到的拒收货标签，多件用英文逗号分隔，如 TR20261103002,SP20261103-001-01' },
+    // 处理运单号可选：单号要等生成计划后才有，补扫时可以带上，不参与判定
+    { key: 'legTransportNo', label: '处理运单号', placeholder: '选填：补扫已生成的运单时带上，如 TR20261103001；主流程不需要' },
+    // 扫码时刻：与其它通道同理，让每次演示都是一份新的采集报文，避免被判重复上报
+    { key: 'scanTime', label: '扫码时间', type: 'datetime', placeholder: '扫码枪采集的时刻，留空取服务器当前时间' },
+  ],
+  RECALL_COLLECT: [
+    // 召回到店收货：随车手持扫码枪，和装车扫码同构 —— 只报「车牌 + 货码」，两步都由系统自己倒查：
+    // 车牌锁唯一一张在途收运运单，运单锁当前「已到达、还没收完」的站，货码再锁这一站的召回货。
+    { key: 'vehicleNo', label: '车牌号', required: true, placeholder: '收运车的车牌，如 京A·12345：靠它认出「正在收的是哪一趟」' },
+    { key: 'scanCodes', label: '货物码', required: true, placeholder: '扫到的召回货批次标签，多件用英文逗号分隔，如 SP20261104-001-01' },
+    // 扫码时刻：让每次演示都是一份新的采集报文，避免被判重复上报
+    { key: 'scanTime', label: '扫码时间', type: 'datetime', placeholder: '扫码枪采集的时刻，留空取服务器当前时间' },
+  ],
   SPLIT_SNAPSHOT: [
     // 分割车间监控：唯一一条「只落影像、不产生溯源事实」的通道。
     // 两段式上报：照片先上传文件服务换回 fileId，再随报文报进来（图片塞不进 JSON）。
@@ -1013,6 +1052,7 @@ const DEMO_FIELDS: Record<string, DemoField[]> = {
 
 /** 通道 → 目标业务表（与后端 IngestChannel 一致，仅用于界面提示） */
 const CHANNEL_TABLES: Record<string, string> = {
+  FARM_ERP: 'pig_batch',
   TEMPERATURE: 'temperature_log',
   ENTRY: 'entry_inspection',
   RACTOPAMINE: 'ractopamine_test',
@@ -1031,6 +1071,10 @@ const CHANNEL_TABLES: Record<string, string> = {
   DEPART: 'cold_chain_transport',
   // 到达确认是唯一一条写「站点」的通道：一车多站时到达要逐站记，运单级装不下
   ARRIVE: 'transport_stop',
+  // 拒收回运装车扫码：不建单、不推状态，只核对已有回运单的货物清单（逐件证据落 leg_item）
+  RETURN_LOAD: 'return_load_scan',
+  // 召回到店收货：这一枪是「证明货被谁收走了」的现场证据，逐枪落 recall_collect_scan
+  RECALL_COLLECT: 'recall_collect_scan',
   // 分割车间监控：唯一一条不产生溯源事实的通道，只落一张带时间戳的现场影像快照
   SPLIT_SNAPSHOT: 'workshop_snapshot',
 }
@@ -1041,7 +1085,9 @@ const CHANNEL_TABLES: Record<string, string> = {
  * 覆盖 12 个溯源环节，与后端 TraceStage 对齐。
  */
 const TABLE_TARGET_OBJECTS: Record<string, string> = {
-  pig_individual: '生猪个体档案',
+  // 批次档案是养殖端的登记单位；个体行是它按耳标展开出来的成员
+  pig_batch: '生猪批次档案（外部系统同步）',
+  pig_individual: '生猪档案（批次成员）',
   vaccine_record: '免疫注射记录',
   quarantine_certificate: '产地检疫证明',
   slaughter_apply: '出栏申报记录',
@@ -1155,6 +1201,14 @@ const sampleHint = ref('')
  * 使用者还得自己去找那个页面；这里直接给一个能点的入口，把最后一步接上。
  */
 const sampleJump = ref<{ text: string; to: any } | null>(null)
+/**
+ * 取不到示例值、差的又只是「一张业务单」时的**就地动作**（比 sampleJump 更进一步）。
+ * <p>
+ * 处理计划里有召回货、但还没排成收运运单时，车载终端没有车可发 —— 用户得先去别的页面点生成再回来。
+ * 这里把「按处理计划生成收运运单」直接做成提示里的按钮：点一下就地出单，再自动重填示例值。
+ * 与装车口「扫码即出单」同一条道理，只是召回的货不走扫码，走的是排车。
+ */
+const sampleAction = ref<{ text: string; run: () => Promise<void> } | null>(null)
 const router = useRouter()
 const demoResult = ref<any>(null)
 /** 模拟上报弹窗里照片缩略图列表（el-upload 双向绑定；fileId 存在 demoForm.data.fileIds） */
@@ -1232,6 +1286,8 @@ const demoResultTag = computed<EpTagType>(() => {
   const r = demoResult.value
   if (!r) return 'info'
   if (r.accepted) return 'success'
+  // 重复上报不是故障、也不是脏数据：数据早就在系统里了，只是这次没再入一遍
+  if (r.status === 5) return 'warning'
   return r.status === 1 ? 'warning' : 'danger'
 })
 
@@ -1243,8 +1299,9 @@ const demoResultDest = computed(() => {
     const obj = targetObjectLabel(r.channel, r.targetTable)
     return r.targetId ? `已写入「${obj}」，记录编号 ${r.targetId}` : `已写入「${obj}」`
   }
-  // 重复上报且上一条还没处理完：直接回既有结论，队列里不会多出第二条
-  if (r.duplicate) return '这条此前已经上报过，队列里已有它，本次没有重复排队'
+  // 重复上报：数据早就在系统里了，本次明确拒绝入账。
+  // 这里不能显示「已写入 xxx」——那正是「重推一次看着像又写了一条」的误导来源。
+  if (r.duplicate) return '该信息已存在，本次拒绝入账（未写入任何业务数据）'
   if (r.status === 3) return '未写入任何业务数据，原始报文已留档备查'
   if (r.status === 4) return '未写入（抽稀丢弃属正常，不算故障）'
   return '尚未写入，原始报文已留在「待确认队列」，可人工确认入账或拒绝'
@@ -1261,6 +1318,10 @@ const CHANNEL_AFTER_EFFECT: Record<string, string> = {
   LOAD: '发货计划转「已排车」（车还没走，运单仍停在「待发车」）',
   DEPART: '运单「已发车」——列表状态从「待发车」转「运输中」',
   ARRIVE: '这一站转「已到达」——站点全部到齐，运单才转「待签收」',
+  // 扫码登记装车事实：处理计划里的货标「已装车（车牌）」，生成处理运单后进清单；运单状态仍由刷卡推进
+  RETURN_LOAD: '扫码即出单：自动生成（或并入）该车的处理运单并置「待发车」——司机刷卡即可发车',
+  // 收货扫码不推运单状态：运单推进仍只由车载终端的发车/到达负责，这一枪只把货标成「已收上车」
+  RECALL_COLLECT: '这一站的召回货转「已收货」——本站全收完，司机才能刷卡去下一家',
 }
 
 /** 后置状态只在「这次真的入账了」时才成立：转人工 / 被拒都不会有业务状态变化 */
@@ -1272,8 +1333,9 @@ const demoResultAfter = computed(() => {
 
 /**
  * 这次上报已被系统受理后，把「上报」按钮置灰。
- * 受理 = 已入账（含被判重复）/ 待人工确认 —— 这两种情况下再点一次只会拿到同一份回执，
- * 后端虽然会挡重复，但不该让用户白点。已拒绝 / 已降采样不锁：改完数据本来就要能重报。
+ * 受理 = 已入账 / 重复上报 / 待人工确认 —— 这三种情况下再点一次只会拿到同一份回执
+ * （重复那次的回执是「该信息已存在，拒绝入账」），不该让用户白点。
+ * 已拒绝 / 已降采样不锁：改完数据本来就要能重报。
  */
 const demoReportLocked = computed(() => {
   const r = demoResult.value
@@ -1312,6 +1374,7 @@ function resetDemo() {
   shotState.visible = false
   sampleHint.value = ''
   sampleJump.value = null
+  sampleAction.value = null
   demoForm.bizKey = ''
   demoForm.reportTime = ''
   applyFieldDefaults()
@@ -1323,6 +1386,7 @@ function onDemoDeviceChange() {
   demoRawOpen.value = []
   sampleHint.value = ''
   sampleJump.value = null
+  sampleAction.value = null
   // 换设备时**预选**该设备登记的主通道，而不是留空：
   // 车载终端一台设备两个通道（发车确认 / 到达确认），留空会兜底成台账登记的那个通道，
   // 可下拉却是空白的 —— 于是「字段显示的是发车、示例值填的也是发车时间」，
@@ -1423,13 +1487,322 @@ function preferCardResolvable<T extends { driverName?: string | null }>(list: T[
  */
 const DEMO_TEMPERATURE = -2
 
+/**
+ * 处理计划卡在哪一步 —— 车载终端填不出示例值时，这句话才是使用者真正需要的。
+ * <p>
+ * 「没有待发车运单」有四种完全不同的原因，笼统回一句「没有数据」等于让人干瞪眼：
+ * ① 召回货还没生成收运运单（召回不走装车口扫码，必须在处理运输页生成）；
+ * ② 拒收货还没扫码装车（扫码即出单，扫了才有「待发车」的车）；
+ * ③ 扫过码但车被占用，货留在计划里（一车一趟）；
+ * ④ 计划是空的（返回 null，由调用方说「确实没有」）。
+ */
+async function describePoolBlockers(): Promise<{
+  text: string
+  jump?: { text: string; to: any }
+  action?: { text: string; run: () => Promise<void> }
+} | null> {
+  const pool = (await safeList(() => distributionApi.returnPool('DISPOSAL'))) || []
+  const rows: any[] = Array.isArray(pool) ? pool : []
+  const brief = (list: any[]) => list.slice(0, 4).map((r) => r.batchNo || r.transportNo).join('、')
+    + (list.length > 4 ? ' 等' : '')
+  const recallPending = rows.filter((r) => r.source === 'RECALL' && !r.scanTime)
+  const rejectPending = rows.filter((r) => r.source !== 'RECALL' && !r.scanTime)
+  const rejectScanned = rows.filter((r) => r.source !== 'RECALL' && r.scanTime)
+  if (recallPending.length) {
+    return {
+      text: `处理计划里有 ${recallPending.length} 批召回货（${brief(recallPending)}）还没排车：`
+        + '召回的货不走「装车扫码出单」那条路，得先按门店排成一张收运运单（末站无害化处理中心），'
+        + '那才是这台终端能发的车。点旁边的按钮就地生成，生成后自动重填示例值。',
+      // 就地出单：省掉「跳去处理运输 → 选车 → 生成 → 回来重填」这一圈，避免使用者以为示例值坏了
+      action: { text: '按处理计划生成收运运单', run: () => generateCollectFromPlan(recallPending.length) },
+    }
+  }
+  if (rejectPending.length) {
+    return {
+      text: `处理计划里有 ${rejectPending.length} 站拒收货（${brief(rejectPending)}）还没扫码装车：`
+        + '先用「拒收回运装车」通道扫一次「车牌 + 货码」—— 扫码即出单，处理运单当场生成并停在「待发车」，'
+        + '那才是这台终端要发的车。',
+    }
+  }
+  if (rejectScanned.length) {
+    const busy = await fetchBusyPlates()
+    const plates = [...new Set(rejectScanned.map((r) => r.scanPlate).filter(Boolean))] as string[]
+    const blocked = plates.filter((p) => busy.has(p))
+    return {
+      text: `处理计划里有 ${rejectScanned.length} 站拒收货已经扫过码（${brief(rejectScanned)}，`
+        + `扫码的车：${plates.join('、') || '未记录'}），但没有生成运单 —— `
+        + (blocked.length
+          ? `${blocked.join('、')}名下还有没送完的运单（一车一趟），这批货当时没装上那台车、留在了计划里：`
+            + '把那趟运单送到签收后重扫一次即可出单。'
+          : '扫码出单被拦下了：换一台空闲备案车重扫一次即可（扫码即出单，不用再点别的按钮）。'),
+    }
+  }
+  return null
+}
+
+/** 处理计划里「还没排车」的货：召回几批、拒收几站（用于成功提示后面补一句，别让使用者以为示例值没管计划） */
+async function poolPendingSummary(): Promise<{ recall: number; reject: number }> {
+  const pool = (await safeList(() => distributionApi.returnPool('DISPOSAL'))) || []
+  const rows: any[] = Array.isArray(pool) ? pool : []
+  return {
+    recall: rows.filter((r: any) => r.source === 'RECALL' && !r.scanTime).length,
+    reject: rows.filter((r: any) => r.source !== 'RECALL' && !r.scanTime).length,
+  }
+}
+
+/**
+ * 召回那条链现在到哪一步：① 还在处理计划里等车的；② 已经排进收运运单的（待发车 / 在途 / 待签收）。
+ * <p>
+ * 为什么不能只看 `return-pool`：召回货<strong>一排进收运运单就从「待收运」队列里移出</strong>
+ * （`recall_collect.status` 0→1），池子取回来是空的。于是所有提示都会说「处理计划是空的」——
+ * 可那批货明明正躺在收运运单上跑。车载终端与装车口的示例值必须认这条链，
+ * 否则就是「处理计划里有召回货，填充的示例值却跟召回毫无关系」（2026-11-05 用户报障）。
+ */
+async function recallChainState(): Promise<{ pending: any[]; legs: any[] }> {
+  const pool = (await safeList(() => distributionApi.returnPool('DISPOSAL'))) || []
+  const poolRows: any[] = Array.isArray(pool) ? pool : []
+  const pending = poolRows.filter((r: any) => r.source === 'RECALL' && !r.scanTime)
+  // 一次取全部状态的收运单（kind=RECALL），再在本地留「还没跑完」的（待发车 1 / 运输中 2 / 待签收 3）
+  const all = (await safeList(() => distributionApi.getTransports({
+    kind: 'RECALL', pageNum: 1, pageSize: 20,
+  }))) || []
+  const legs = (Array.isArray(all) ? all : [])
+    .filter((t: any) => [1, 2, 3].includes(Number(t.status)))
+    .sort((a: any, b: any) => Number(a.status) - Number(b.status))
+  return { pending, legs }
+}
+
+/**
+ * 收运运单上承的是什么货（召回批次 / 门店）。仅用于提示语把「这趟车=处理计划里那批召回货」点明，
+ * 取不到就返回空字符串 —— 不编批次号。
+ */
+async function describeRecallLegCargo(transportId: number): Promise<string> {
+  const items = (await safeList(() => distributionApi.getRecallItems(transportId))) || []
+  const rows: any[] = Array.isArray(items) ? items : []
+  if (!rows.length) return ''
+  const batches = Array.from(new Set(rows.map((r: any) => r.batchNo).filter(Boolean)))
+  const stores = Array.from(new Set(rows.map((r: any) => r.storeName).filter(Boolean)))
+  const parts: string[] = []
+  if (batches.length) parts.push(`批次 ${batches.join('、')}`)
+  if (stores.length) parts.push(`门店 ${stores.join('、')}`)
+  return parts.join(' / ')
+}
+
+/**
+ * 「没有待发车的车可填」时，若召回那批货已经排进收运运单 —— 把「它在哪趟车上、下一步演示哪个通道」说清楚。
+ * <p>
+ * 这段话专门修一个误会：召回货排进收运单后从处理计划队列里移出，池子取回来是空的，
+ * 原来的兜底就会说「处理计划也是空的」，而使用者手上那批货正在路上跑 —— 于是觉得
+ * 「填充的示例值跟召回没关系」（2026-11-05 用户报障）。
+ */
+async function describeRecallLegBlocker(): Promise<{
+  text: string
+  action: { text: string; run: () => Promise<void> }
+} | null> {
+  const chain = await recallChainState()
+  const t: any = chain.legs[0]
+  if (!t) return null
+  const cargo = await describeRecallLegCargo(t.id)
+  const statusText = TRANSPORT_STATUS_LABELS[Number(t.status)] || '未发车'
+  return {
+    text: `没有「待发车」的车可填 —— 处理计划里那批召回货已经在收运运单 ${t.transportNo}`
+      + `（车牌 ${t.vehicleNo || '—'}，状态「${statusText}」${cargo ? '，承运 ' + cargo : ''}）上，`
+      + '发车这一步已经过了。这趟车走「冷链中心 → 门店 → 无害化处理中心」：'
+      + '接着演示请切到「到达确认」（门店刷卡到店）或「到店扫码收货」（扫店里的召回货）。',
+    action: {
+      text: '切到「到达确认」',
+      run: async () => {
+        demoForm.channel = 'ARRIVE'
+        resetDemo()
+        await fillSample()
+      },
+    },
+  }
+}
+
+/**
+ * 「填充示例值」的兜底：没有能发的车、但处理计划里压着召回货时，先把计划排成收运运单。
+ * <p>
+ * 为什么非做这一步：召回货还没排车时，页面上没有任何「待发车运单」，车牌/司机/卡号全都无处可取，
+ * 表单只剩一个时刻 —— 使用者看到的就是「点了填充示例值，什么都没回填」。说明文字再全也没用，
+ * 手指按下去要看见字段有值。这里排的是池里已经在等车的货（计划的正向推进，不是凭空造单），
+ * 已排过就直接复用，反复点不会重复出单。
+ */
+async function ensureDepartableTransport(): Promise<boolean> {
+  // 已经有一趟「刷得出本人」的召回收运车 → 它承载的就是处理计划里那批货，直接拿来填。
+  // 注意这里**只认收运车**：只有普通配送车能演示时不算数 —— 使用者要演示的是处理计划里的召回货，
+  // 拿普通车填过去，观感就是「填充的示例值跟召回那部分无关」（2026-11-05 用户报障）。
+  const waiting = await listTransportsByStatus(1)
+  if (waiting.some((t: any) => isDemoable(t) && String(t.transportKind || '') === 'RECALL')) return false
+  const pool = (await safeList(() => distributionApi.returnPool('DISPOSAL'))) || []
+  const rows: any[] = Array.isArray(pool) ? pool : []
+  const recallPending = rows.filter((r) => r.source === 'RECALL' && !r.scanTime)
+  if (!recallPending.length) return false
+  const busy = await fetchBusyPlates()
+  const plate = DEMO_LOAD_PLATES.find((p) => !busy.has(p))
+  if (!plate) return false
+  try {
+    const res: any = await distributionApi.generateRecallTransport({
+      vehicleNo: plate,
+      driverName: DEMO_FALLBACK_DRIVER,
+    })
+    const no = res?.transportNo || res?.data?.transportNo
+    ElMessage.success(`处理计划里有 ${recallPending.length} 批召回货还没排车，已按计划排成收运运单`
+      + `${no ? ' ' + no : ''}（车牌 ${plate}），示例值取自这趟车`)
+    return true
+  } catch {
+    // 拦截器已说明原因（车牌被占 / 池里已无货）；填不上车就退回「说清卡在哪」，不让整条填充失败
+    return false
+  }
+}
+
+/**
+ * 按处理计划排一张收运运单（**只出单，不重填表单**）。
+ * <p>
+ * 与装车口「扫码即出单」对齐：那边扫一下就有车，这边召回货不走扫码，就只能是「排车出单」。
+ * 车牌挑一台名下没有未完成运单的备案演示车（一车一趟，`ActiveTransportGuard` 只放空车）；
+ * 司机直接用备案的演示司机，这样发车时刷卡能刷出本人，示例不会落到「刷卡人≠司机」的转人工路径上。
+ * <p>
+ * 单独抽出来是因为它有两个调用方：提示里的按钮（排完再重填），以及扫码枪填充时
+ * 「上游还差一张单」的就地补齐（补齐后还要继续发车/到店，不能在这里就把表单填了）。
+ */
+async function createRecallTransportFromPlan(pendingCount: number): Promise<{
+  ok: boolean
+  transportNo?: string
+  plate?: string
+  message?: string
+}> {
+  const busy = await fetchBusyPlates()
+  const plate = DEMO_LOAD_PLATES.find((p) => !busy.has(p))
+  if (!plate) {
+    return {
+      ok: false,
+      message: `三台演示车（${DEMO_LOAD_PLATES.join(' / ')}）名下都还有没送完的运单（一车一趟），排不出新的一趟`,
+    }
+  }
+  try {
+    const res: any = await distributionApi.generateRecallTransport({
+      vehicleNo: plate,
+      driverName: DEMO_FALLBACK_DRIVER,
+    })
+    return { ok: true, transportNo: res?.transportNo || res?.data?.transportNo, plate }
+  } catch (e: any) {
+    // 拦截器已弹提示（车牌不在备案 / 车被占用 / 池里已没有货）
+    return { ok: false, message: e?.message || '生成收运运单失败' }
+  }
+}
+
+/** 提示里的按钮动作：就地排一张收运运单，排完自动按新运单重填示例值 */
+async function generateCollectFromPlan(pendingCount: number) {
+  const made = await createRecallTransportFromPlan(pendingCount)
+  if (!made.ok) {
+    sampleHint.value = `${made.message || '生成收运运单失败'}：原因见上方提示；`
+      + '也可以到「处理运输 → 处理计划」手选车辆生成。'
+    return
+  }
+  ElMessage.success(`已按处理计划把 ${pendingCount} 批召回货排成收运运单${made.transportNo ? ' ' + made.transportNo : ''}`
+    + `（车牌 ${made.plate}，司机 ${DEMO_FALLBACK_DRIVER}），示例值已重填`)
+  // 新运单就是这台终端要发的车：重填一次，车牌/司机/时刻都从它身上取
+  await fillSample()
+}
+
+/**
+ * 用**设备通道**补一次车载终端的动作（发车 / 到店刷卡）。
+ * <p>
+ * 为什么不去调后台的「人工到达」接口：到店只由车载终端刷卡推进，"谁把这批货送到这一站"
+ * 靠的就是那一刷。示例值要补的是这个现场动作，走设备上报落库的才是设备事实、司机身份也才是刷出来的。
+ */
+async function reportByTerminal(
+  channel: 'DEPART' | 'ARRIVE',
+  data: Record<string, any>,
+): Promise<{ ok: boolean; message?: string }> {
+  const dev = enabledDevices.value.find((d: any) => {
+    const chs: string[] = d.channels?.length ? d.channels : [d.channel]
+    return chs.includes(channel)
+  })
+  if (!dev) return { ok: false, message: `台账里没有能上报「${CHANNEL_LABELS[channel] || channel}」的终端` }
+  try {
+    const res: any = await ingestApi.demoReport({ deviceNo: dev.deviceNo, channel, data })
+    if (res?.accepted) return { ok: true, message: res?.message || '' }
+    return {
+      ok: false,
+      message: res?.message || (res?.status === 1 ? '转人工确认' : '未入账'),
+    }
+  } catch (e: any) {
+    return { ok: false, message: e?.message || '上报失败' }
+  }
+}
+
+/**
+ * 这张运单上「该被扫码枪扫的那一站」：已到店（站点状态 1）、且这一站还有没收的召回货。
+ * <p>
+ * 三步倒查的顺序就是后端收货的判定顺序 —— 车牌锁运单、运单当前站、货码再锁这一站的召回货；
+ * 少任何一步都扫不成，所以这里也按同样的顺序挑，不猜。
+ */
+async function findRecallScanTarget(): Promise<{ leg: any; arrived: any; atStop: any[] } | null> {
+  const all = (await safeList(() => distributionApi.getTransports({
+    kind: 'RECALL', pageNum: 1, pageSize: 20,
+  }))) || []
+  const alive = (Array.isArray(all) ? all : [])
+    .filter((t: any) => [2, 3].includes(Number(t.status)))
+    // 待签收（3）优先：站点都已经到齐，能扫的概率最高
+    .sort((a: any, b: any) => Number(b.status) - Number(a.status))
+  for (const leg of alive) {
+    const stops = (await safeList(() => distributionApi.getTransportStops(leg.id))) || []
+    const arrived = (stops as any[]).find((s: any) => Number(s.status) === 1)
+    if (!arrived) continue
+    // 站点接口给的是「站点视图」而不是实体行：**没有 id**，只有 storeId / stopNo。
+    // 拿 arrived.id（undefined）去和货物的 stopId 比，永远比不中 —— 于是「已到店、有货可收」
+    // 也会被判成「没货可扫」（2026-11-05 报障「扫码枪填不出示例值」的第二个根因）。
+    // 所以按门店对站点：一趟车里一家店只有一站，storeId 足够唯一；拿不到 storeId 时再退回 stopNo。
+    const sameStop = (r: any) => (arrived.storeId != null
+      ? Number(r.storeId) === Number(arrived.storeId)
+      : Number(r.stopId) === Number(arrived.id))
+    const items = (await safeList(() => distributionApi.getRecallItems(leg.id))) || []
+    const atStop = (items as any[]).filter((r: any) => sameStop(r) && Number(r.status) < 2)
+    if (atStop.length) return { leg, arrived, atStop }
+  }
+  return null
+}
+
 async function fillSample() {
   sampling.value = true
   sampleHint.value = ''
   sampleJump.value = null
+  sampleAction.value = null
   try {
     const ch = demoChannel.value
-    if (ch === 'TEMPERATURE') {
+    if (ch === 'FARM_ERP') {
+      // 外部养殖系统同步：示例造一批「自繁」新批次，批次号与耳标段都带时间戳后缀，
+      // 保证每次演示都是一批全新的猪（撞上上一轮的批次号会走「同名批次转人工」那条路，
+      // 那条路留给讲解冲突场景时手工触发，不该是示例值的默认结果）。
+      const farms = await safeList(() => pigApi.getFarms({ current: 1, size: 5 }))
+      const farm = farms[0]
+      if (!farm) {
+        sampleHint.value = '本系统还没有养殖场：外部系统的场必须先在本系统建档（场名对齐），'
+          + '对不上时同步会转「待人工处理」，不会凭空造一个场。请先到「养殖管理 → 养殖场」建一个场'
+      } else {
+        const stamp = Date.now().toString().slice(-8)
+        const dayText = (offsetDays: number) => {
+          const d = new Date(Date.now() + offsetDays * 86400000)
+          const p = (n: number) => String(n).padStart(2, '0')
+          return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+        }
+        demoForm.data.action = 'UPSERT'
+        demoForm.data.farmName = farm.farmName || farm.name
+        demoForm.data.batchNo = `ERP-${stamp}`
+        demoForm.data.breed = '三元杂'
+        demoForm.data.entryDate = dayText(-20)
+        demoForm.data.birthDate = dayText(-90)
+        demoForm.data.earTagStart = `ET-ERP${stamp}001`
+        demoForm.data.earTagEnd = `ET-ERP${stamp}030`
+        demoForm.data.voidReason = ''
+        sampleHint.value = `以「${demoForm.data.farmName}」的 ERP 身份推一批 30 头自繁猪（批次 ${demoForm.data.batchNo}）：`
+          + `进场 ${demoForm.data.entryDate}、出生 ${demoForm.data.birthDate}`
+          + '。上报后批次档案与 30 头成员一次性生成，来源标「养殖系统同步」，日龄按出生日期现算。'
+          + '再把同一份报文重推一次会返回「重复上报」——这正是外部系统重推时系统该做的事'
+      }
+    } else if (ch === 'TEMPERATURE') {
       const t = await findTransport(2)
       demoForm.data.temperature = DEMO_TEMPERATURE
       if (t) {
@@ -1463,10 +1836,13 @@ async function fillSample() {
       if (found) {
         demoForm.data.earTagNo = found.earTagNo
         demoForm.data.batchNo = `B-${todayText()}-01`
-        demoForm.data.quarantineCert = found.certNo
+        demoForm.data.quarantineCert = found.certNo || ''
         demoForm.data.weight = 112.5
         demoForm.data.inspector = '张查验'
-        sampleHint.value = `取到耳标 ${found.earTagNo}（出栏审批已通过、状态可入场）+ 有效检疫证 ${found.certNo}，前提都齐`
+        sampleHint.value = found.note
+          ? `取到耳标 ${found.earTagNo}（状态可入场），但${found.note}：`
+            + '报文先按这头猪填好了，把缺的这一步补上再报就能入账（入场查验会逐项核验，缺一项都会被拦下）。'
+          : `取到耳标 ${found.earTagNo}（出栏审批已通过、状态可入场）+ 有效检疫证 ${found.certNo}，前提都齐`
       } else {
         sampleHint.value = '没有同时满足「出栏审批已通过 + 状态为在养/已出栏 + 检疫证未过期」的猪：请先在「养殖管理 → 出栏申报」为该猪申报并审批通过（已屠宰的猪是终态，不能再入场，需另找一头在养的猪；证过期可执行 backend/init-sql/19-refresh-demo-certs.sql 顺延效期）'
       }
@@ -1487,32 +1863,48 @@ async function fillSample() {
       }
     } else if (ch === 'SALE') {
       // 只取在库可售(status=1)的商品码：取到已售/未激活的码会演示不出新销售
+      // 字段名以 `/sales/qrcodes` 实际返回的 `qrCode` 为准（曾按 productQrCode 取，取不到就当「没有在库码」，
+      // 于是示例值一项都不填 —— 2026-11-05「点了并没有回填信息」的其中一例）。
       const page = await safeList(() => salesApi.getQrcodes({ status: 1, pageNum: 1, pageSize: 1 }))
-      const code = page?.[0]?.productQrCode || page?.[0]?.product_qr_code
+      const code = page?.[0]?.qrCode || page?.[0]?.productQrCode || page?.[0]?.product_qr_code
       if (code) {
         demoForm.data.qrCode = code
         demoForm.data.sellPrice = 38.5
         demoForm.data.sellWeightKg = 0.75
         sampleHint.value = `取到在库可售商品码 ${code}`
       } else {
-        sampleHint.value = '销售库没有在库可售的商品码，请先到「销售管理 → 二维码管理」生成一批'
+        // 销售库空了也别给空表单：拿最近一张门店签收单就地建 3 个码（跟门店「生成二维码」同一个接口），
+        // 示例值就能立刻报一笔真实销售。销售码是可查可作废的业务单据，不是凭空造的假码。
+        const receipts = await safeList(() => distributionApi.getReceipts({ pageNum: 1, pageSize: 20 }))
+        // 逐张试：演示库里排在前面的签收单可能挂着已清理的运输单（接口会回「运输单数据无效」），
+        // 只试第一张就等于把「建不出来」当成「建不了码」。
+        let fresh = ''
+        let usedReceipt: any = null
+        for (const receipt of (receipts || []).slice(0, 5)) {
+          if (!receipt?.id) continue
+          const res: any = await safeList(() => salesApi.generateQrcodes({ receiptId: receipt.id, count: 3 }))
+          const code = res?.qrcodes?.[0] || res?.data?.qrcodes?.[0]
+          if (code) { fresh = code; usedReceipt = receipt; break }
+        }
+        if (fresh) {
+          demoForm.data.qrCode = fresh
+          demoForm.data.sellPrice = 38.5
+          demoForm.data.sellWeightKg = 0.75
+          sampleHint.value = `销售库原本没有在库可售的码，已用签收单 ${usedReceipt?.receiptNo || usedReceipt?.id} 就地生成 3 个新码，`
+            + `示例取 ${fresh}（门店「二维码管理」里能看到这批码）`
+        } else if (receipts?.length) {
+          sampleHint.value = '销售库没有在库可售的商品码，拿最近几张签收单就地建码也没成功'
+            + '（多半是这些签收单挂的运输单已被清理）：请到「销售管理 → 二维码管理」为一张有效的签收单建码'
+        } else {
+          sampleHint.value = '销售库没有在库可售的商品码，也没有可建码的门店签收单：请先让门店签收一批分割品，再回来演示零售销售'
+        }
       }
     } else if (ch === 'TAG') {
-      // 建档：耳标用新号（重复耳标会命中幂等返回既有档案，演示不出「新建」），养殖场必须已登记
-      const farms = await safeList(() => pigApi.getFarms({ pageNum: 1, pageSize: 1 }))
-      const farm = farms?.[0]
-      const farmName = farm?.farmName || farm?.farm_name
+      // 读写器只提供耳标号 + 读取时刻（芯片里没有别的）；批次信息（养殖场、批次号、
+      // 品种、进场日期）由人工在「生猪批次档案」登记，设备报文带了也不认。
       demoForm.data.earTagNo = `ET-DEMO-${Date.now()}`
-      demoForm.data.birthDate = daysAgoText(90)
-      demoForm.data.breed = '三元杂'
-      demoForm.data.gender = 1
-      demoForm.data.penNo = '1号舍-03'
-      demoForm.data.origin = '自繁'
-      if (farmName) {
-        demoForm.data.farmName = farmName
-      } else {
-        sampleHint.value = '没有已登记的养殖场，请先到「养殖管理 → 养殖场」新增一个'
-      }
+      demoForm.data.readTime = nowText()
+      sampleHint.value = '耳标不在任何已登记批次区间内会转「待人工」：请先到「生猪批次档案」登记批次（耳标区间含此号），再回来确认入账'
     } else if (ch === 'VACCINE') {
       await fillByPig('在养生猪', () => {
         demoForm.data.vaccineName = '猪瘟兔化弱毒疫苗'
@@ -1706,13 +2098,209 @@ async function fillSample() {
       } else {
         sampleHint.value = '没有「待发货」状态的发货计划：装车口只能把货发到计划里定好的门店，不猜目的地。请先到「分割配送 → 冷链运输」建一张发货计划（车与司机可以留空），再回来演示'
       }
+    } else if (ch === 'RETURN_LOAD') {
+      // 2026-11-04 起扫码即出单：示例从「处理计划」取还没扫的拒收货（货码 = 批次号或原运单号），
+      // 上报后业务侧自动生成（或并入）该车的处理运单，司机直接刷卡发车。
+      //
+      // 车牌必须挑**名下一张未完成运单都没有**的备案车（2026-11-03 用户指出）：
+      // 扫了哪台车，运单就开给哪台车（一车一趟，ActiveTransportGuard 只放空车）；
+      // 车被占用时扫了也出不了单，货会留在处理计划。
+      const pool = await safeList(() => distributionApi.returnPool('DISPOSAL'))
+      // 处理计划里的召回货不归这里管：它要生成收运运单、由随车扫码枪在门店收货，
+      // 拿去装车口扫只会得到「货码对不上本车拒收货」转人工 —— 示例值不能默认演示失败路径
+      const rejects = (pool || []).filter((r: any) => r.source !== 'RECALL')
+      const pending = rejects.filter((r: any) => !r.scanTime)
+      const rows = (pending.length ? pending : rejects).slice(0, 3)
+      const codes = rows.map((r: any) => r.batchNo || r.transportNo).filter(Boolean)
+      demoForm.data.scanCodes = codes.join(',')
+      demoForm.data.scanTime = nowText()
+      demoForm.data.legTransportNo = ''
+      const busy = await fetchBusyPlates()
+      const freePlates = DEMO_LOAD_PLATES.filter((p) => !busy.has(p))
+      demoForm.data.vehicleNo = freePlates[0] || ''
+      if (!rows.length) {
+        // 没有货可扫就不填车牌：只填一台车、货码空着，看着就像「填错了 / 跟召回无关」。
+        // 红线是「示例值必须落成功路径」，扫不出单的场景留空 + 说清下一步。
+        demoForm.data.vehicleNo = ''
+        const recallRows = (pool || []).filter((r: any) => r.source === 'RECALL')
+        if (recallRows.length) {
+          sampleHint.value = `处理计划里只有 ${recallRows.length} 批召回货（${recallRows.map((r: any) => r.batchNo).filter(Boolean).join('、')}），`
+            + '没有拒收货 —— 召回货不走装车口这条「扫码即出单」的路：先在「处理运输 → 处理计划」把它排成收运运单，'
+            + '再由随车扫码枪到店收货。要演示装车出单，请先在门店签收页拒收一批货'
+          // 只有召回货时，别让人卡在「知道要走收运链、还得自己找页面」这一步：就地排一趟收运车
+          sampleAction.value = {
+            text: '按处理计划生成收运运单',
+            run: () => generateCollectFromPlan(recallRows.length),
+          }
+        } else {
+          // 拒收货没有，但召回那批可能已经排进收运运单在跑了 —— 那也算「处理计划里有货」，
+          // 不能说「处理计划是空的」，更不该拿一台普通演示车凑示例值。
+          const chain = await recallChainState()
+          const leg: any = chain.legs[0]
+          if (leg) {
+            const cargo = await describeRecallLegCargo(leg.id)
+            const statusText = TRANSPORT_STATUS_LABELS[Number(leg.status)] || '未发车'
+            sampleHint.value = `处理计划里没有等装车的拒收货 —— 召回那批货已经在收运运单 ${leg.transportNo}`
+              + `（车牌 ${leg.vehicleNo || '—'}，状态「${statusText}」${cargo ? '，承运 ' + cargo : ''}）上：`
+              + '召回货走「上门店收货 → 无害化处理中心」，不经过装车口这条「扫码即出单」的路。'
+              + '要接着演示召回链，请换「到店扫码收货」通道（随车扫码枪）；要演示装车出单，先在门店签收页拒收一批货。'
+            sampleAction.value = {
+              text: '切到「到店扫码收货」',
+              run: async () => {
+                demoForm.channel = 'RECALL_COLLECT'
+                resetDemo()
+                await fillSample()
+              },
+            }
+          } else {
+            sampleHint.value = '处理计划是空的：没有等待回运的拒收货。先在门店签收页拒收一批货，或换一条通道演示'
+          }
+        }
+      } else {
+        sampleHint.value = `取到处理计划里 ${rows.length} 站拒收货（${pending.length ? '未扫码' : '已扫码，重扫是幂等'}）：`
+          + `${codes.join('、')}。上报后自动生成（或并入）该车的处理运单（待发车）——`
+          + '司机即可在车载终端刷卡发车，不用再回页面点「生成处理运单」。'
+          + (demoForm.data.vehicleNo
+            ? `车牌取 ${demoForm.data.vehicleNo}：它名下没有未完成的运单，扫完即出单（一车一趟）。`
+            : '三台备案演示车（' + DEMO_LOAD_PLATES.join(' / ') + '）名下都还有未完成的运单，'
+              + '扫了也出不了新单（货会留在处理计划）：请先把那些运单送到签收，或手动填一台空闲备案车的车牌。')
+      }
+    } else if (ch === 'RECALL_COLLECT') {
+      // 到店扫码收货站在整条链的最末端：上游还有「按计划排车 → 司机刷卡发车 → 到店刷卡」三步，
+      // 少任何一步都扫不成（车牌锁运单、运单锁当前站、货码再锁这一站的召回货）。
+      // 点一次「填充示例值」就要看见值，所以缺哪步就地补哪步 —— 补的都是**设备本来就会做的那次上报**，
+      // 不走后台的人工接口：落库的仍是设备事实，司机身份也仍是刷卡刷出来的（2026-11-05 报障：这一步填不出值）。
+      const notes: string[] = []
+      let blocked = ''
+      let blockedChannel: 'DEPART' | 'ARRIVE' | null = null
+      let chain = await recallChainState()
+      let leg: any = chain.legs.find((t: any) => [2, 3].includes(Number(t.status)))
+
+      // ① 池里还压着召回货、却一张未完成的收运单都没有 → 先按计划排一趟
+      if (!chain.legs.length && chain.pending.length) {
+        const made = await createRecallTransportFromPlan(chain.pending.length)
+        if (made.ok) {
+          notes.push(`处理计划里还有 ${chain.pending.length} 批召回货没排车，已排成收运运单`
+            + `${made.transportNo ? ' ' + made.transportNo : ''}（车牌 ${made.plate}）`)
+          chain = await recallChainState()
+        } else {
+          notes.push(`处理计划里还有 ${chain.pending.length} 批召回货没排车，但${made.message || '排车失败'}`)
+        }
+      }
+
+      // ② 车排好了还停在「待发车」→ 替司机刷卡发车（召回车的司机是备案的张师傅，这一刷就是把身份写成他本人）
+      const waiting: any = chain.legs.find((t: any) => Number(t.status) === 1)
+      if (!leg && waiting) {
+        const card = cardOf(waiting.driverName) || (waiting.driverName ? '' : DEMO_FALLBACK_CARD)
+        if (!card) {
+          blocked = `收运运单 ${waiting.transportNo} 停在「待发车」，但司机「${waiting.driverName}」不在备案卡表里`
+            + '（只有 张师傅 / 李四 / 王五），刷谁的卡都会被判「刷卡人 ≠ 运单安排的司机」，示例没有替他编卡。'
+            + '请切到「发车确认」填他本人的卡号发一次车，再回来扫门店的召回货'
+          blockedChannel = 'DEPART'
+        } else {
+          const r = await reportByTerminal('DEPART', {
+            vehicleNo: waiting.vehicleNo, cardNo: card, departTime: nowText(),
+          })
+          if (r.ok) {
+            notes.push(`收运运单 ${waiting.transportNo} 本来还停在「待发车」，已替司机刷卡发车`)
+            chain = await recallChainState()
+            leg = chain.legs.find((t: any) => [2, 3].includes(Number(t.status)))
+          } else {
+            blocked = `收运运单 ${waiting.transportNo} 停在「待发车」，代刷发车没成功（${r.message || '原因见上方提示'}）。`
+              + '请切到「发车确认」手工发一次，再回来扫门店的召回货'
+            blockedChannel = 'DEPART'
+          }
+        }
+      }
+
+      // ③ 车在路上、门店却还没刷到店 → 逐站替车载终端补「到店刷卡」，直到某一站真的有货可扫
+      let target: { leg: any; arrived: any; atStop: any[] } | null = await findRecallScanTarget()
+      while (!target && leg && !blocked) {
+        const stops = (await safeList(() => distributionApi.getTransportStops(leg.id))) || []
+        const next = (stops as any[]).find((s: any) => Number(s.status || 0) < 1)
+        // 站点全到了就再没有可推进的动作：这一趟能扫的货已经扫完了（或这趟车没有待收的货）
+        if (!next) break
+        const card = cardOf(leg.driverName) || (leg.driverName ? '' : DEMO_FALLBACK_CARD)
+        if (!card) {
+          blocked = `收运运单 ${leg.transportNo} 还在去第 ${next.stopNo} 站（${next.storeName}）的路上，`
+            + `司机「${leg.driverName}」不在备案卡表里，示例不能替他编卡：请切到「到达确认」填他本人的卡号刷一次`
+          blockedChannel = 'ARRIVE'
+          break
+        }
+        const r = await reportByTerminal('ARRIVE', {
+          vehicleNo: leg.vehicleNo, cardNo: card, arriveTime: nowText(),
+        })
+        if (!r.ok) {
+          blocked = `替车载终端补第 ${next.stopNo} 站（${next.storeName}）的到店刷卡没成功（${r.message || '原因见上方提示'}），`
+            + '请切到「到达确认」手工刷一次，再回来扫这站的召回货'
+          blockedChannel = 'ARRIVE'
+          break
+        }
+        notes.push(`第 ${next.stopNo} 站（${next.storeName}）本来还没刷到店，已替车载终端补了一条到店刷卡`)
+        target = await findRecallScanTarget()
+      }
+
+      if (target) {
+        demoForm.data.vehicleNo = target.leg.vehicleNo || ''
+        demoForm.data.scanCodes = target.atStop.map((r: any) => r.batchNo).filter(Boolean).join(',')
+        demoForm.data.scanTime = nowText()
+        sampleHint.value = `取到收运运单 ${target.leg.transportNo}（车牌 ${target.leg.vehicleNo || '—'}）`
+          + `第 ${target.arrived.stopNo} 站（${target.arrived.storeName}）待收的 ${target.atStop.length} 批召回货：`
+          + `${target.atStop.map((r: any) => r.batchNo).filter(Boolean).join('、')}。`
+          + '上报后这些货转「已收货」——本站全收完，司机才能刷卡去下一家'
+          + (notes.length ? ` 为了能扫这一枪，上游缺的动作已就地补齐：${notes.join('；')}。` : '')
+      } else {
+        demoForm.data.scanCodes = ''
+        demoForm.data.vehicleNo = ''
+        demoForm.data.scanTime = nowText()
+        if (blocked) {
+          sampleHint.value = blocked
+          sampleAction.value = {
+            text: blockedChannel === 'DEPART' ? '切到「发车确认」' : '切到「到达确认」',
+            run: async () => {
+              demoForm.channel = blockedChannel === 'DEPART' ? 'DEPART' : 'ARRIVE'
+              resetDemo()
+              await fillSample()
+            },
+          }
+        } else if (leg) {
+          // 有车在跑，但这一趟上已经没有可扫的货了：说清「收完了」以及整条链的最后一步在哪
+          const cargo = await describeRecallLegCargo(leg.id)
+          sampleHint.value = `收运运单 ${leg.transportNo}${cargo ? `（承运 ${cargo}）` : ''}上的门店货都收完了：`
+            + '这一趟没有可扫的召回货了 —— 召回链条的最后一步由无害化处理中心在「处理运输」确认签收。'
+            + (notes.length ? ` 本次已就地补齐：${notes.join('；')}。` : '')
+        } else if (chain.pending.length) {
+          // 池里有召回货却连一张收运单都没排出来（车牌被占 / 生成失败）：把原因和出口一起给出
+          sampleHint.value = notes.length
+            ? `${notes.join('；')}。请到「处理运输 → 处理计划」手选一台空闲备案车生成收运运单，再由司机刷卡发车。`
+            : `处理计划里有 ${chain.pending.length} 批召回货还没排车，`
+              + '现在没有可扫的货：先排成收运运单、由司机刷卡发车到店，才轮到扫码枪。'
+          sampleAction.value = {
+            text: '按处理计划生成收运运单',
+            run: () => generateCollectFromPlan(chain.pending.length),
+          }
+        } else {
+          sampleHint.value = '没有可扫的召回货：处理计划是空的，也没有在跑的收运运单。'
+            + '召回的货要先由门店拒收、销售端发起召回，才会进处理计划排车'
+        }
+      }
     } else if (ch === 'DEPART') {
       // 发车确认是**全系统唯一能确认「司机是谁」的地方**（装车口没有读卡器，装车时司机还没上车）：
       // 所以示例值必须取一辆真实「待发车」、且**属于本终端所在那辆车**的运单（见 findDepartTarget），
       // 刷卡的人还要与运单安排的人对得上 —— 对不上会被判「可能上错车」转人工，那正是这条通道要防的事。
       // 挑单口径见 findDepartTarget；这里把卡按「运单上记的是谁」分三档给：
       const plate = demoDevicePlate.value
-      const t = await findDepartTarget()
+      let t = await findDepartTarget()
+      // 处理计划里还压着没排车的召回货 → 先把这趟收运车排出来再取单：
+      // ① 一张待发车都没有时，它是唯一能填的车（否则车牌/司机/卡号全空）；
+      // ② 有普通配送车能填时也要排 —— 使用者点这里要演示的是召回那批货，填一辆普通车就是
+      //    「示例值跟召回没关系」（2026-11-05 用户报障）。
+      // 终端绑了车牌时不代排：那会排出一趟不归这台车管的运单，车牌对不上更误导。
+      let autoCreated = false
+      if (!plate) {
+        autoCreated = await ensureDepartableTransport()
+        if (autoCreated) t = await findDepartTarget()
+      }
       if (t) {
         demoForm.data.vehicleNo = t.vehicleNo || ''
         demoForm.data.departTime = nowText()
@@ -1737,16 +2325,53 @@ async function fillSample() {
             + '请填他本人的卡号；或到「分割配送 → 冷链运输」编辑这趟车、把司机改成备案司机再演示'
             + '（改司机只会落成「人工录入」，不会冒充本人刷卡确认）。'
         }
-        sampleHint.value = `取到待发车运单 ${t.transportNo}（车牌 ${t.vehicleNo}）`
+        // 拒收回运的处理运单也归这台终端管：发车/到站都只认「车牌 + 状态」，不分这趟送门店还是送无害化中心
+        const kind = String(t.transportKind || '')
+        const isReturn = kind === 'DISPOSAL'
+        // 召回货是「收运单」：冷链中心 → 门店（随车扫码枪收货）→ 无害化处理中心。
+        // 跟拒收回运的「已在冷链中心、只等送无害化」不是一回事，文案不能混着叫「待发车运单」。
+        const isRecallLeg = kind === 'RECALL'
+        // 收运单承运的就是处理计划里那批召回货：批次/门店点名，示例值与处理计划对得上号
+        const recallCargo = isRecallLeg ? await describeRecallLegCargo(t.id) : ''
+        sampleHint.value = `取到${isRecallLeg ? '收运运单' : isReturn ? '拒收回运的处理运单' : '待发车运单'} ${t.transportNo}（车牌 ${t.vehicleNo}）`
           + (t.driverName ? `，计划安排的司机是 ${t.driverName}` : '，运单上还没有司机（装车时不采集）')
           + '。' + how
+          + (recallCargo ? `承运的是处理计划里的召回货：${recallCargo}。` : '')
+          + (isReturn
+            ? '这一趟跑的是「冷链中心 → 无害化处理中心」：到站同样刷这张卡，最后由无害化处理中心确认签收，链条才终结。'
+            : isRecallLeg
+              ? '这一趟跑的是「冷链中心 → 门店 → 无害化处理中心」：先在各门店停稳刷卡确认到达，'
+                + '再由随车扫码枪扫店里的召回货；末站无害化处理中心确认签收，召回才收口。'
+              : '')
           + '上报后运单「已发车」：列表状态从「待发车」转「运输中」。'
+          + (autoCreated
+            ? '（这张收运运单是刚才按处理计划就地排出来的：计划里那批货已排进这趟车，'
+              + '可在「分割配送 → 冷链运输」看到这张待发车运单。）'
+            : '')
+        // 处理计划里还压着召回货没排车时，顺带摆出来：用户点这里往往就是想演示计划里那批货怎么发出去，
+        // 只看运单会以为「示例值没管处理计划」。就地给出口，排完自动重填成这趟收运车。
+        const planPending = await poolPendingSummary()
+        if (planPending.recall > 0) {
+          sampleHint.value += ` 另外，处理计划里还有 ${planPending.recall} 批召回货没排车 —— `
+            + '点「按处理计划生成收运运单」就地排一趟收运车（车牌取空闲备案车），排完自动重填。'
+          sampleAction.value = {
+            text: '按处理计划生成收运运单',
+            run: () => generateCollectFromPlan(planPending.recall),
+          }
+        }
       } else if (plate) {
         // 本机绑了车牌却取不到待发车运单：**不许退回别人的车**（那正是「车牌号也不对」的来源），
         // 直接把本车现状摆出来，让使用者知道下一步该做什么。
         const unshipped = await listUnshippedPlansOfPlate(plate)
+        // 这辆车的扫码拒收货还没生成处理运单时，也把这一步点出来（回运单同样是待发车运单的来源）
+        const pool = await safeList(() => distributionApi.returnPool('DISPOSAL'))
+        const ownScanned = (pool || []).filter((r: any) => r.scanTime && r.scanPlate === plate)
         sampleHint.value = `本终端装在「${plate}」上（设备名里就写着车号），它只能报自己这辆车。`
           + `${describePlateTransports(await listTransportsOfPlate(plate))}，其中没有「待发车」的。`
+          + (ownScanned.length
+            ? `另外，处理计划里有 ${ownScanned.length} 站是这台车扫码的拒收货（${ownScanned.map((r: any) => r.batchNo || r.transportNo).join('、')}），`
+              + '但还没生成处理运单 —— 生成后它就是这辆车的待发车运单。'
+            : '')
           + (unshipped.length
             // 「已排车、没生成运单」正是使用者以为「排了车就能演示」的那一步 —— 点名摆出来并给入口
             ? describeUnshippedPlans(unshipped) + '点过「生成运单」再回来点「填充示例值」即可。'
@@ -1757,11 +2382,32 @@ async function fillSample() {
           sampleJump.value = { text: `去「冷链运输」给 ${plate} 生成运单`, to: { name: 'TransportMonitor' } }
         }
       } else {
-        sampleHint.value = '本终端不绑车（通用 / 回归用），示例只能从任意一辆待发车的车里挑；'
-          + '而现在这些待发车里没有一辆是「司机已在备案卡表」或「还没记司机」的 —— '
-          + '别的车刷任何一张卡都会被判「现场刷卡的人 ≠ 运单安排的人」转人工，示例不拿它凑数。'
-          + '请先到「装车发运（装车口）」演示一次装车，或到「分割配送 → 冷链运输」按计划生成一张运单；'
-          + '若想让示例值与某辆车严格一致，请改选那辆车的车载终端（设备名里就写着车号）。'
+        // 没有「待发车」的运单：先分清「真没有车」和「有车但司机刷不出本人」两件事 ——
+        // 后者才是「车牌填了、卡号空着」的来源，说成「没有数据」会让人一直找车。
+        const waitingAll = await listTransportsByStatus(1)
+        const undemo = waitingAll.filter((t: any) => !isDemoable(t))
+        const blocker = undemo.length ? null : await describePoolBlockers()
+        const recallLeg = undemo.length || blocker ? null : await describeRecallLegBlocker()
+        if (undemo.length) {
+          sampleHint.value = `现在待发的 ${undemo.length} 张运单（`
+            + undemo.slice(0, 3).map((x: any) => `${x.transportNo}·${x.driverName || '未记录司机'}`).join('、')
+            + '）司机都不是备案司机：备案里只有 张师傅（8801）/ 李四（8802）/ 王五（8803），'
+            + '刷任何一张卡都会被判「司机不是运单安排的人」，卡号没法替你编。'
+            + '把这几趟车的司机改成备案司机，或按处理计划排一趟收运车（司机是张师傅，刷卡即本人）再演示。'
+        } else if (blocker) {
+          sampleHint.value = blocker.text
+          if (blocker.jump) sampleJump.value = blocker.jump
+          if (blocker.action) sampleAction.value = blocker.action
+        } else if (recallLeg) {
+          // 处理计划里那批召回货已经排进收运运单（发车那步过了）：别再声称「处理计划是空的」
+          sampleHint.value = recallLeg.text
+          sampleAction.value = recallLeg.action
+        } else {
+          sampleHint.value = '本终端不绑车（通用 / 回归用），示例只能从任意一辆待发车的车里挑；'
+            + '而现在既没有「待发车」的运单，处理计划里也没有等车的货 —— '
+            + '先到「装车发运（装车口）」装一车货（扫码即出单），或在「处理运输」生成一张收运运单，'
+            + '再回来点「填充示例值」。'
+        }
       }
     } else if (ch === 'ARRIVE') {
       // 到达确认与发车同一套口径：设备只报「哪台车、司机刷的哪张卡、什么时刻」，
@@ -1792,9 +2438,17 @@ async function fillSample() {
             + '不占人工队列），所以示例没有替他编卡，卡号留空：请填他本人的卡号；'
             + '或到「分割配送 → 冷链运输」编辑这趟车、把司机改成备案司机再演示。'
         }
-        sampleHint.value = `取到运输中运单 ${transport.transportNo}（车牌 ${transport.vehicleNo}，`
-          + `司机 ${transport.driverName || '未记录'}），本趟共 ${stops.length} 站；运单上「当前第一个还没到达的站」`
-          + `是第 ${next.stopNo} 站（${next.storeName}）。报文里不需要填门店，系统按站点顺序自己推。`
+        // 回运单到的是无害化处理中心那唯一一站：同样由这张卡确认「谁把拒收货送到了」
+        const arriveKind = String(transport.transportKind || '')
+        const isReturn = arriveKind === 'DISPOSAL'
+        const isRecallLeg = arriveKind === 'RECALL'
+        // 召回那趟车承运的就是处理计划里的货：把批次/门店点名，示例值与处理计划才对得上号
+        const recallCargo = isRecallLeg ? await describeRecallLegCargo(transport.id) : ''
+        sampleHint.value = `取到${isRecallLeg ? '收运运单（门店收货）' : isReturn ? '拒收回运的处理运单' : '运输中运单'} ${transport.transportNo}`
+          + `（车牌 ${transport.vehicleNo}，司机 ${transport.driverName || '未记录'}），本趟共 ${stops.length} 站；`
+          + (recallCargo ? `这趟车承运的就是处理计划里那批召回货：${recallCargo}。` : '')
+          + `运单上「当前第一个还没到达的站」是第 ${next.stopNo} 站（${next.storeName}）。`
+          + '报文里不需要填门店，系统按站点顺序自己推。'
           + how
           + (willTake
             ? `这一次刷卡将把第 ${next.stopNo} 站记成「已到达」；`
@@ -1802,6 +2456,15 @@ async function fillSample() {
                 ? '一车多店：每刷一次卡推进一站，全部站点都到了运单才转「待签收」。'
                 : '单站直达：刷完这一次运单即转「待签收」。')
             : `补齐卡号后重报，这一次刷卡才会把第 ${next.stopNo} 站记成「已到达」。`)
+        const planPending = await poolPendingSummary()
+        if (planPending.recall > 0) {
+          sampleHint.value += ` 另外，处理计划里还有 ${planPending.recall} 批召回货没排车；`
+            + '点「按处理计划生成收运运单」就能排一趟收运车，排完自动重填。'
+          sampleAction.value = {
+            text: '按处理计划生成收运运单',
+            run: () => generateCollectFromPlan(planPending.recall),
+          }
+        }
       } else if (plate) {
         // 同上：本机绑了车牌就只认本车，取不到就把本车现状说清楚（含「已经到过站」这种已结束的）。
         // 这里还多认一种「差一步」：车下有待发车的运单 —— 那说明还停在发车那一步，先把话说清楚，
@@ -1823,11 +2486,56 @@ async function fillSample() {
           sampleJump.value = { text: `去「冷链运输」给 ${plate} 生成运单`, to: { name: 'TransportMonitor' } }
         }
       } else {
-        sampleHint.value = '本终端不绑车（通用 / 回归用），示例只能从任意一辆在途的车里挑；'
-          + '而现在没有一辆是「未结束、还有站点没到」且「司机已在备案卡表（或还没记司机）」的 —— '
-          + '别的车刷任何一张卡都会被判「现场刷卡的人 ≠ 运单安排的人」，到达侧直接「已拒绝」，'
-          + '示例不拿它凑数。请先到「分割配送 → 冷链运输」给一条待发车任务点发车；'
-          + '若想让示例值与某辆车严格一致，请改选那辆车的车载终端（设备名里就写着车号）。'
+        // 先分清两件事：① 车在跑但司机不是备案司机（刷不出本人）；② 根本没有在途的车。
+        // 混成一句「没有在途运单」会让人以为车都停了，其实是车上的卡刷不出人 —— 这才是卡号空的原因。
+        const aliveAll = plate
+          ? (await listTransportsOfPlate(plate))
+          : [...(await listTransportsByStatus(2)), ...(await listTransportsByStatus(3))]
+        const aliveCars = aliveAll.filter((t: any) => [2, 3].includes(Number(t.status)))
+        const undemoable = aliveCars.filter((t: any) => !isDemoable(t))
+        const waiting = await listTransportsByStatus(1)
+        if (undemoable.length) {
+          sampleHint.value = `现在在途的 ${undemoable.length} 趟车（`
+            + undemoable.slice(0, 3).map((x: any) => `${x.transportNo}·${x.driverName || '未记录司机'}`).join('、')
+            + '）司机都不是备案司机：备案里只有 张师傅（8801）/ 李四（8802）/ 王五（8803），'
+            + '这些车刷任何一张卡都会被判「现场刷卡的人 ≠ 运单安排的人」，所以示例值没有替它编卡号。'
+            + (waiting.length
+              ? '要把到达演示成「成功入账」，先切到「发车确认」发一趟备案司机的车，再回来刷这一趟。'
+              : '要把到达演示成「成功入账」，先到「发车确认」发一趟备案司机的车（处理计划里的召回货可按计划排成收运车，司机就是张师傅），再回来刷这一趟。')
+          sampleAction.value = {
+            text: '切到「发车确认」',
+            run: async () => {
+              demoForm.channel = 'DEPART'
+              resetDemo()
+              await fillSample()
+            },
+          }
+        } else if (waiting.length) {
+          sampleHint.value = `现在没有在路上跑的车，但有 ${waiting.length} 张停在「待发车」的运单`
+            + `（${waiting.slice(0, 3).map((x: any) => `${x.transportNo}·${x.vehicleNo}`).join('、')}）：`
+            + '到达确认只能报已经在路上的车。同一台车载终端两个动作共用一个读卡头 —— '
+            + '先把它发出去，再回来点「填充示例值」就能填到车了。'
+          sampleAction.value = {
+            text: '切到「发车确认」',
+            run: async () => {
+              demoForm.channel = 'DEPART'
+              resetDemo()
+              await fillSample()
+            },
+          }
+        } else {
+          // 同理：没有在途的车时，把「车还在哪一步」说出来，而不是让使用者对着空表单猜
+          const blocker = await describePoolBlockers()
+          if (blocker) {
+            sampleHint.value = '到达确认只能报一列已经在路上的车，现在没有这样的车 —— ' + blocker.text
+            if (blocker.jump) sampleJump.value = blocker.jump
+            if (blocker.action) sampleAction.value = blocker.action
+          } else {
+            sampleHint.value = '本终端不绑车（通用 / 回归用），示例只能从任意一辆在途的车里挑；'
+              + '而现在既没有在途运单、处理计划也是空的 —— '
+              + '先用「发车确认」通道把一趟车发出去（同一台终端两个动作），再回来演示「到站刷卡」。'
+          }
+        }
       }
     } else if (ch === 'SPLIT_SNAPSHOT') {
       // 分割车间监控：正常路径下**不需要人来这里报** —— 分割线上报之后相机会自动连拍并绑定批次。
@@ -1908,6 +2616,7 @@ async function submitDemo() {
     })
     demoResult.value = res
     if (res?.accepted) ElMessage.success('已入账')
+    else if (res?.duplicate) ElMessage.warning('该信息已存在，本次拒绝入账')
     else if (res?.status === 1) ElMessage.warning('待人工确认')
     else ElMessage.warning(res?.message || '未入账，具体原因见下方回执')
     fetchStaging()
@@ -1940,16 +2649,40 @@ function hasValue(v: any) {
  * 挑错必然失败，而且必须先认「本机所在的那辆车」。
  */
 async function findTransport(status: number) {
-  const page = await safeList(() => distributionApi.getTransports({ status, pageNum: 1, pageSize: 20 }))
-  return preferCardResolvable(page || [])[0] || null
+  return preferCardResolvable(await listTransportsByStatus(status))[0] || null
 }
 
 /** 运单状态中文名（列表页同一套口径：1 待发车 / 2 运输中 / 3 待签收 / 4 已签收） */
 const TRANSPORT_STATUS_LABELS: Record<number, string> = { 1: '待发车', 2: '运输中', 3: '待签收', 4: '已签收' }
 
+/**
+ * 按状态取运单，**正常配送 + 拒收回运两种都算**。
+ * <p>
+ * `GET /distribution/transports` 缺省只返回正常配送单（kind 缺省 NORMAL），回运单要显式带
+ * `kind=DISPOSAL`。而车载终端只认「车牌 + 状态」，不关心这趟送的是门店的货还是无害化中心的货 ——
+ * 发车（DEPART）与到站（ARRIVE）在后端都是按车牌倒查、不分单种。示例值不带回运单一起查，
+ * 演示出来就是「这台终端发不了拒收回运的车」，可实际上只是取单口径漏了它。
+ */
+/**
+ * 车载终端只认「车牌 + 状态」，不关心这趟送门店还是送无害化中心。
+ * 三种运单必须一起查：漏掉 RECALL 时，召回收运单在设备侧就等于不存在 ——
+ * 处理计划里明明有货、运单也生成了，终端却报「填不出示例值」（2026-11-05 用户报的就是这个）。
+ * 后端 `pageTransports` 的 kind 支持逗号多值，一次请求即可。
+ */
+const ALL_TRANSPORT_KINDS = 'NORMAL,DISPOSAL,RECALL'
+
+async function listTransportsByStatus(status: number, pageSize = 20) {
+  const list = await safeList(() => distributionApi.getTransports({
+    status, kind: ALL_TRANSPORT_KINDS, pageNum: 1, pageSize,
+  }))
+  return list || []
+}
+
 /** 一辆车牌名下的全部运单（不限状态，新的在前）。车牌用 keyword 反查，再按车牌精确过滤（keyword 是 LIKE）。 */
 async function listTransportsOfPlate(plate: string) {
-  const list = await safeList(() => distributionApi.getTransports({ keyword: plate, pageNum: 1, pageSize: 50 }))
+  const list = await safeList(() => distributionApi.getTransports({
+    keyword: plate, kind: ALL_TRANSPORT_KINDS, pageNum: 1, pageSize: 50,
+  }))
   return (list || []).filter((t: any) => t.vehicleNo === plate)
 }
 
@@ -2000,6 +2733,19 @@ function isDemoable(t: any) {
 }
 
 /**
+ * 召回优先：同时有普通配送车和召回收运车时，把收运车排前面。
+ * <p>
+ * 使用者点「填充示例值」多半就是想在设备侧把处理计划里那批召回货走一遍 —— 取到一辆普通配送车，
+ * 观感就是「填充的示例值跟召回那部分没关系」（2026-11-05 用户报障）。
+ * `Array.prototype.sort` 是稳定排序，配合 `preferCardResolvable` 时「卡刷得出本人」仍然优先，
+ * 只在同级里把召回提前 —— 宁可演示召回，也不牺牲「刷了能入账」。
+ */
+function preferRecallLeg<T extends { transportKind?: string | null }>(list: T[]): T[] {
+  const isRecall = (t: T) => (String(t.transportKind || '') === 'RECALL' ? 1 : 0)
+  return [...list].sort((a, b) => isRecall(b) - isRecall(a))
+}
+
+/**
  * 发车确认要报的那趟车。
  * <p>
  * ① **本机绑了车牌就只认这辆车**：车载终端装在车上（台账 `vehicle_no` 就是它的车牌，设备名里
@@ -2011,13 +2757,19 @@ function isDemoable(t: any) {
 async function findDepartTarget() {
   const plate = demoDevicePlate.value
   if (!plate) {
-    const page = await safeList(() => distributionApi.getTransports({ status: 1, pageNum: 1, pageSize: 20 }))
-    return preferCardResolvable((page || []).filter(isDemoable))[0] || null
+    // 正常配送单、拒收回运单、召回收运单都算：终端只认车牌，送门店还是送无害化中心与它无关。
+    // 优先「刷卡能刷出本人」的车；实在没有，也退回一辆真实待发车 —— 表单填得出来、再把
+    // 卡号为什么留空说清楚，比给一张空表单让人以为功能坏了强（2026-11-05 用户报的就是空表单）。
+    const list = await listTransportsByStatus(1)
+    // 只取「刷得出本人」的车：司机不在备案卡表的单，车牌填得出来、卡号却只能空着（刷谁都判身份不符），
+    // 发不出去。与其给半张表单，不如当成「没有可发的车」，让上层去排一趟自己的车。
+    // 同级里召回优先（见 preferRecallLeg）：使用者要演示的往往就是处理计划里那批召回货。
+    return preferCardResolvable(preferRecallLeg(list.filter(isDemoable)))[0] || null
   }
   const own = await listTransportsOfPlate(plate)
   // 本机车牌下不筛司机：这辆车就是本机要报的车，司机不是备案里的人也照样是**它**的单子，
   // 由 caller 按「三档」把卡号怎么填说清楚（见发车分支的 how）。
-  return preferCardResolvable(own.filter((t: any) => Number(t.status) === 1))[0] || null
+  return preferCardResolvable(preferRecallLeg(own.filter((t: any) => Number(t.status) === 1)))[0] || null
 }
 
 /**
@@ -2032,12 +2784,14 @@ async function findArriveTarget() {
   const pool = plate
     ? await listTransportsOfPlate(plate)
     : [
-        ...(await safeList(() => distributionApi.getTransports({ status: 2, pageNum: 1, pageSize: 20 }))),
-        ...(await safeList(() => distributionApi.getTransports({ status: 3, pageNum: 1, pageSize: 20 }))),
+        ...(await listTransportsByStatus(2)),
+        ...(await listTransportsByStatus(3)),
       ]
-  const candidates = preferCardResolvable(
-    pool.filter((t: any) => [2, 3].includes(Number(t.status)) && (!!plate || isDemoable(t))),
-  )
+  const alive = pool.filter((t: any) => [2, 3].includes(Number(t.status)))
+  // 只取「刷得出本人」的车：司机是备案司机（有卡）或运单还没记司机（刷卡赋身份）。
+  // 司机是别人（库里那种「吴师傅」的车）不能拿来当到达示例 —— 刷谁的卡都会被判「身份不符」，
+  // 取它只会得到「车牌填了、卡号空」，使用者看到的就是「卡号没有回填」（2026-11-05 报障）。
+  const candidates = preferCardResolvable(preferRecallLeg(alive.filter(isDemoable)))
   for (const transport of candidates) {
     const stops = await safeList(() => distributionApi.getTransportStops(transport.id))
     const next = (stops || []).find((s: any) => Number(s.status || 0) < 1)
@@ -2093,6 +2847,22 @@ const DEMO_LOAD_PLATES = ['京A·12345', '京A·99999', '京B·10086']
 async function fetchPendingPlates(): Promise<Set<string>> {
   const list = await safeList(() => distributionApi.getTransports({ status: 1, pageNum: 1, pageSize: 200 }))
   return new Set(list.map((t: any) => t.vehicleNo).filter(Boolean))
+}
+
+/**
+ * 名下还挂着未完成运单（待发车 1 / 运输中 2 / 待签收 3）的车牌集合。
+ * <p>
+ * 与 {@link fetchPendingPlates} 的区别：那个只关心「会不会被并入同一趟车」（装车口语义），
+ * 这里关心「这辆车还能不能接新活」—— 一车一趟（ActiveTransportGuard 拦的是 1/2/3 全部），
+ * 正跑着的车给它排新单会被直接拒绝，所以回运扫码的示例车牌必须避开这三种状态。
+ */
+async function fetchBusyPlates(): Promise<Set<string>> {
+  const busy = new Set<string>()
+  for (const status of [1, 2, 3]) {
+    const list = await listTransportsByStatus(status, 200)
+    list.forEach((t: any) => { if (t.vehicleNo) busy.add(t.vehicleNo) })
+  }
+  return busy
 }
 
 /** 从演示车牌里挑一个还没挂待发车运单的；全占着就只能用第一个（提示语里会说明本次会并入） */
@@ -2261,6 +3031,28 @@ async function findPigForRactopamine() {
 }
 
 /**
+ * 拉全量生猪候选（翻页取尽，可按状态过滤）。
+ * <p>
+ * 演示示例值必须扫全库：只取第一页时，真正满足条件的那头猪会被后来新增的
+ * 演示猪挤出窗口，页面就误报「没有满足要求的猪」——ET-DEMO-0133 正是如此：
+ * 它三条件齐（审批通过 + 已出栏 + 证有效），却因按创建时间倒序排在第 44 位、
+ * 落在 pageSize=30 之外而没被看到。
+ */
+async function fetchAllPigs(status?: string): Promise<any[]> {
+  const size = 100
+  const all: any[] = []
+  for (let page = 1; page <= 20; page++) {
+    const res: any = await safeGet(() => pigApi.list({ pageNum: page, pageSize: size, status }))
+    const list = Array.isArray(res) ? res : (res?.records || res?.list || [])
+    if (!Array.isArray(list) || list.length === 0) break
+    all.push(...list)
+    const total = Number(res?.total ?? 0)
+    if (list.length < size || (total > 0 && all.length >= total)) break
+  }
+  return all
+}
+
+/**
  * 找一头「出栏审批已通过 + 状态可入场 + 挂着有效产地检疫证」的猪，供入场查验示例值使用。
  * <p>
  * 入场查验有三道前提，缺一道都演示不出自动入账：
@@ -2272,7 +3064,8 @@ async function findPigForRactopamine() {
  *   此外优先挑「还没入场查验过」的猪——已查验过的再报只会命中重复兜底、返回既有记录，看不出新入账。
  */
 async function findPigWithCert() {
-  const list = await safeList(() => pigApi.list({ pageNum: 1, pageSize: 30 }))
+  // 候选池取全量（服务端按状态过滤），不能只取第一页——满足条件的猪可能排在很后面
+  const list = await fetchAllPigs('1,2')
   // 审批状态：只有「1 通过」可以入场；0 待审、2 驳回都不行
   const applies = await safeList(() => pigApi.getApplies({ pageNum: 1, pageSize: 200 }))
   const approved = new Set(applies.filter((a: any) => a?.approvalStatus === 1).map((a: any) => Number(a.pigId)))
@@ -2281,23 +3074,53 @@ async function findPigWithCert() {
 
   const today = new Date()
   today.setHours(0, 0, 0, 0)
-  const usable: { id: number; earTagNo: string; certNo: string; admitted: boolean }[] = []
+  const usable: { id: number; earTagNo: string; certNo: string; admitted: boolean; note?: string }[] = []
+  // 完全合格的猪找不到时，退一步用「审批通过、状态可入场，但证过期 / 还没出证」的猪：
+  // 表单照样填得出来，提示把缺的那一步说清楚 —— 比给一张空表单强（用户 2026-11-05 报的就是点了没回填）。
+  const weak: { id: number; earTagNo: string; certNo: string; admitted: boolean; note: string }[] = []
+  // 最后一层：连「审批通过」的猪都没有时（演示库里常见——审批通过的都早已屠宰），
+  // 至少拿一头在养的猪把耳标填上，并点明缺的是「申报出栏」。空表单等于告诉使用者功能坏了。
+  let anyAlive: { id: number; earTagNo: string } | null = null
   for (const pig of list) {
     const earTagNo = pig?.earTagNo || pig?.ear_tag_no
     if (!earTagNo || !pig?.id) continue
+    if (!anyAlive && Number(pig.status) === 1) anyAlive = { id: pig.id, earTagNo }
     if (!approved.has(Number(pig.id))) continue
     // 状态：1 在养 / 2 已出栏 才可能入场；3 已屠宰、4 异常 是终态，业务侧会直接拒绝
     if (![1, 2].includes(Number(pig.status))) continue
     const cert = await safeGet(() => pigApi.getQuarantineCert(pig.id))
     const certNo = cert?.certNo || cert?.cert_no
-    if (!certNo) continue
+    if (!certNo) {
+      weak.push({
+        id: pig.id, earTagNo, certNo, admitted: admitted.has(Number(pig.id)),
+        note: '这头猪还没有产地检疫证（入场查验要核验证件）',
+      })
+      continue
+    }
     const validUntil = cert?.validUntil || cert?.valid_until
-    if (validUntil && new Date(String(validUntil).slice(0, 10)) < today) continue
+    if (validUntil && new Date(String(validUntil).slice(0, 10)) < today) {
+      weak.push({
+        id: pig.id, earTagNo, certNo, admitted: admitted.has(Number(pig.id)),
+        note: `这头猪的检疫证 ${certNo} 已经过了有效期`,
+      })
+      continue
+    }
     usable.push({ id: pig.id, earTagNo, certNo, admitted: admitted.has(Number(pig.id)) })
   }
   // 没查验过的排前面：演示出来的才是一条真正的新入场记录
   usable.sort((a, b) => Number(a.admitted) - Number(b.admitted))
-  return usable[0] || null
+  if (usable[0] || weak[0]) return usable[0] || weak[0]
+  if (anyAlive) {
+    const cert = await safeGet(() => pigApi.getQuarantineCert(anyAlive!.id))
+    return {
+      id: anyAlive.id,
+      earTagNo: anyAlive.earTagNo,
+      certNo: cert?.certNo || cert?.cert_no || '',
+      admitted: admitted.has(Number(anyAlive.id)),
+      note: '这头猪还没有在「出栏申报」里申报审批（入场查验要求审批已通过）',
+    }
+  }
+  return null
 }
 
 /** 取单个对象；无数据或接口报错时返回 null（作废或无证会走异常） */
@@ -2316,8 +3139,9 @@ async function safeGet(fn: () => Promise<any>): Promise<any> {
  * 无证时接口返回业务异常，safeGet 吞掉返回 null —— 正好作为「这头可用」的判据。
  */
 async function findPigWithoutCert(): Promise<{ id: number; earTagNo: string } | null> {
-  const page = await safeList(() => pigApi.list({ pageNum: 1, pageSize: 10, status: 1 }))
-  for (const pig of page) {
+  // 同样取全量在养猪：只扫前 10 头时，出证状态参差的老演示猪会把候选挤没
+  const list = await fetchAllPigs('1')
+  for (const pig of list) {
     const earTagNo = pig?.earTagNo || pig?.ear_tag_no
     if (!earTagNo || !pig?.id) continue
     const cert = await safeGet(() => pigApi.getQuarantineCert(pig.id))
@@ -2336,7 +3160,7 @@ async function fillByPig(desc: string, extra: () => void) {
     extra()
     sampleHint.value = `取到${desc}耳标 ${earTag}`
   } else {
-    sampleHint.value = `没有${desc}档案，请先到「养殖管理 → 生猪档案」用耳标读写器（TAG）建档`
+    sampleHint.value = `没有${desc}档案，请先到「养殖管理 → 生猪批次档案」登记批次（耳标区间覆盖该猪）`
   }
 }
 
@@ -2359,7 +3183,8 @@ async function safeList(fn: () => Promise<any>): Promise<any[]> {
  * 已驳回的猪也不选——驳回是审批人的结论，设备不该让它自动复活。
  */
 async function findPigWithoutApply(): Promise<{ id: number; earTagNo: string } | null> {
-  const pigs = await safeList(() => pigApi.list({ pageNum: 1, pageSize: 30, status: 1 }))
+  // 取全量在养猪：只扫前 30 头时，老演示猪一旦都申报过，就会误报「没有尚未申报的猪」
+  const pigs = await fetchAllPigs('1')
   const taken = new Set<number>()
   const applies = await safeList(() => pigApi.getApplies({ pageNum: 1, pageSize: 200 }))
   for (const apply of applies) {
