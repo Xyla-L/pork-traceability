@@ -298,22 +298,6 @@ services:
       FILE_STORAGE_ROOT: /app/data/trace-files
     volumes: ["${FILE_STORAGE_PATH:-./data/trace-files}:/app/data/trace-files"]
 
-  # 智能助手：只读问答 + 异常归纳，不承载任何业务判定
-  agent-service:
-    <<: *app-defaults
-    build:
-      context: .
-      args: { SERVICE: agent-service }
-    environment:
-      <<: *app-environment
-      MAIN_CLASS: com.pork.agent.AgentApplication
-      SERVICE_PORT: 8090
-      DB_URL: jdbc:mysql://mysql:3306/db_common?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-    depends_on:
-      mysql: { condition: service_healthy }
-      redis: { condition: service_healthy }
-      nacos: { condition: service_healthy }
-
   nginx:
     image: nginx:1.27-alpine
     restart: unless-stopped

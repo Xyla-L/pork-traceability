@@ -9,14 +9,8 @@
       <BreadcrumbNav />
     </div>
 
-    <!-- 右侧：助手 + 通知 + 用户 -->
+    <!-- 右侧：通知 + 用户 -->
     <div class="topbar-right">
-      <!-- 智能助手：全局入口。落点选在这里而不是工作台，是因为它回答的是「随手一问」，
-           不该占掉工作台按角色分好的版面。现阶段只对管理员显示（角色表见 utils/agentAccess） -->
-      <el-tooltip v-if="canUseAgent" content="智能助手（只读问答）" placement="bottom">
-        <el-icon class="topbar-icon" @click="agentVisible = true"><ChatDotRound /></el-icon>
-      </el-tooltip>
-
       <!-- 通知铃铛 -->
       <el-popover v-model:visible="notifyVisible" placement="bottom" :width="320" trigger="click">
         <template #reference>
@@ -69,7 +63,6 @@
     <ChangePasswordDialog v-model="changePwdVisible" />
 
     <!-- 智能助手抽屉 -->
-    <AgentAssistant v-if="canUseAgent" v-model="agentVisible" />
   </div>
 </template>
 
@@ -80,11 +73,9 @@ import { ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { useAppStore } from '@/stores/app'
 import { resolveNotificationTarget } from '@/utils/notificationLink'
-import { agentEnabled } from '@/utils/agentAccess'
 import type { AppNotification } from '@/types/notification'
 import BreadcrumbNav from './BreadcrumbNav.vue'
 import ChangePasswordDialog from '@/components/common/ChangePasswordDialog.vue'
-import AgentAssistant from '@/components/common/AgentAssistant.vue'
 
 defineEmits<{
   toggleSidebar: []
@@ -95,9 +86,6 @@ const authStore = useAuthStore()
 const appStore = useAppStore()
 const changePwdVisible = ref(false)
 const notifyVisible = ref(false)
-const agentVisible = ref(false)
-// 入口按角色显示：后端对非管理员一律 403，这里只是不让人看到一个点开就报错的图标
-const canUseAgent = computed(() => agentEnabled(authStore.role))
 
 const notifications = computed(() => appStore.notifications)
 const unreadCount = computed(

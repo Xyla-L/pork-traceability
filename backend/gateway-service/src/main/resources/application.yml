@@ -61,13 +61,6 @@ spring:
           predicates:
             - Path=/api/v1/ingest/**
           filters: *strip-api-prefix
-        # 智能助手：只读问答。走登录态（不设白名单），身份头由网关统一注入，
-        # 保证「养殖户只能问自家猪」这件事和页面口径一致。
-        - id: agent-route
-          uri: lb://agent-service
-          predicates:
-            - Path=/api/v1/agent/**
-          filters: *strip-api-prefix
       globalcors:
         cors-configurations:
           '[/**]':
