@@ -15,6 +15,9 @@
         <text class="sb-top-count">共 {{ data.blockchain.recordCount }} 条存证记录</text>
       </view>
 
+      <!-- AI 解读：把下面的证书、报告、链上记录翻译成大白话 -->
+      <AiInterpretCard :qr-code="qrCode" auto-start />
+
       <!-- 检疫合格章画廊 -->
       <view class="card">
         <view class="section-title">检疫合格章</view>
@@ -72,6 +75,7 @@ import BlockchainBadge from '@/components/BlockchainBadge.vue'
 import ReportSummary from '@/components/ReportSummary.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { shortHash } from '@/utils/bizType'
+import AiInterpretCard from '@/components/AiInterpretCard.vue'
 
 const productStore = useProductStore()
 const loading = ref(false)

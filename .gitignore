@@ -2,6 +2,7 @@ node_modules/
 .vite/
 web-admin/dist/
 *.local
+application-local.yml
 web-admin/src/types/auto-imports.d.ts
 web-admin/src/types/components.d.ts
 target/

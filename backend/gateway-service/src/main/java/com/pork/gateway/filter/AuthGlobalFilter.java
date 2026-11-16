@@ -46,7 +46,12 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
             "/api/v1/trace/search", "/api/v1/file/upload", "/api/v1/file/",
             // 设备上报不走 JWT：用设备级密钥 X-Device-Key 鉴权，只放行设备入口，
             // /api/v1/ingest/staging、/api/v1/ingest/devices 是管理端接口，仍须登录
-            "/api/v1/ingest/device/"
+            "/api/v1/ingest/device/",
+            // AI 消费者端：小程序扫码是匿名场景，没有 token，必须放行
+            // 注意不要放行 /api/v1/ai/admin/**，监管简报需要 JWT + 角色校验
+            "/api/v1/ai/consumer",
+            // AI 自检：给探针用，不涉及业务数据
+            "/api/v1/ai/health"
     );
 
     /**
