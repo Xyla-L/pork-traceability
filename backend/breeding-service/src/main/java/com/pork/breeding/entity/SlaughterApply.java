@@ -12,6 +12,12 @@ public class SlaughterApply {
     @TableId(type = IdType.AUTO)
     private Long id;
     private Long pigId;
+    /** 养殖场（机构隔离与列表过滤用；单据化后 pig_id 为兼容列） */
+    private Long farmId;
+    /** 申报头数 */
+    private Integer pigCount;
+    /** 申报总重（逐头体重之和；与 weightKg 单头重并存） */
+    private java.math.BigDecimal totalWeightKg;
     private String applyNo;
     private LocalDateTime applyTime;
     private Double weightKg;

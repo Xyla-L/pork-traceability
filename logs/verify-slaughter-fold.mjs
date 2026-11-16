@@ -2,7 +2,7 @@
  * 屠宰四张列表「按批次折叠」回归：入场查验 / 屠宰检验 / 检疫盖章 / 瘦肉精检测。
  *
  * 覆盖：
- *  A 同批 3 头入场查验 → 1 组、头数 3、耳标区间正确、明细逐头在、结论「全部合格」
+ *  A 同批 3 头入场查验 → 1 组、头数 3、主行不再返回耳标区间（假范围已废）、明细逐头在、结论「全部合格」
  *  B 同批宰前检验 3 条 + 宰后 2 条合格 + 1 条不合格 → 1 组、结论「含不合格」、计数明细正确
  *  C 同批盖章 2 枚 → 1 组、结论「全部已盖章」
  *  D 同批瘦肉精 3 阴性 + 1 阳性 → 1 组、结论「含阳性」（阳性必须写在主行上）
@@ -210,8 +210,14 @@ console.log('\n▶ 1 入场查验：同批 3 头 = 1 组')
   check('A1 同批聚成 1 组', mine.length === 1, `实际 ${mine.length} 组`)
   const one = mine[0]
   check('A2 头数 = 3', one?.headCount === 3, `实际 ${one?.headCount}`)
-  check('A3 耳标区间取到起止', one?.tagStart === EAR_TAGS[0] && one?.tagEnd === EAR_TAGS[2],
-    `${one?.tagStart} ~ ${one?.tagEnd}`)
+  // 2026-11-15：主行不再拼「耳标区间」——一车猪耳标不连号（外购、混装是常态），
+  // MIN~MAX 会造出中间夹着别家猪的假范围。要看耳标就展开逐头（A4/A3b 保证明细齐全）。
+  check('A3 主行不再返回耳标区间（假范围已废）',
+    one != null && one.tagStart === undefined && one.tagEnd === undefined,
+    `tagStart=${one?.tagStart} tagEnd=${one?.tagEnd}`)
+  check('A3b 耳标只在逐头明细里且 3 头都在',
+    EAR_TAGS.every((t) => (one?.members || []).some((m) => m.earTagNo === t)),
+    JSON.stringify((one?.members || []).map((m) => m.earTagNo)))
   check('A4 明细逐头保留', one?.members?.length === 3, `实际 ${one?.members?.length}`)
   check('A5 结论「全部合格」', one?.statusSummary === '全部合格', one?.statusSummary)
   check('A6 计数明细「合格 3」', one?.statusDetail === '合格 3', one?.statusDetail)

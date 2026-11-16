@@ -64,7 +64,7 @@ public class SlaughterRecordGroupServiceImpl implements SlaughterRecordGroupServ
 
         List<SlaughterGroupVO> groups = group("ENTRY", rows,
                 EntryInspectionVO::getBatchNo, EntryInspectionVO::getPigId, EntryInspectionVO::getId,
-                EntryInspectionVO::getEarTagNo, EntryInspectionVO::getArriveTime,
+                EntryInspectionVO::getArriveTime,
                 (g, members) -> {
                     int pass = 0, wait = 0, bad = 0;
                     for (EntryInspectionVO m : members) {
@@ -101,7 +101,7 @@ public class SlaughterRecordGroupServiceImpl implements SlaughterRecordGroupServ
 
         List<SlaughterGroupVO> groups = group("INSPECT", rows,
                 SlaughterInspectionVO::getBatchNo, SlaughterInspectionVO::getPigId, SlaughterInspectionVO::getId,
-                SlaughterInspectionVO::getEarTagNo, SlaughterInspectionVO::getInspectTime,
+                SlaughterInspectionVO::getInspectTime,
                 (g, members) -> {
                     int pass = 0, wait = 0, bad = 0, voided = 0;
                     for (SlaughterInspectionVO m : members) {
@@ -140,7 +140,7 @@ public class SlaughterRecordGroupServiceImpl implements SlaughterRecordGroupServ
 
         List<SlaughterGroupVO> groups = group("STAMP", rows,
                 CarcassStampVO::getBatchNo, CarcassStampVO::getPigId, CarcassStampVO::getId,
-                CarcassStampVO::getEarTagNo, CarcassStampVO::getStampTime,
+                CarcassStampVO::getStampTime,
                 (g, members) -> {
                     int stamped = 0, pending = 0, voided = 0;
                     for (CarcassStampVO m : members) {
@@ -175,7 +175,7 @@ public class SlaughterRecordGroupServiceImpl implements SlaughterRecordGroupServ
 
         List<SlaughterGroupVO> groups = group("RACTO", rows,
                 RactopamineTestVO::getBatchNo, RactopamineTestVO::getPigId, RactopamineTestVO::getId,
-                RactopamineTestVO::getEarTagNo, RactopamineTestVO::getTestTime,
+                RactopamineTestVO::getTestTime,
                 (g, members) -> {
                     int negative = 0, positive = 0, undone = 0;
                     for (RactopamineTestVO m : members) {
@@ -218,7 +218,6 @@ public class SlaughterRecordGroupServiceImpl implements SlaughterRecordGroupServ
                                              Function<T, String> batchNoOf,
                                              Function<T, Long> pigIdOf,
                                              Function<T, Long> idOf,
-                                             Function<T, String> earTagOf,
                                              Function<T, LocalDateTime> timeOf,
                                              BiConsumer<SlaughterGroupVO, List<T>> summarizer) {
         Map<String, List<T>> buckets = new LinkedHashMap<>();
@@ -246,22 +245,17 @@ public class SlaughterRecordGroupServiceImpl implements SlaughterRecordGroupServ
             // 未归批才带 pigId：归批的行带 pigId 会让前端误以为这一组只属于那头猪
             g.setPigId(batchNo == null ? pigIdOf.apply(members.get(0)) : null);
 
-            List<String> tags = new ArrayList<>();
+            // 主行不拼「耳标区间」：一车猪的耳标不连号（外购、混装是常态），
+            // MIN~MAX 会造出一个看起来连续、实际中间夹着别家猪的假范围。
+            // 要看耳标就展开逐头明细——那里的每一头都是这条记录真的涉及的猪。
             String minTime = null;
             String maxTime = null;
             for (T m : members) {
-                String tag = trimToNull(earTagOf.apply(m));
-                if (tag != null) tags.add(tag);
                 String t = timeText(timeOf.apply(m));
                 if (t != null) {
                     if (minTime == null || t.compareTo(minTime) < 0) minTime = t;
                     if (maxTime == null || t.compareTo(maxTime) > 0) maxTime = t;
                 }
-            }
-            if (!tags.isEmpty()) {
-                tags.sort(Comparator.naturalOrder());
-                g.setTagStart(tags.get(0));
-                g.setTagEnd(tags.get(tags.size() - 1));
             }
             g.setFirstTime(minTime);
             g.setLastTime(maxTime);

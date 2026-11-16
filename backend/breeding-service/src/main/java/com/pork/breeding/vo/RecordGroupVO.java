@@ -30,8 +30,15 @@ public class RecordGroupVO {
     @Schema(description = "批次ID；null 表示这些猪尚未归入任何批次")
     private Long batchId;
 
-    @Schema(description = "批次号；null 表示未归批")
+    @Schema(description = "养殖批次号（来自猪档案，仅作溯源标签，不再作为本页的分组依据）")
     private String batchNo;
+
+    /**
+     * 本部分自己的批次号：免疫批次号 YH... / 检疫证号 / 申报单号。
+     * 2026-11-15 单据化后，这一列才是主行的身份，{@code groupKey} 只是列表 key。
+     */
+    @Schema(description = "本部分自己的批次号（免疫批次 / 检疫证号 / 申报单号）")
+    private String docNo;
 
     @Schema(description = "品种")
     private String breed;
@@ -60,7 +67,7 @@ public class RecordGroupVO {
     @Schema(description = "组内已作废条数")
     private Integer voidCount;
 
-    @Schema(description = "耳标区间起（组内最小耳标）")
+    @Schema(description = "已废弃：耳标区间不再是分组依据，成员名单见 members（接口保留字段避免旧前端报错）")
     private String tagStart;
 
     @Schema(description = "耳标区间止（组内最大耳标）")

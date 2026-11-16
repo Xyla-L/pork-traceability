@@ -1,6 +1,7 @@
 /**
  * 屠宰四张列表「按批次折叠」界面验收：
- *   主行是一个批次（批次号 + 头数 + 耳标区间 + 结论），展开才是逐头明细。
+ *   主行是一个批次（批次号 + 头数 + 时间 + 结论），展开才是逐头明细。
+ *   主行不再有「耳标区间」：一车猪耳标不连号，MIN~MAX 是假范围。
  *
  * 不造数据：直接看演示台账里的记录是否已按批折叠。
  * 运行：node logs/shot-slaughter-fold.mjs
@@ -52,7 +53,7 @@ for (const [route, label, file] of pages) {
 
   check(`${label}：分页文案改成「共 N 批」`, /共\s*\d+\s*批/.test(body), body.slice(0, 60))
   check(`${label}：说明「按批折叠，点行首箭头看逐头」`, body.includes('按批折叠'))
-  check(`${label}：主行有耳标区间列（不再逐头列耳标）`, body.includes('耳标区间'))
+  check(`${label}：主行不再有耳标区间列（假范围已废）`, !body.includes('耳标区间'))
 
   // 展开第一行，应当出现逐头明细表
   const expander = page.locator('.el-table__expand-icon').first()

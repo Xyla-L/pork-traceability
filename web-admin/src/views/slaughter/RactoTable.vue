@@ -64,12 +64,6 @@
           </el-tooltip>
         </template>
       </el-table-column>
-      <el-table-column label="耳标区间" min-width="230" show-overflow-tooltip>
-        <template #default="{ row }">
-          <span v-if="row.tagStart" class="tag-range">{{ tagRange(row) }}</span>
-          <span v-else class="empty-cell">--</span>
-        </template>
-      </el-table-column>
       <el-table-column label="检测项目" min-width="170" align="center">
         <template #default="{ row }">{{ typeSummary(row) }}</template>
       </el-table-column>
@@ -137,11 +131,6 @@ const emit = defineEmits(['voided'])
 const viewVisible = ref(false)
 const currentView = ref({})
 
-const tagRange = (row) => {
-  if (!row.tagStart) return '--'
-  return row.tagStart === row.tagEnd ? row.tagStart : `${row.tagStart} ~ ${row.tagEnd}`
-}
-
 const timeRange = (row) => {
   if (!row.firstTime) return '--'
   return row.firstTime === row.lastTime ? row.firstTime : `${row.firstTime} ~ ${row.lastTime}`
@@ -206,7 +195,6 @@ const ractoStatusTag = (s) => ({ 0: 'info', 1: 'warning', 2: 'success' }[s] ?? '
   background: #f4f4f5;
   border-radius: 9px;
 }
-.tag-range { font-family: 'Courier New', monospace; font-size: 12px; color: #606266; }
 .empty-cell { color: #c0c4cc; }
 .member-panel {
   padding: 8px 12px 12px 48px;

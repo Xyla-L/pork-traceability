@@ -31,20 +31,17 @@
     </div>
 
     <!--
-      主行 = 一次出证（同一批、同一天、同一出证机构），展开 = 这一批逐头的证。
-      本系统存量是「一证一头」（设备逐头出证），所以主行的证号可能是「QC-xxx 等 N 张」；
-      现实里一张证覆盖一批，将来补了主单这里就直接是一张证号。
+      主行 = 一张产地检疫证（单据），展开 = 这张证的「关联生猪」。
+      现实里产地检疫按批出证、证面有数量栏；一张证覆盖一车猪，
+      证号是单据号，成员在关联生猪里逐头可查。
     -->
     <el-table v-loading="loading" :data="rows" row-key="groupKey" border stripe>
       <el-table-column type="expand">
         <template #default="{ row }">
           <div class="member-panel">
-            <div class="member-panel__title">本批出证 {{ row.headCount }} 头</div>
+            <div class="member-panel__title">关联生猪 {{ row.headCount }} 头</div>
             <el-table :data="row.members" size="small" border :row-class-name="memberRowClass">
               <el-table-column prop="earTagNo" label="耳标号" min-width="150" show-overflow-tooltip />
-              <el-table-column label="检疫证编号" min-width="180" show-overflow-tooltip>
-                <template #default="{ row: m }">{{ m.certNo || '--' }}</template>
-              </el-table-column>
               <el-table-column label="出证日期" min-width="120" align="center">
                 <template #default="{ row: m }">{{ dayOf(m.issueTime) }}</template>
               </el-table-column>
@@ -90,15 +87,10 @@
         </template>
       </el-table-column>
 
-      <el-table-column label="批次" min-width="180" show-overflow-tooltip>
+      <el-table-column label="检疫证号" min-width="210" show-overflow-tooltip>
         <template #default="{ row }">
-          <template v-if="row.batchNo">
-            <span class="batch-no">{{ row.batchNo }}</span>
-            <span class="batch-count">{{ row.headCount }} 头</span>
-          </template>
-          <el-tooltip v-else content="这些猪尚未登记归属批次（如外购零星补栏），逐头独立成行" placement="top">
-            <el-tag type="info" size="small" effect="plain">未归批</el-tag>
-          </el-tooltip>
+          <span class="batch-no">{{ row.docNo || '--' }}</span>
+          <span class="batch-count">{{ row.headCount }} 头</span>
         </template>
       </el-table-column>
       <el-table-column prop="breed" label="品种" width="110">
@@ -106,9 +98,6 @@
       </el-table-column>
       <el-table-column label="养殖场" min-width="170" show-overflow-tooltip>
         <template #default="{ row }">{{ row.farmName || '--' }}</template>
-      </el-table-column>
-      <el-table-column label="检疫证编号" min-width="200" show-overflow-tooltip>
-        <template #default="{ row }">{{ row.title || '--' }}</template>
       </el-table-column>
       <el-table-column label="出证日期" width="130" align="center">
         <template #default="{ row }">{{ row.happenedOn || '--' }}</template>
@@ -123,12 +112,6 @@
           <span class="head-count">{{ row.headCount }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="耳标区间" min-width="220" show-overflow-tooltip>
-        <template #default="{ row }">
-          <span v-if="row.tagStart" class="tag-range">{{ tagRange(row) }}</span>
-          <span v-else class="empty-cell">--</span>
-        </template>
-      </el-table-column>
       <el-table-column label="证状态" min-width="160" align="center">
         <template #default="{ row }">
           <!-- 标签给结论（全部有效/部分有效/全部失效/全部作废），有效期与作废计数进 tooltip -->
@@ -139,11 +122,25 @@
           </el-tooltip>
         </template>
       </el-table-column>
+      <el-table-column label="操作" width="120" align="center">
+        <template #default="{ row }">
+          <el-button
+            v-if="row.statusSummary !== '已作废'"
+            type="primary"
+            link
+            size="small"
+            @click="handleVoidDoc(row)"
+          >
+            整证作废
+          </el-button>
+          <span v-else class="empty-cell">--</span>
+        </template>
+      </el-table-column>
     </el-table>
 
     <!-- 分页：total 是「组数」不是「头数」——列表按批聚合，一头一行会让翻页错位 -->
     <div class="pagination-wrapper">
-      <span class="group-total">共 {{ pagination.total }} 组（按批聚合，点行首箭头看逐头）</span>
+      <span class="group-total">共 {{ pagination.total }} 张检疫证</span>
       <el-pagination
         v-model:current-page="pagination.pageNum"
         v-model:page-size="pagination.pageSize"
@@ -163,7 +160,8 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { Search, Refresh } from '@element-plus/icons-vue'
-import { recordGroupApi } from '@/api/modules/breeding'
+import { recordGroupApi, pigApi } from '@/api/modules/breeding'
+import { confirmVoid } from '@/composables/useVoidAction'
 import { sourceLabel } from '@/api/modules/ingest'
 import QuarantineCertDialog from './QuarantineCertDialog.vue'
 
@@ -209,18 +207,11 @@ const earliestValidUntil = (row) => {
 /** 主行是否含已过期证：列表里一眼看出「这批有证过期了」 */
 const rowExpired = (row) => (row.members || []).some((m) => isExpired(m))
 
-/** 证状态标签配色：全有效=绿，部分有效=黄，全部失效（过期）=红，全部作废=灰（作废是人的决定，不是异常） */
+/** 证状态标签配色：有效/已过期=蓝（中性展示），已作废=灰（作废是人的决定，不是异常） */
 const statusTagType = (row) => {
   const s = row.statusSummary || ''
-  if (s === '全部有效') return 'success'
-  if (s === '部分有效') return 'warning'
-  if (s === '全部作废') return 'info'
-  return 'danger'
-}
-
-const tagRange = (row) => {
-  if (!row.tagStart) return '--'
-  return row.tagStart === row.tagEnd ? row.tagStart : `${row.tagStart} ~ ${row.tagEnd}`
+  if (s === '已作废') return 'info'
+  return ''
 }
 
 const memberRowClass = ({ row }) => (row.voidFlag === 1 ? 'row-voided' : '')
@@ -284,6 +275,22 @@ const openCert = (member) => {
     farmId: member.farmId,
   }
   certDialogVisible.value = true
+}
+
+/**
+ * 整证作废：证是单据，作废即整张证失效（证面与实物不符时应整证作废后重新出证，
+ * 而不是把其中一头从名单里摘掉）。后端仍要一个 pigId 参数做归属校验，取首头成员。
+ */
+const handleVoidDoc = async (row) => {
+  const first = (row.members || [])[0]
+  if (!first) return
+  const ok = await confirmVoid({
+    title: '作废检疫证',
+    message: `确认作废检疫证 ${row.docNo} 吗？该证覆盖的 ${row.headCount} 头猪将同时失去调运凭据，`
+      + '作废后需重新出证。作废记录保留在库中并上链，可追溯。',
+    onConfirm: (reason) => pigApi.voidCert(first.pigId, first.id, reason),
+  })
+  if (ok) fetchList()
 }
 
 onMounted(() => {

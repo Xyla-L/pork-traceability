@@ -16,6 +16,15 @@ public interface BlockchainAdapter {
      */
     default String mode() { return "local"; }
 
+    /**
+     * 验真：判断某条记录的 contentHash 是否真的写进过这个 bizKey 的存证历史。
+     * <p>
+     * <b>bizKey 不是记录唯一键</b>——一车多店签收、同批多次检验都会在同一个 bizKey 下追加版本，
+     * 而调用方传进来的 localHash 属于某一条具体记录（bizId）。所以实现必须比对<b>整段历史</b>，
+     * 只比最新版会把「数据一个字没改」的老版本记录全部判成不一致（本项目实测 143 条误报）。
+     * <p>
+     * 返回值里的 onChainHash 只做展示参考：匹配时给命中的那一版，不匹配时给最新一版。
+     */
     default Verification verifyHash(String bizKey, String localHash) {
         Optional<ChainData> chain = queryOnChain(bizKey);
         return new Verification(chain.isPresent() && chain.get().contentHash().equalsIgnoreCase(localHash),
@@ -24,5 +33,16 @@ public interface BlockchainAdapter {
 
     record TxResult(String txHash, long blockNumber, LocalDateTime chainTime) { }
     record ChainData(String bizKey, String contentHash, String txHash, long blockNumber, LocalDateTime chainTime) { }
-    record Verification(boolean matched, String localHash, String onChainHash) { }
+
+    /**
+     * 验真结果。
+     *
+     * @param chainPayload 链上那一版的原始报文（只有能在链上读到报文时才给）：调用方用它核对
+     *                     「本地留存的原文」是否就是当初上链的那一份——比只比哈希更能说明问题
+     */
+    record Verification(boolean matched, String localHash, String onChainHash, String chainPayload) {
+        public Verification(boolean matched, String localHash, String onChainHash) {
+            this(matched, localHash, onChainHash, null);
+        }
+    }
 }

@@ -1,0 +1,245 @@
+-- MySQL dump 10.13  Distrib 8.4.11, for Linux (x86_64)
+--
+-- Host: localhost    Database: db_breeding
+-- ------------------------------------------------------
+-- Server version	8.4.11
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!50503 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+--
+-- Table structure for table `vaccine_batch`
+--
+
+DROP TABLE IF EXISTS `vaccine_batch`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `vaccine_batch` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `farm_id` bigint NOT NULL,
+  `batch_no` varchar(32) NOT NULL COMMENT 'å…ç–«æ‰¹æ¬¡å·ï¼ˆè¿™ä¸€æ‰¹çŒªè‡ªå·±çš„æ‰¹æ¬¡å·ï¼Œä¸Žå…»æ®–æ‰¹æ¬¡æ— å…³ï¼‰',
+  `vaccine_name` varchar(64) NOT NULL,
+  `prod_batch_no` varchar(32) DEFAULT NULL COMMENT 'ç–«è‹—ç”Ÿäº§æ‰¹å·ï¼ˆåŽ‚å®¶ç“¶æ‰¹å·ï¼Œä¸Žå…ç–«æ‰¹æ¬¡å·æ˜¯ä¸¤ä»¶äº‹ï¼‰',
+  `manufacturer` varchar(128) DEFAULT NULL,
+  `inject_time` datetime NOT NULL,
+  `operator` varchar(32) DEFAULT NULL,
+  `pig_count` int NOT NULL DEFAULT '0' COMMENT 'è¦†ç›–å¤´æ•°ï¼ˆæˆå‘˜è¡Œæ•°ï¼Œä½œåºŸä¹Ÿè®¡å…¥ï¼‰',
+  `data_source` varchar(16) NOT NULL DEFAULT 'DEVICE' COMMENT 'DEVICE è®¾å¤‡é‡‡é›† / MANUAL äººå·¥',
+  `source_ref` varchar(128) DEFAULT NULL,
+  `void_flag` tinyint NOT NULL DEFAULT '0',
+  `void_reason` varchar(256) DEFAULT NULL,
+  `void_operator` varchar(32) DEFAULT NULL,
+  `void_time` datetime DEFAULT NULL,
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_vaccine_batch` (`farm_id`,`batch_no`),
+  KEY `idx_vbatch_farm_time` (`farm_id`,`inject_time`),
+  KEY `idx_vbatch_void` (`void_flag`)
+) ENGINE=InnoDB AUTO_INCREMENT=66 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='å…ç–«æ‰¹æ¬¡ï¼šä¸€æ¬¡å…ç–«ä½œä¸šï¼ˆåŒåœº+åŒç–«è‹—+åŒç”Ÿäº§æ‰¹å·+åŒä¸€å¤©è‡ªåŠ¨å½’ä¸ºä¸€æ‰¹ï¼‰';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `vaccine_batch`
+--
+
+LOCK TABLES `vaccine_batch` WRITE;
+/*!40000 ALTER TABLE `vaccine_batch` DISABLE KEYS */;
+INSERT INTO `vaccine_batch` VALUES (1,1,'YH20260519000001','猪瘟活疫苗','VAC-DEMO-001','示范动物药业','2026-05-19 19:55:17','李牧',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(2,1,'YH20260608000002','猪瘟活疫苗','VAC-TEST-0001','示范动物药业','2026-06-08 19:55:18','李牧',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(3,2,'YH20260618000003','口蹄疫疫苗','VAC-TEST-0002','华孚生物','2026-06-18 19:55:18','王场长',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(4,2,'YH20260623000004','猪蓝耳疫苗','VAC-TEST-0003','中牧实业','2026-06-23 19:55:18','王场长',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(5,3,'YH20260628000005','猪瘟活疫苗','VAC-TEST-0004','示范动物药业','2026-06-28 19:55:18','刘经理',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(6,3,'YH20260703000006','口蹄疫疫苗','VAC-TEST-0005','华孚生物','2026-07-03 19:55:18','刘经理',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(7,4,'YH20260708000007','猪蓝耳疫苗','VAC-TEST-0006','中牧实业','2026-07-08 19:55:18','陈场长',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(8,4,'YH20260713000008','伪狂犬疫苗','VAC-TEST-0007','哈兽维科','2026-07-13 19:55:18','陈场长',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(9,5,'YH20260718000009','猪瘟活疫苗','VAC-TEST-0008','示范动物药业','2026-07-18 19:55:18','赵社长',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(10,5,'YH20260723000010','口蹄疫疫苗','VAC-TEST-0009','华孚生物','2026-07-23 19:55:18','赵社长',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(11,6,'YH20260728000011','猪蓝耳疫苗','VAC-TEST-0010','中牧实业','2026-07-28 19:55:18','孙总',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(12,6,'YH20260802000012','伪狂犬疫苗','VAC-TEST-0011','哈兽维科','2026-08-02 19:55:18','孙总',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(13,7,'YH20260807000013','猪瘟活疫苗','VAC-TEST-0012','示范动物药业','2026-08-07 19:55:18','周场长',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(14,8,'YH20260812000014','口蹄疫疫苗','VAC-TEST-0013','华孚生物','2026-08-12 19:55:18','吴经理',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(15,9,'YH20260817000015','猪蓝耳疫苗','VAC-TEST-0014','中牧实业','2026-08-17 19:55:18','郑场长',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(16,10,'YH20260822000016','伪狂犬疫苗','VAC-TEST-0015','哈兽维科','2026-08-22 19:55:18','王主任',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(17,2,'YH20260903000017','猪瘟疫苗','1',NULL,'2026-09-03 00:00:00','李四',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(18,2,'YH20260917000018','猪瘟活疫苗','VAC-TEST-0008',NULL,'2026-09-17 00:00:00','李四',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(19,2,'YH20260917000019','猪瘟活疫苗','VAC-TEST-0017',NULL,'2026-09-17 00:00:00','李兽医',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(20,6,'YH20260918000020','猪瘟活疫苗','VAC-TEST-0018',NULL,'2026-09-18 00:00:00','张兽医',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(21,8,'YH20260918000021','猪瘟活疫苗','VAC-TEST-0019',NULL,'2026-09-18 00:00:00','王兽医',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(22,5,'YH20260918000022','猪瘟活疫苗','VAC-TEST-0020',NULL,'2026-09-18 00:00:00','李兽医',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(23,2,'YH20260918000023','猪瘟活疫苗','1',NULL,'2026-09-18 00:00:00','李操作',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(24,2,'YH20260922000024','猪瘟兔化弱毒疫苗','VB-ACC-1790073845469',NULL,'2026-09-22 18:44:05','刘兽医',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(25,2,'YH20260922000025','猪瘟兔化弱毒疫苗','VB-ACC-1790074134030',NULL,'2026-09-22 18:48:54','刘兽医',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(26,2,'YH20260922000026','猪瘟兔化弱毒疫苗','VB-ACC-1790074178000',NULL,'2026-09-22 18:49:38','刘兽医',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(27,2,'YH20260922000027','调试疫苗','VB-DBG-1790074199668',NULL,'2026-09-22 18:49:59','刘兽医',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(28,2,'YH20260922000028','猪瘟兔化弱毒疫苗','VB-ACC-1790074422003',NULL,'2026-09-22 18:53:42','刘兽医',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(29,2,'YH20261003000032','猪瘟兔化弱毒疫苗','VB-ACC-1791014964475',NULL,'2026-10-03 16:09:24','刘兽医',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(30,2,'YH20261003000034','作废兜底验收测试疫苗','VOID-FB-1791019106370',NULL,'2026-10-03 17:18:26','验收测试',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(31,2,'YH20261003000035','来源管控测试疫苗','SRC-GUARD-1791019112932',NULL,'2026-10-03 17:18:32','来源管控测试',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(32,2,'YH20261003000036','设备写入的验收测试疫苗','VOID-FB-DEV-1791032649913',NULL,'2026-10-03 21:04:09','智能注射器',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(33,2,'YH20261003000037','猪瘟兔化弱毒疫苗','VB-ACC-1791032666911',NULL,'2026-10-03 21:04:26','刘兽医',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(34,2,'YH20261004000038','设备写入的验收测试疫苗','VOID-FB-DEV-1791101544089',NULL,'2026-10-04 16:12:24','智能注射器',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(35,14,'YH20261005000039','猪瘟兔化弱毒疫苗','VAC-20261005-01',NULL,'2026-10-05 17:13:29','未记录',2,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(36,14,'YH20261008000042','回归-带凭证疫苗','VF-OK-1791430393195',NULL,'2026-10-08 11:33:13','刘兽医',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(37,14,'YH20261008000043','回归-人工补录疫苗','VF-MANUAL-1791430393533',NULL,'2026-10-08 11:33:14','王复核',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(38,14,'YH20261008000044','回归-带凭证疫苗','VF-OK-1791430440457',NULL,'2026-10-08 11:34:00','刘兽医',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(39,14,'YH20261008000045','回归-人工补录疫苗','VF-MANUAL-1791430440594',NULL,'2026-10-08 11:34:01','王复核',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(40,14,'YH20261008000046','猪瘟兔化弱毒疫苗','VAC-VERIFY-1791430545539-OK',NULL,'2026-10-08 11:35:45','刘兽医',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(41,14,'YH20261008000047','猪瘟兔化弱毒疫苗','VAC-20261008-01',NULL,'2026-10-08 11:38:37','刘兽医',2,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(42,14,'YH20261008000048','猪瘟兔化弱毒疫苗','VAC-20261008-02',NULL,'2026-10-08 11:52:26','刘兽医',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(43,14,'YH20261012000075','猪瘟兔化弱毒疫苗','VAC-20261012-01',NULL,'2026-10-12 13:31:16','刘兽医',4,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(44,2,'YH20261026000251','猪瘟兔化弱毒疫苗','VAC-20261026-01',NULL,'2026-10-26 17:57:34','刘兽医',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(45,14,'YH20261106000538','回归-带凭证疫苗','VF-OK-1793960919656',NULL,'2026-11-06 18:28:39','刘兽医',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(46,14,'YH20261106000539','回归-人工补录疫苗','VF-MANUAL-1793960919939',NULL,'2026-11-06 18:28:40','王复核',1,'DEVICE',NULL,0,NULL,NULL,NULL,'2026-11-15 16:46:35','2026-11-15 16:46:35'),(64,2,'YH20261115747857','猪瘟疫苗','VB-TEST-A',NULL,'2026-11-15 10:00:00','张兽医',2,'DEVICE','INJ-TEST-01',0,NULL,NULL,NULL,'2026-11-15 17:01:46','2026-11-15 17:01:47'),(65,2,'YH20261115122771','CSF-VACCINE','VB-TEST-B',NULL,'2026-11-15 09:00:00','DrZhang',2,'DEVICE','INJ-TEST-02',0,NULL,NULL,NULL,'2026-11-15 17:02:12','2026-11-15 17:02:13');
+/*!40000 ALTER TABLE `vaccine_batch` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `vaccine_batch_pig`
+--
+
+DROP TABLE IF EXISTS `vaccine_batch_pig`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `vaccine_batch_pig` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `batch_id` bigint NOT NULL,
+  `pig_id` bigint NOT NULL,
+  `ear_tag_no` varchar(32) DEFAULT NULL COMMENT 'å†—ä½™è€³æ ‡å·ï¼šæˆå‘˜åˆ—è¡¨ä¸å¿…å† join çŒªæ¡£æ¡ˆå³å¯æ˜¾ç¤º',
+  `void_flag` tinyint NOT NULL DEFAULT '0' COMMENT 'è¯¥å¤´åœ¨æ­¤æ‰¹æ¬¡ä¸­çš„è®°å½•æ˜¯å¦ä½œåºŸï¼ˆä¸Ž vaccine_record åŒæ­¥ï¼‰',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_vbp` (`batch_id`,`pig_id`),
+  KEY `idx_vbp_pig` (`pig_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=131 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='å…ç–«æ‰¹æ¬¡å…³è”ç”ŸçŒª';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `vaccine_batch_pig`
+--
+
+LOCK TABLES `vaccine_batch_pig` WRITE;
+/*!40000 ALTER TABLE `vaccine_batch_pig` DISABLE KEYS */;
+INSERT INTO `vaccine_batch_pig` VALUES (64,1,1,'ET-DEMO-0001',0,'2026-11-15 16:46:43'),(65,2,2,'ET-TEST-0001',0,'2026-11-15 16:46:43'),(66,3,3,'ET-TEST-0002',0,'2026-11-15 16:46:43'),(67,4,4,'ET-TEST-0003',0,'2026-11-15 16:46:43'),(68,5,5,'ET-TEST-0004',0,'2026-11-15 16:46:43'),(69,6,6,'ET-TEST-0005',0,'2026-11-15 16:46:43'),(70,7,7,'ET-TEST-0006',0,'2026-11-15 16:46:43'),(71,8,8,'ET-TEST-0007',0,'2026-11-15 16:46:43'),(72,9,9,'ET-TEST-0008',0,'2026-11-15 16:46:43'),(73,10,10,'ET-TEST-0009',0,'2026-11-15 16:46:43'),(74,11,11,'ET-TEST-0010',0,'2026-11-15 16:46:43'),(75,12,12,'ET-TEST-0011',0,'2026-11-15 16:46:43'),(76,13,13,'ET-TEST-0012',0,'2026-11-15 16:46:43'),(77,14,14,'ET-TEST-0013',0,'2026-11-15 16:46:43'),(78,15,15,'ET-TEST-0014',0,'2026-11-15 16:46:43'),(79,16,16,'ET-TEST-0015',0,'2026-11-15 16:46:43'),(80,17,18,'ET-DEMO-0002',0,'2026-11-15 16:46:43'),(81,18,19,'ET-TEST-0016',0,'2026-11-15 16:46:43'),(82,19,20,'ET-TEST-0017',0,'2026-11-15 16:46:43'),(83,20,21,'ET-TEST-0018',0,'2026-11-15 16:46:43'),(84,21,22,'ET-TEST-0019',0,'2026-11-15 16:46:43'),(85,22,23,'ET-TEST-0020',0,'2026-11-15 16:46:43'),(86,23,24,'ET-TEST-0021',0,'2026-11-15 16:46:43'),(87,24,25,'ET-ACC-1790073845172',1,'2026-11-15 16:46:43'),(88,25,26,'ET-ACC-1790074133426',1,'2026-11-15 16:46:43'),(89,26,27,'ET-ACC-1790074177685',1,'2026-11-15 16:46:43'),(90,27,27,'ET-ACC-1790074177685',1,'2026-11-15 16:46:43'),(91,28,28,'ET-ACC-1790074421711',1,'2026-11-15 16:46:43'),(92,29,29,'ET-ACC-1791014964217',1,'2026-11-15 16:46:43'),(93,30,29,'ET-ACC-1791014964217',1,'2026-11-15 16:46:43'),(94,31,29,'ET-ACC-1791014964217',1,'2026-11-15 16:46:43'),(95,32,29,'ET-ACC-1791014964217',1,'2026-11-15 16:46:43'),(96,33,30,'ET-ACC-1791032666668',1,'2026-11-15 16:46:43'),(97,34,24,'ET-TEST-0021',0,'2026-11-15 16:46:43'),(98,35,31,'ET-DEMO-1791185982174',0,'2026-11-15 16:46:43'),(99,36,34,'ET-DEMO-1791194024670',1,'2026-11-15 16:46:43'),(100,37,34,'ET-DEMO-1791194024670',1,'2026-11-15 16:46:43'),(101,38,34,'ET-DEMO-1791194024670',1,'2026-11-15 16:46:43'),(102,39,34,'ET-DEMO-1791194024670',1,'2026-11-15 16:46:43'),(103,40,34,'ET-DEMO-1791194024670',1,'2026-11-15 16:46:43'),(104,41,34,'ET-DEMO-1791194024670',1,'2026-11-15 16:46:43'),(105,42,34,'ET-DEMO-1791194024670',1,'2026-11-15 16:46:43'),(106,43,305,'ET-DEMO-1791783002362',0,'2026-11-15 16:46:43'),(107,43,306,'ET-DEMO-1791787264150',0,'2026-11-15 16:46:43'),(108,43,307,'ET-DEMO-1791790206509',0,'2026-11-15 16:46:43'),(109,43,308,'ET-DEMO-1791791710632',0,'2026-11-15 16:46:43'),(110,44,1068,'ET-DEMO-0133',0,'2026-11-15 16:46:43'),(111,45,1272,'ET-TM-1793245612058',0,'2026-11-15 16:46:43'),(112,46,1272,'ET-TM-1793245612058',0,'2026-11-15 16:46:43'),(127,64,1036,'ET-DEMO-0101',0,'2026-11-15 17:01:46'),(128,64,1037,'ET-DEMO-0102',0,'2026-11-15 17:01:47'),(129,65,1038,'ET-DEMO-0103',0,'2026-11-15 17:02:12'),(130,65,1039,'ET-DEMO-0104',0,'2026-11-15 17:02:13');
+/*!40000 ALTER TABLE `vaccine_batch_pig` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `quarantine_cert_pig`
+--
+
+DROP TABLE IF EXISTS `quarantine_cert_pig`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `quarantine_cert_pig` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `cert_id` bigint NOT NULL,
+  `pig_id` bigint NOT NULL,
+  `ear_tag_no` varchar(32) DEFAULT NULL,
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_qcp` (`cert_id`,`pig_id`),
+  KEY `idx_qcp_pig` (`pig_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=36 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='æ£€ç–«è¯å…³è”ç”ŸçŒªï¼ˆä¸€è¯å¤šå¤´ï¼‰';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `quarantine_cert_pig`
+--
+
+LOCK TABLES `quarantine_cert_pig` WRITE;
+/*!40000 ALTER TABLE `quarantine_cert_pig` DISABLE KEYS */;
+INSERT INTO `quarantine_cert_pig` VALUES (1,1,1,'ET-DEMO-0001','2026-09-16 19:55:18'),(2,2,2,'ET-TEST-0001','2026-09-16 19:55:18'),(3,3,3,'ET-TEST-0002','2026-09-16 19:55:18'),(4,4,4,'ET-TEST-0003','2026-09-16 19:55:18'),(5,5,5,'ET-TEST-0004','2026-09-16 19:55:18'),(6,6,6,'ET-TEST-0005','2026-09-16 19:55:18'),(7,7,7,'ET-TEST-0006','2026-09-16 19:55:18'),(8,8,8,'ET-TEST-0007','2026-09-16 19:55:18'),(9,9,9,'ET-TEST-0008','2026-09-16 19:55:18'),(10,10,10,'ET-TEST-0009','2026-09-16 19:55:18'),(11,11,11,'ET-TEST-0010','2026-09-16 19:55:18'),(12,12,12,'ET-TEST-0011','2026-09-16 19:55:18'),(13,13,13,'ET-TEST-0012','2026-09-16 19:55:18'),(14,14,14,'ET-TEST-0013','2026-09-16 19:55:18'),(15,15,15,'ET-TEST-0014','2026-09-16 19:55:18'),(16,16,16,'ET-TEST-0015','2026-09-16 19:55:18'),(17,17,29,'ET-ACC-1791014964217','2026-10-03 21:04:09'),(18,18,24,'ET-TEST-0021','2026-10-04 16:12:24'),(19,19,34,'ET-DEMO-1791194024670','2026-10-08 12:42:35'),(20,20,34,'ET-DEMO-1791194024670','2026-10-08 12:51:43'),(21,300,305,'ET-DEMO-1791783002362','2026-10-12 13:32:14'),(22,301,306,'ET-DEMO-1791787264150','2026-10-12 14:42:29'),(23,302,307,'ET-DEMO-1791790206509','2026-10-12 15:30:27'),(24,303,308,'ET-DEMO-1791791710632','2026-10-12 15:56:09'),(25,304,33,'ET-DEMO-1791193435869','2026-10-12 15:58:04'),(26,515,1066,'ET-DEMO-0131','2026-10-26 17:59:15'),(27,604,1068,'ET-DEMO-0133','2026-10-26 18:22:40'),(28,609,1068,'ET-DEMO-0133','2026-10-26 18:26:10'),(29,647,1068,'ET-DEMO-0133','2026-10-26 18:44:18'),(30,648,1068,'ET-DEMO-0133','2026-10-26 18:45:01'),(31,653,1068,'ET-DEMO-0133','2026-10-27 17:39:59'),(32,783,1036,'ET-DEMO-0101','2026-11-15 17:02:04'),(33,783,1037,'ET-DEMO-0102','2026-11-15 17:02:04'),(34,784,1038,'ET-DEMO-0103','2026-11-15 17:02:17'),(35,784,1039,'ET-DEMO-0104','2026-11-15 17:02:18');
+/*!40000 ALTER TABLE `quarantine_cert_pig` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `slaughter_apply_pig`
+--
+
+DROP TABLE IF EXISTS `slaughter_apply_pig`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `slaughter_apply_pig` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `apply_id` bigint NOT NULL,
+  `pig_id` bigint NOT NULL,
+  `ear_tag_no` varchar(32) DEFAULT NULL,
+  `weight_kg` decimal(6,1) DEFAULT NULL COMMENT 'è¯¥å¤´ä½“é‡ï¼ˆè®¾å¤‡ç§°é‡æ¥è‡ªåœ°ç£…ï¼Œäººå·¥ç”³æŠ¥å¯ç©ºï¼‰',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_sap` (`apply_id`,`pig_id`),
+  KEY `idx_sap_pig` (`pig_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=36 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='å‡ºæ ç”³æŠ¥å…³è”ç”ŸçŒªï¼ˆä¸€å•å¤šå¤´ï¼‰';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `slaughter_apply_pig`
+--
+
+LOCK TABLES `slaughter_apply_pig` WRITE;
+/*!40000 ALTER TABLE `slaughter_apply_pig` DISABLE KEYS */;
+INSERT INTO `slaughter_apply_pig` VALUES (1,1,1,'ET-DEMO-0001',118.5,'2026-09-16 19:55:18'),(2,2,2,'ET-TEST-0001',108.5,'2026-09-16 19:55:18'),(3,3,3,'ET-TEST-0002',112.0,'2026-09-16 19:55:18'),(4,4,4,'ET-TEST-0003',99.5,'2026-09-16 19:55:18'),(5,5,5,'ET-TEST-0004',105.3,'2026-09-16 19:55:18'),(6,6,6,'ET-TEST-0005',115.8,'2026-09-16 19:55:18'),(7,7,7,'ET-TEST-0006',98.0,'2026-09-16 19:55:18'),(8,8,8,'ET-TEST-0007',110.0,'2026-09-16 19:55:18'),(9,9,9,'ET-TEST-0008',119.0,'2026-09-16 19:55:18'),(10,10,10,'ET-TEST-0009',101.5,'2026-09-16 19:55:18'),(11,11,11,'ET-TEST-0010',110.0,'2026-09-16 19:55:18'),(12,12,12,'ET-TEST-0011',95.5,'2026-09-16 19:55:18'),(13,13,13,'ET-TEST-0012',107.8,'2026-09-16 19:55:18'),(14,14,14,'ET-TEST-0013',113.0,'2026-09-16 19:55:18'),(15,15,15,'ET-TEST-0014',100.2,'2026-09-16 19:55:18'),(16,16,16,'ET-TEST-0015',109.5,'2026-09-16 19:55:18'),(17,17,18,'ET-DEMO-0002',120.0,'2026-09-16 16:01:37'),(18,18,19,'ET-TEST-0016',130.0,'2026-09-17 04:47:18'),(19,19,20,'ET-TEST-0017',NULL,'2026-09-17 22:58:48'),(20,20,21,'ET-TEST-0018',120.0,'2026-09-18 02:27:44'),(21,21,22,'ET-TEST-0019',120.0,'2026-09-18 09:58:31'),(22,22,23,'ET-TEST-0020',120.0,'2026-09-18 10:43:54'),(23,23,24,'ET-TEST-0021',120.0,'2026-09-18 11:45:05'),(24,28,34,'ET-DEMO-1791194024670',120.0,'2026-10-08 13:56:07'),(25,315,305,'ET-DEMO-1791783002362',120.0,'2026-10-12 13:33:21'),(26,316,306,'ET-DEMO-1791787264150',120.0,'2026-10-12 14:42:40'),(27,317,307,'ET-DEMO-1791790206509',120.0,'2026-10-12 15:30:33'),(28,318,308,'ET-DEMO-1791791710632',120.0,'2026-10-12 15:58:13'),(29,725,1068,'ET-DEMO-0133',120.0,'2026-10-27 17:40:22'),(32,858,1036,'ET-DEMO-0101',NULL,'2026-11-15 17:02:04'),(33,858,1037,'ET-DEMO-0102',NULL,'2026-11-15 17:02:04'),(34,859,1038,'ET-DEMO-0103',115.5,'2026-11-15 17:02:23'),(35,859,1039,'ET-DEMO-0104',119.0,'2026-11-15 17:02:24');
+/*!40000 ALTER TABLE `slaughter_apply_pig` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `quarantine_certificate`
+--
+
+DROP TABLE IF EXISTS `quarantine_certificate`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `quarantine_certificate` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `pig_id` bigint DEFAULT NULL COMMENT 'å…¼å®¹åˆ—ï¼šå•æ®åŒ–åŽä¸€å¼ è¯è¦†ç›–å¤šå¤´ï¼Œæˆå‘˜è§ quarantine_cert_pig',
+  `farm_id` bigint DEFAULT NULL COMMENT 'å…»æ®–åœºï¼ˆæœºæž„éš”ç¦»ä¸Žåˆ—è¡¨è¿‡æ»¤ç”¨ï¼‰',
+  `pig_count` int NOT NULL DEFAULT '0' COMMENT 'è¯é¢è¦†ç›–å¤´æ•°',
+  `cert_no` varchar(32) NOT NULL,
+  `issue_org` varchar(128) NOT NULL,
+  `issue_time` datetime NOT NULL,
+  `valid_until` date DEFAULT NULL,
+  `inspector` varchar(32) DEFAULT NULL,
+  `cert_type` varchar(32) DEFAULT 'äº§åœ°æ£€ç–«',
+  `file_id` varchar(64) DEFAULT NULL COMMENT '检疫证原件扫描件文件ID（扫码登记终端可能没有）',
+  `ca_signature` text COMMENT '签发机构CA数字签名（扫码登记终端可能读不出）',
+  `source` varchar(16) DEFAULT 'MANUAL' COMMENT '数据来源 MANUAL=人工出证/DEVICE=扫码登记终端采集/API/IMPORT',
+  `source_ref` varchar(64) DEFAULT NULL COMMENT '来源设备号/单据号（扫码登记记终端编号，如 QSCAN-001）',
+  `raw_payload` json DEFAULT NULL COMMENT '设备原始报文（扫码终端上报的完整报文，供逐字段核对）',
+  `content_hash` char(64) NOT NULL,
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  `void_flag` tinyint NOT NULL DEFAULT '0' COMMENT '0=有效 1=已作废',
+  `void_reason` varchar(500) DEFAULT NULL COMMENT '作废理由（必填）',
+  `void_operator` varchar(128) DEFAULT NULL COMMENT '作废操作人（实名）',
+  `void_time` datetime DEFAULT NULL COMMENT '作废时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_cert_no` (`cert_no`),
+  KEY `idx_void_flag` (`void_flag`),
+  KEY `idx_pig` (`pig_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=785 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='äº§åœ°æ£€ç–«è¯æ˜Ž';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `quarantine_certificate`
+--
+
+LOCK TABLES `quarantine_certificate` WRITE;
+/*!40000 ALTER TABLE `quarantine_certificate` DISABLE KEYS */;
+INSERT INTO `quarantine_certificate` VALUES (1,1,1,1,'QC-DEMO-0001','顺义区动物卫生监督所','2026-09-08 19:55:18','2027-04-02','王兽医','äº§åœ°æ£€ç–«','demo-cert-file','DEMO-SM2-SIGNATURE','MANUAL',NULL,NULL,'393cdcf7c03a7bb64b720f6d8f288b8e1bab2b8bac2b2f07fe9f8395a1313618','2026-09-16 19:55:18',0,NULL,NULL,NULL),(2,2,1,1,'QC-TEST-0001','顺义区动物卫生监督所','2026-08-28 19:55:18','2027-04-02','王兽医','äº§åœ°æ£€ç–«','test-cert-001','TEST-SIG-001','MANUAL',NULL,NULL,'c22d01332086e5bdd54e4e5bf63df130cd19617ac5cd7e81ac9c019eb8a5dc08','2026-09-16 19:55:18',0,NULL,NULL,NULL),(3,3,2,1,'QC-TEST-0002','顺义区动物卫生监督所','2026-08-30 19:55:18','2027-04-02','王兽医','äº§åœ°æ£€ç–«','test-cert-002','TEST-SIG-002','MANUAL',NULL,NULL,'8b45fc141a9347706ab35a5726fe2da11e9cd19ddc03030eadfa7178b1e1c8c7','2026-09-16 19:55:18',0,NULL,NULL,NULL),(4,4,2,1,'QC-TEST-0003','三河市动物卫生监督所','2026-09-01 19:55:18','2027-04-02','赵兽医','äº§åœ°æ£€ç–«','test-cert-003','TEST-SIG-003','MANUAL',NULL,NULL,'90687915f03bd8c5fbfb5f8619912b6110d9887261f46d1df56892041d0c491e','2026-09-16 19:55:18',0,NULL,NULL,NULL),(5,5,3,1,'QC-TEST-0004','顺义区动物卫生监督所','2026-09-02 19:55:18','2027-04-02','王兽医','äº§åœ°æ£€ç–«','test-cert-004','TEST-SIG-004','MANUAL',NULL,NULL,'e5599ce2b0dd8e28ac4ed469f5eed8f2e7ea8391b218b9fc3ba2d2825c8fb6a4','2026-09-16 19:55:18',0,NULL,NULL,NULL),(6,6,3,1,'QC-TEST-0005','三河市动物卫生监督所','2026-09-03 19:55:18','2027-04-02','赵兽医','äº§åœ°æ£€ç–«','test-cert-005','TEST-SIG-005','MANUAL',NULL,NULL,'fef1a13a97c4464cb0d22de8a9a10cfd839d512c5053e8d7bd72ea5d0ae34b4f','2026-09-16 19:55:18',0,NULL,NULL,NULL),(7,7,4,1,'QC-TEST-0006','武清区动物卫生监督所','2026-09-05 19:55:18','2027-04-02','李兽医','äº§åœ°æ£€ç–«','test-cert-006','TEST-SIG-006','MANUAL',NULL,NULL,'a733551ca4d8ec05b69578e0ba6a205f0f642cdd53c34a33ce23ef9838e09001','2026-09-16 19:55:18',0,NULL,NULL,NULL),(8,8,4,1,'QC-TEST-0007','密云区动物卫生监督所','2026-09-07 19:55:18','2027-04-02','张兽医','äº§åœ°æ£€ç–«','test-cert-007','TEST-SIG-007','MANUAL',NULL,NULL,'229297ae8d16368fda94a2dd63512f1d5c06f7d05e06cb80df0e29f99f2a478a','2026-09-16 19:55:18',0,NULL,NULL,NULL),(9,9,5,1,'QC-TEST-0008','香河县动物卫生监督所','2026-09-08 19:55:18','2027-04-02','刘兽医','äº§åœ°æ£€ç–«','test-cert-008','TEST-SIG-008','MANUAL',NULL,NULL,'1c3ac8c363a2e081f7870efbf5693c0e99cc0b2f10fd85c4dd36f16d0849730f','2026-09-16 19:55:18',0,NULL,NULL,NULL),(10,10,5,1,'QC-TEST-0009','平谷区动物卫生监督所','2026-09-10 19:55:18','2027-04-02','孙兽医','äº§åœ°æ£€ç–«','test-cert-009','TEST-SIG-009','MANUAL',NULL,NULL,'49d9e223186b4840b3135a2abea59147bef22079950716a14694f876e4024367','2026-09-16 19:55:18',0,NULL,NULL,NULL),(11,11,6,1,'QC-TEST-0010','延庆区动物卫生监督所','2026-09-11 19:55:18','2027-04-02','周兽医','äº§åœ°æ£€ç–«','test-cert-010','TEST-SIG-010','MANUAL',NULL,NULL,'7458373210d98f231d973eaf49b3ad1cb022ff28bea101164950b41d4eb3f3d7','2026-09-16 19:55:18',0,NULL,NULL,NULL),(12,12,6,1,'QC-TEST-0011','涿州市动物卫生监督所','2026-09-12 19:55:18','2027-04-02','吴兽医','äº§åœ°æ£€ç–«','test-cert-011','TEST-SIG-011','MANUAL',NULL,NULL,'6754cb7d9641c19a2fb20bcd592ff153aeefb3a49df868cdc5475cd32d801b0b','2026-09-16 19:55:18',0,NULL,NULL,NULL),(13,13,7,1,'QC-TEST-0012','蓟州区动物卫生监督所','2026-09-13 19:55:18','2027-04-02','郑兽医','äº§åœ°æ£€ç–«','test-cert-012','TEST-SIG-012','MANUAL',NULL,NULL,'ad0d95df98db6d6719be0c1abc301def897cf683c9e91f52b89ddb29b8e53b6c','2026-09-16 19:55:18',0,NULL,NULL,NULL),(14,14,8,1,'QC-TEST-0013','丰润区动物卫生监督所','2026-09-14 19:55:18','2027-04-02','王兽医','äº§åœ°æ£€ç–«','test-cert-013','TEST-SIG-013','MANUAL',NULL,NULL,'f430fa5ff761fd1f58a8db3686499129df202cde75d51af3078b6049498fb8d6','2026-09-16 19:55:18',0,NULL,NULL,NULL),(15,15,9,1,'QC-TEST-0014','宝坻区动物卫生监督所','2026-09-15 19:55:18','2027-04-02','韩兽医','äº§åœ°æ£€ç–«','test-cert-014','TEST-SIG-014','MANUAL',NULL,NULL,'949b3cd230dbc43f73bbda89768d4cdedccb05511fe4d60aa79cce54c484b3b1','2026-09-16 19:55:18',0,NULL,NULL,NULL),(16,16,10,1,'QC-TEST-0015','南口区动物卫生监督所','2026-09-16 19:55:18','2027-04-02','杨兽医','äº§åœ°æ£€ç–«','test-cert-015','TEST-SIG-015','MANUAL',NULL,NULL,'5dac3e963d0979bd4df62b7495f1ea35446ff8b5423f9b50ad7eaaf82f55bebe','2026-09-16 19:55:18',0,NULL,NULL,NULL),(17,29,2,1,'VOID-FB-QC-1791032649463','验收测试签发机构','2026-10-03 21:04:09','2027-12-31','验收测试官方兽医','产地检疫','void-fb-test-file','Vk9JRC1GQi1URVNU','MANUAL',NULL,NULL,'38d6b5a2a5ef7f552d94b0704684eaa10e40052d4299204953ea98d4b0e92519','2026-10-03 21:04:09',1,'验收测试：作废这张测试检疫证，验证作废留痕','admin','2026-10-03 21:04:09'),(18,24,2,1,'VOID-FB-QC-1791101543811','验收测试签发机构','2026-10-04 16:12:23','2027-12-31','验收测试官方兽医','产地检疫','void-fb-test-file','Vk9JRC1GQi1URVNU','MANUAL',NULL,NULL,'f5fd4f795d9294e3e46668f3cb7be0450540da3f6c977cddee44980d40a62b26','2026-10-04 16:12:24',1,'验收测试：作废这张测试检疫证，验证作废留痕','admin','2026-10-04 16:12:24'),(19,34,14,1,'QC-VERIFY-1791434553987','回归验证签发机构','2026-10-08 12:42:33','2027-04-06','王官方兽医','产地检疫',NULL,NULL,'DEVICE','QSCAN-001','{\"certNo\": \"QC-VERIFY-1791434553987\", \"earTagNo\": \"ET-DEMO-1791194024670\", \"issueOrg\": \"回归验证签发机构\", \"inspector\": \"王官方兽医\", \"issueTime\": \"2026-10-08 12:42:33\", \"validUntil\": \"2027-04-06\"}','238d31451c13f6926e6596c81396ae51d819428b47ce20e500bc12129ecfcbcf','2026-10-08 12:42:35',1,'测试数据清理：扫码登记通道回归脚本产生','admin','2026-10-08 12:42:35'),(20,34,14,1,'QC-20261008-4515','顺义区动物卫生监督所','2026-10-08 12:51:14','2027-10-08','王官方兽医','产地检疫',NULL,NULL,'DEVICE','QSCAN-001','{\"certNo\": \"QC-20261008-4515\", \"earTagNo\": \"ET-DEMO-1791194024670\", \"issueOrg\": \"顺义区动物卫生监督所\", \"inspector\": \"王官方兽医\", \"issueTime\": \"2026-10-08 12:51:14\", \"validUntil\": \"2027-10-08\"}','4a52e4022b4442da29a7b211f55590e3b75ffc17989f58a8a34068b7d2df421a','2026-10-08 12:51:43',0,NULL,NULL,NULL),(300,305,14,1,'QC-20261012-7503','顺义区动物卫生监督所','2026-10-12 13:32:07','2027-10-12','王官方兽医','产地检疫',NULL,NULL,'DEVICE','QSCAN-001','{\"certNo\": \"QC-20261012-7503\", \"earTagNo\": \"ET-DEMO-1791783002362\", \"issueOrg\": \"顺义区动物卫生监督所\", \"inspector\": \"王官方兽医\", \"issueTime\": \"2026-10-12 13:32:07\", \"validUntil\": \"2027-10-12\"}','b92ea8f9410c2ff30a9330c395857512cae3014730261e996ad692c81f4df6b9','2026-10-12 13:32:14',0,NULL,NULL,NULL),(301,306,14,1,'QC-20261012-7915','顺义区动物卫生监督所','2026-10-12 14:42:27','2027-10-12','王官方兽医','产地检疫',NULL,NULL,'DEVICE','QSCAN-001','{\"certNo\": \"QC-20261012-7915\", \"earTagNo\": \"ET-DEMO-1791787264150\", \"issueOrg\": \"顺义区动物卫生监督所\", \"inspector\": \"王官方兽医\", \"issueTime\": \"2026-10-12 14:42:27\", \"validUntil\": \"2027-10-12\"}','90cb1fd9d25200c8f25f9228e743dda416bc40bd2fde86cd5ec62e0c7966e4d9','2026-10-12 14:42:29',0,NULL,NULL,NULL),(302,307,14,1,'QC-20261012-5305','顺义区动物卫生监督所','2026-10-12 15:30:25','2027-10-12','王官方兽医','产地检疫',NULL,NULL,'DEVICE','QSCAN-001','{\"certNo\": \"QC-20261012-5305\", \"earTagNo\": \"ET-DEMO-1791790206509\", \"issueOrg\": \"顺义区动物卫生监督所\", \"inspector\": \"王官方兽医\", \"issueTime\": \"2026-10-12 15:30:25\", \"validUntil\": \"2027-10-12\"}','f3b3e66fec5d2f1ce555c6eae5ab13b04b249f567725a884521c9e1bec8469be','2026-10-12 15:30:27',0,NULL,NULL,NULL),(303,308,14,1,'QC-20261012-8128','顺义区动物卫生监督所','2026-10-12 15:56:08','2027-10-12','王官方兽医','产地检疫',NULL,NULL,'DEVICE','QSCAN-001','{\"certNo\": \"QC-20261012-8128\", \"earTagNo\": \"ET-DEMO-1791791710632\", \"issueOrg\": \"顺义区动物卫生监督所\", \"inspector\": \"王官方兽医\", \"issueTime\": \"2026-10-12 15:56:08\", \"validUntil\": \"2027-10-12\"}','8732adf17d1dfe868eb15876b2afde0406e3aa619d6949c23e7455be8ce8e052','2026-10-12 15:56:09',0,NULL,NULL,NULL),(304,33,14,1,'QC-20261012-2991','顺义区动物卫生监督所','2026-10-12 15:58:02','2027-10-12','王官方兽医','产地检疫',NULL,NULL,'DEVICE','QSCAN-001','{\"certNo\": \"QC-20261012-2991\", \"earTagNo\": \"ET-DEMO-1791193435869\", \"issueOrg\": \"顺义区动物卫生监督所\", \"inspector\": \"王官方兽医\", \"issueTime\": \"2026-10-12 15:58:02\", \"validUntil\": \"2027-10-12\"}','fb042491717954a55e8dcd7df21850f36da9a51d7a0154deaa5ca6bbc2e2fe06','2026-10-12 15:58:04',0,NULL,NULL,NULL),(515,1066,2,1,'QC-20261026-1920','顺义区动物卫生监督所','2026-10-26 17:59:11','2027-10-26','王官方兽医','产地检疫',NULL,NULL,'DEVICE','QSCAN-001','{\"certNo\": \"QC-20261026-1920\", \"earTagNo\": \"ET-DEMO-0131\", \"issueOrg\": \"顺义区动物卫生监督所\", \"inspector\": \"王官方兽医\", \"issueTime\": \"2026-10-26 17:59:11\", \"validUntil\": \"2027-10-26\"}','f77ac1c824c18a4a87506ca1b5a1561cef8cdd3a4ba6fb24c1a33ed932f1785a','2026-10-26 17:59:15',0,NULL,NULL,NULL),(516,1086,NULL,0,'QC-LG1793010023618-OK','逻辑闸门回归机构','2026-10-26 08:00:00','2027-04-24','王官方兽医','产地检疫','bf6f5ee53b5940c3b84154e4f64258b2','CA-LG-1793010023618','MANUAL',NULL,NULL,'9b9db2e1cd711bc06cfdc51f55b2bec93b38da96a41dff9238a0c07b89b14619','2026-10-26 18:20:26',0,NULL,NULL,NULL),(604,1068,2,1,'QC-VERIFY-1793010160211','回归验证签发机构','2026-10-26 18:22:40','2027-04-24','王官方兽医','产地检疫',NULL,NULL,'DEVICE','QSCAN-001','{\"certNo\": \"QC-VERIFY-1793010160211\", \"earTagNo\": \"ET-DEMO-0133\", \"issueOrg\": \"回归验证签发机构\", \"inspector\": \"王官方兽医\", \"issueTime\": \"2026-10-26 18:22:40\", \"validUntil\": \"2027-04-24\"}','7c4f58c778b8c7206f1cedf065c4e3d803fc8c1d7d880eae6d7a7d3023b87d26','2026-10-26 18:22:40',1,'测试数据清理：扫码登记通道回归脚本产生','系统管理员','2026-10-26 18:22:40'),(609,1068,2,1,'QC-PROBE-1793010370343','链路验证机构','2026-10-26 18:26:10','2027-04-24','链路验证兽医','产地检疫','PROBE-SCAN','PROBE-SIG','MANUAL',NULL,NULL,'96312a3aa4a910cafec1975b027d303dca61066864b5d6351781687a7f2db973','2026-10-26 18:26:10',1,'链路验证：探针产生的证，验证后收回','系统管理员','2026-10-26 18:26:10'),(610,1181,NULL,0,'QC-LG1793010375679-OK','逻辑闸门回归机构','2026-10-26 08:00:00','2027-04-24','王官方兽医','产地检疫','bf6f5ee53b5940c3b84154e4f64258b2','CA-LG-1793010375679','MANUAL',NULL,NULL,'92b7287fd9362a30f056ed2f02b564d9ac9cdefa6885339a17f22c7cb58af185','2026-10-26 18:26:17',0,NULL,NULL,NULL),(612,1192,NULL,0,'QC-LG1793011150318-OK','逻辑闸门回归机构','2026-10-26 08:00:00','2027-04-24','王官方兽医','产地检疫','bf6f5ee53b5940c3b84154e4f64258b2','CA-LG-1793011150318','MANUAL',NULL,NULL,'0ba776fa18e2724fda4d73b3bc4db1fd8dae3c662977adbd5b19e37019b1da19','2026-10-26 18:39:13',0,NULL,NULL,NULL),(647,1068,2,1,'QC-VERIFY-1793011458164','回归验证签发机构','2026-10-26 18:44:18','2027-04-24','王官方兽医','产地检疫',NULL,NULL,'DEVICE','QSCAN-001','{\"certNo\": \"QC-VERIFY-1793011458164\", \"earTagNo\": \"ET-DEMO-0133\", \"issueOrg\": \"回归验证签发机构\", \"inspector\": \"王官方兽医\", \"issueTime\": \"2026-10-26 18:44:18\", \"validUntil\": \"2027-04-24\"}','8a27ce491258bc5dc11980eeb135b136069c42164bcb9adc69e03f83847753f4','2026-10-26 18:44:18',1,'测试数据清理：扫码登记通道回归脚本产生','系统管理员','2026-10-26 18:44:18'),(648,1068,2,1,'QC-PROBE-1793011501045','链路验证机构','2026-10-26 18:45:01','2027-04-24','链路验证兽医','产地检疫','PROBE-SCAN','PROBE-SIG','MANUAL',NULL,NULL,'d4d751c96812dbade4cb7580a9cbc36226fc94ec3b147d9c3c77bd213d7b70ac','2026-10-26 18:45:01',1,'链路验证：探针产生的证，验证后收回','系统管理员','2026-10-26 18:45:01'),(653,1068,2,1,'QC-20261027-9257','顺义区动物卫生监督所','2026-10-27 17:39:49','2027-10-27','王官方兽医','产地检疫',NULL,NULL,'DEVICE','QSCAN-001','{\"certNo\": \"QC-20261027-9257\", \"earTagNo\": \"ET-DEMO-0133\", \"issueOrg\": \"顺义区动物卫生监督所\", \"inspector\": \"王官方兽医\", \"issueTime\": \"2026-10-27 17:39:49\", \"validUntil\": \"2027-10-27\"}','6b284f20c6d2e4938b8b0282cb48d85069c2a7e7dbbd9c11ecf1ab308d2015e1','2026-10-27 17:39:59',0,NULL,NULL,NULL),(783,NULL,2,2,'QC-DOC-1794733324156','顺义区动物卫生监督所','2026-11-15 11:00:00','2027-11-15','李兽医','产地检疫','FILE-DOC-TEST','CA-DOC-TEST','MANUAL',NULL,NULL,'a084202d0f3e07ea64f35fb1ecca7c4c2f7b184bff66ad1747119c236e0f4f40','2026-11-15 17:02:04',0,NULL,NULL,NULL),(784,NULL,2,2,'QC-DEV-1794000001','Shunyi AIS','2026-11-15 09:30:00','2027-11-15','LiVet','产地检疫',NULL,NULL,'DEVICE','QSCAN-TEST',NULL,'db0688e759535d10f96d616a5676a7f84784f62d24839627c6f5a8c57558a67b','2026-11-15 17:02:17',1,'单据化验证后清理','系统管理员','2026-11-15 17:02:32');
+/*!40000 ALTER TABLE `quarantine_certificate` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `slaughter_apply`
+--
+
+DROP TABLE IF EXISTS `slaughter_apply`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `slaughter_apply` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `pig_id` bigint DEFAULT NULL COMMENT 'å…¼å®¹åˆ—ï¼šå•æ®åŒ–åŽä¸€å¼ ç”³æŠ¥å•è¦†ç›–å¤šå¤´ï¼Œæˆå‘˜è§ slaughter_apply_pig',
+  `farm_id` bigint DEFAULT NULL COMMENT 'å…»æ®–åœºï¼ˆæœºæž„éš”ç¦»ä¸Žåˆ—è¡¨è¿‡æ»¤ç”¨ï¼‰',
+  `pig_count` int NOT NULL DEFAULT '1' COMMENT 'ç”³æŠ¥å¤´æ•°',
+  `apply_no` varchar(32) NOT NULL,
+  `apply_time` datetime NOT NULL,
+  `weight_kg` decimal(6,1) DEFAULT NULL,
+  `total_weight_kg` decimal(10,1) DEFAULT NULL COMMENT 'ç”³æŠ¥æ€»é‡ï¼ˆé€å¤´ä½“é‡ä¹‹å’Œï¼‰',
+  `target_slaughterhouse` varchar(128) DEFAULT NULL,
+  `approval_status` tinyint DEFAULT '0',
+  `approval_time` datetime DEFAULT NULL,
+  `approver` varchar(32) DEFAULT NULL,
+  `reject_reason` varchar(256) DEFAULT NULL,
+  `source` varchar(16) DEFAULT 'MANUAL' COMMENT '数据来源 MANUAL=人工申报/DEVICE=出栏口地磅采集/API/IMPORT',
+  `source_ref` varchar(64) DEFAULT NULL COMMENT '来源设备号/操作人实名（设备采集记地磅编号，如 EXITSCALE-001；人工申报记登录人实名）',
+  `raw_payload` json DEFAULT NULL COMMENT '设备原始报文（出栏口地磅上报的完整报文，供逐字段核对）',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_apply_no` (`apply_no`),
+  KEY `idx_status` (`approval_status`)
+) ENGINE=InnoDB AUTO_INCREMENT=860 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='å‡ºæ ç”³æŠ¥';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `slaughter_apply`
+--
+
+LOCK TABLES `slaughter_apply` WRITE;
+/*!40000 ALTER TABLE `slaughter_apply` DISABLE KEYS */;
+INSERT INTO `slaughter_apply` VALUES (1,1,1,1,'SA-DEMO-0001','2026-09-06 19:55:18',118.5,118.5,'示范定点屠宰场',1,'2026-09-07 19:55:18','监管员王',NULL,'MANUAL',NULL,NULL,'2026-09-16 19:55:18'),(2,2,1,1,'SA-TEST-0001','2026-08-27 19:55:18',108.5,108.5,'示范定点屠宰场',1,'2026-08-28 19:55:18','监管员王',NULL,'MANUAL',NULL,NULL,'2026-09-16 19:55:18'),(3,3,2,1,'SA-TEST-0002','2026-08-29 19:55:18',112.0,112.0,'示范定点屠宰场',1,'2026-08-30 19:55:18','监管员王',NULL,'MANUAL',NULL,NULL,'2026-09-16 19:55:18'),(4,4,2,1,'SA-TEST-0003','2026-08-31 19:55:18',99.5,99.5,'顺鑫屠宰场',0,NULL,NULL,NULL,'MANUAL',NULL,NULL,'2026-09-16 19:55:18'),(5,5,3,1,'SA-TEST-0004','2026-09-01 19:55:18',105.3,105.3,'示范定点屠宰场',1,'2026-09-02 19:55:18','监管员王',NULL,'MANUAL',NULL,NULL,'2026-09-16 19:55:18'),(6,6,3,1,'SA-TEST-0005','2026-09-02 19:55:18',115.8,115.8,'顺鑫屠宰场',1,'2026-09-03 19:55:18','监管员王',NULL,'MANUAL',NULL,NULL,'2026-09-16 19:55:18'),(7,7,4,1,'SA-TEST-0006','2026-09-04 19:55:18',98.0,98.0,'示范定点屠宰场',0,NULL,NULL,NULL,'MANUAL',NULL,NULL,'2026-09-16 19:55:18'),(8,8,4,1,'SA20260918161060','2026-09-18 11:04:48',110.0,110.0,'AUTO-TEST-2',2,'2026-09-18 11:04:48','1','auto-test cleanup','MANUAL',NULL,NULL,'2026-09-16 19:55:18'),(9,9,5,1,'SA-TEST-0008','2026-09-07 19:55:18',119.0,119.0,'顺鑫屠宰场',1,'2026-09-08 19:55:18','监管员王',NULL,'MANUAL',NULL,NULL,'2026-09-16 19:55:18'),(10,10,5,1,'SA-TEST-0009','2026-09-09 19:55:18',101.5,101.5,'示范定点屠宰场',0,NULL,NULL,NULL,'MANUAL',NULL,NULL,'2026-09-16 19:55:18'),(11,11,6,1,'SA-TEST-0010','2026-09-10 19:55:18',110.0,110.0,'示范定点屠宰场',1,'2026-09-11 19:55:18','监管员王',NULL,'MANUAL',NULL,NULL,'2026-09-16 19:55:18'),(12,12,6,1,'SA-TEST-0011','2026-09-11 19:55:18',95.5,95.5,'顺鑫屠宰场',2,'2026-09-12 19:55:18','监管员王','检疫不合格','MANUAL',NULL,NULL,'2026-09-16 19:55:18'),(13,13,7,1,'SA-TEST-0012','2026-09-12 19:55:18',107.8,107.8,'示范定点屠宰场',0,NULL,NULL,NULL,'MANUAL',NULL,NULL,'2026-09-16 19:55:18'),(14,14,8,1,'SA-TEST-0013','2026-09-13 19:55:18',113.0,113.0,'顺鑫屠宰场',1,'2026-09-14 19:55:18','监管员王',NULL,'MANUAL',NULL,NULL,'2026-09-16 19:55:18'),(15,15,9,1,'SA-TEST-0014','2026-09-14 19:55:18',100.2,100.2,'示范定点屠宰场',0,NULL,NULL,NULL,'MANUAL',NULL,NULL,'2026-09-16 19:55:18'),(16,16,10,1,'SA-TEST-0015','2026-09-15 19:55:18',109.5,109.5,'示范定点屠宰场',1,'2026-09-16 19:55:18','监管员王',NULL,'MANUAL',NULL,NULL,'2026-09-16 19:55:18'),(17,18,2,1,'SA20260916412037','2026-09-16 16:01:37',120.0,120.0,'示范定点屠宰场',1,'2026-09-16 16:02:04','1',NULL,'MANUAL',NULL,NULL,'2026-09-16 16:01:37'),(18,19,2,1,'SA20260917061996','2026-09-17 04:47:18',130.0,130.0,'示范定点屠宰场',1,'2026-09-17 04:47:30','1',NULL,'MANUAL',NULL,NULL,'2026-09-17 04:47:18'),(19,20,2,1,'SA20260917207872','2026-09-17 22:58:48',NULL,NULL,'示范定点屠宰场',1,'2026-09-17 22:59:10','1',NULL,'MANUAL',NULL,NULL,'2026-09-17 22:58:48'),(20,21,6,1,'SA20260918349213','2026-09-18 02:27:44',120.0,120.0,'示范定点屠宰场',1,'2026-09-18 02:28:07','1',NULL,'MANUAL',NULL,NULL,'2026-09-18 02:27:44'),(21,22,8,1,'SA20260918602169','2026-09-18 09:58:31',120.0,120.0,'示范定点屠宰场',1,'2026-09-18 09:58:57','1',NULL,'MANUAL',NULL,NULL,'2026-09-18 09:58:31'),(22,23,5,1,'SA20260918156944','2026-09-18 10:43:54',120.0,120.0,'示范定点屠宰场',1,'2026-09-18 10:44:14','1',NULL,'MANUAL',NULL,NULL,'2026-09-18 10:43:54'),(23,24,2,1,'SA20260918993675','2026-09-18 11:45:05',120.0,120.0,'示范定点屠宰场',1,'2026-09-18 11:45:13','1',NULL,'MANUAL',NULL,NULL,'2026-09-18 11:45:05'),(28,34,14,1,'SA20261008933029','2026-10-08 13:55:57',120.0,120.0,'示范定点屠宰场',1,'2026-10-08 16:54:17','系统管理员',NULL,'DEVICE','EXITSCALE-001','{\"earTagNo\": \"ET-DEMO-1791194024670\", \"weightKg\": 120, \"weighTime\": \"2026-10-08 13:55:57\", \"targetSlaughterhouse\": \"示范定点屠宰场\"}','2026-10-08 13:56:07'),(315,305,14,1,'SA20261012741735','2026-10-12 13:33:20',120.0,120.0,'示范定点屠宰场',1,'2026-10-12 13:34:02','系统管理员',NULL,'DEVICE','EXITSCALE-001','{\"earTagNo\": \"ET-DEMO-1791783002362\", \"weightKg\": 120, \"weighTime\": \"2026-10-12 13:33:20\", \"targetSlaughterhouse\": \"示范定点屠宰场\"}','2026-10-12 13:33:21'),(316,306,14,1,'SA20261012404929','2026-10-12 14:42:39',120.0,120.0,'示范定点屠宰场',1,'2026-10-12 14:42:50','系统管理员',NULL,'DEVICE','EXITSCALE-001','{\"earTagNo\": \"ET-DEMO-1791787264150\", \"weightKg\": 120, \"weighTime\": \"2026-10-12 14:42:39\", \"targetSlaughterhouse\": \"示范定点屠宰场\"}','2026-10-12 14:42:40'),(317,307,14,1,'SA20261012786255','2026-10-12 15:30:32',120.0,120.0,'示范定点屠宰场',1,'2026-10-12 15:30:44','系统管理员',NULL,'DEVICE','EXITSCALE-001','{\"earTagNo\": \"ET-DEMO-1791790206509\", \"weightKg\": 120, \"weighTime\": \"2026-10-12 15:30:32\", \"targetSlaughterhouse\": \"示范定点屠宰场\"}','2026-10-12 15:30:33'),(318,308,14,1,'SA20261012093001','2026-10-12 15:58:10',120.0,120.0,'示范定点屠宰场',1,'2026-10-12 15:58:22','系统管理员',NULL,'DEVICE','EXITSCALE-001','{\"earTagNo\": \"ET-DEMO-1791791710632\", \"weightKg\": 120, \"weighTime\": \"2026-10-12 15:58:10\", \"targetSlaughterhouse\": \"示范定点屠宰场\"}','2026-10-12 15:58:13'),(725,1068,2,1,'SA20261027144004','2026-10-27 17:40:16',120.0,120.0,'示范定点屠宰场',1,'2026-10-27 18:43:11','系统管理员',NULL,'DEVICE','EXITSCALE-001','{\"earTagNo\": \"ET-DEMO-0133\", \"weightKg\": 120, \"weighTime\": \"2026-10-27 17:40:16\", \"targetSlaughterhouse\": \"示范定点屠宰场\"}','2026-10-27 17:40:22'),(858,NULL,2,2,'SA20261115815133','2026-11-15 17:02:04',118.5,118.5,'示范定点屠宰场',0,NULL,NULL,NULL,'MANUAL','系统管理员',NULL,'2026-11-15 17:02:04'),(859,NULL,2,2,'SA20261115948564','2026-11-15 12:00:00',NULL,234.5,'Shunyi Plant',1,'2026-11-15 17:02:33','系统管理员',NULL,'DEVICE','EXITSCALE-TEST',NULL,'2026-11-15 17:02:23');
+/*!40000 ALTER TABLE `slaughter_apply` ENABLE KEYS */;
+UNLOCK TABLES;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+-- Dump completed on 2026-11-15 17:02:47

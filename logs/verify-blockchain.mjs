@@ -7,6 +7,13 @@
  *   ④ /health 与库内数字一致；/records/status-map 返回真实状态
  *   ⑤ 覆盖缺口补齐：生猪建档端到端上链（自持：一次性批次，验完作废）
  *   ⑥ 审计页展示「存证体检」，且本地模式下不出现「区块链已验证」字样
+ *   ⑦ 链上模式：交易在链上真实存在，历史本地存证迁完
+ *   ⑧ 存证类型字典全覆盖
+ *   ⑨ 多版本 bizKey 下，老版本记录验真不许误报「不一致」（比整段历史，不比最新版）
+ *   ⑩ 新存证带报文快照（重试/迁移才有原文可重放）
+ *   ⑪ 链上原文与本地快照一致（审计员可拿原文自己复算）
+ *   ⑫ 上链报文中的人名已脱敏
+ *   ⑬ 迁移接口后台化：状态可查、单飞不重复
  *
  * 写入仅限 ⑤ 的一次性测试批次（唯一前缀 CHNTEST*，验完作废，不碰演示台账）。
  * 用法：node logs/verify-blockchain.mjs
@@ -53,6 +60,11 @@ if (local) {
   check(!modeRes.explorerUrl, '① 本地模式不提供区块浏览器地址', String(modeRes.explorerUrl))
 } else {
   check(!!modeRes.explorerUrl || modeRes.contractAddress !== null, '① 链上模式给出核验入口（浏览器或合约地址）')
+  // 开发链必须自报家门：单节点 + 无浏览器 = 第三方无法独立核验，页面不能只写「区块链存证」
+  check(typeof modeRes.developerChain === 'boolean'
+      && (modeRes.developerChain === false || !!modeRes.chainWarning),
+    '① 开发链如实标注（判定为开发链时必须给出警示文案）',
+    `developerChain=${modeRes.developerChain} warning=${String(modeRes.chainWarning || '').slice(0, 24)}`)
 }
 
 // ── ② 存证记录本身的一致性 ──
@@ -119,6 +131,18 @@ if (sample) {
     if (record) {
       check(Number(record.status) === 1 && !!record.txHash && !!record.blockNumber,
         '⑤ 建档存证已入账且哈希块号齐全', `status=${record.status} tx=${(record.txHash || '').slice(0, 10)}`)
+      const snapLen = Number(sqlOne(
+        `SELECT CHAR_LENGTH(COALESCE(payload_json,'')) FROM db_common.blockchain_record WHERE id=${Number(record.id)}`) || 0)
+      check(snapLen > 0, '⑤ 建档存证带报文快照（重试/迁移可原样重放）', `快照 ${snapLen} 字节`)
+      // ③ 原文可核验：链上那一版报文必须与本地快照一致，审计员才能拿原文自己复算指纹
+      const v = (await api('/blockchain/verify', { method: 'POST', body: { bizType: 'PIG_BATCH', bizId: batchId } }, token))?.data || {}
+      check(v.payloadAvailable === true && v.matched === true && v.payloadOnChainMatched === true,
+        '⑪ 链上原文与本地快照一致（可拿原文复算指纹）',
+        `payloadAvailable=${v.payloadAvailable} matched=${v.matched} onChainPayload=${v.payloadOnChainMatched}`)
+      // ④ 上链脱敏：人名保姓打码，业务标识（耳标/批次号）原样保留
+      const opHit = (v.payload || '').match(/"operator":"([^"]*)"/)
+      check(!!opHit && opHit[1].includes('*'), '⑫ 上链报文中的人名已脱敏（保姓打码）',
+        opHit ? `operator=${opHit[1]}` : '报文里没有 operator 字段')
     }
     const voidRes = await api(`/breeding/pigs/batches/${batchId}/void`, { method: 'POST', body: { reason: '存证回归一次性批次，验完作废' } }, token)
     check(Number(voidRes?.code) === 200, '⑤ 测试批次已作废（自持清理）', voidRes?.message || '')
@@ -212,6 +236,50 @@ if (!local) {
   check(missDb.length === 0, '⑧ 库里每种存证类型都有中文名', missDb.length ? '缺：' + missDb.join(',') : `${dbTypes.length} 类全覆盖`)
   if (codeTypes.length) {
     check(missCode.length === 0, '⑧ 代码会发布的类型都已进字典', missCode.length ? '缺：' + missCode.join(',') : `${codeTypes.length} 类全覆盖`)
+  }
+}
+
+// ── ⑨ 多版本 bizKey：老版本记录不许被判成「不一致」 ──
+// bizKey 不是记录唯一键（一车多店签收 = 同车号 3 个版本），验真必须比对整段历史。
+// 修复前只比链上最新版，实测 143 条好记录被误报「不一致」。
+{
+  const evmOnly = local ? '' : " AND r.chain_mode='evm'"
+  const row = sqlOne(`SELECT CONCAT_WS('|', r.biz_type, r.biz_id, r.biz_key, r.id) FROM db_common.blockchain_record r
+    WHERE r.status=1${evmOnly} AND EXISTS (SELECT 1 FROM db_common.blockchain_record r2
+      WHERE r2.biz_key=r.biz_key AND r2.id>r.id AND r2.content_hash<>r.content_hash)
+    ORDER BY r.id DESC LIMIT 1`)
+  if (row) {
+    const [bizType, bizId, bizKey, recId] = row.split('|')
+    const v = (await api('/blockchain/verify', { method: 'POST', body: { bizType, bizId: Number(bizId) } }, token))?.data || {}
+    check(v.matched === true, '⑨ 同一 bizKey 多版本时，老版本记录验真仍为「一致」',
+      `${bizType}#${bizId}（记录 ${recId}，bizKey=${bizKey}）matched=${v.matched}`)
+  } else {
+    console.log('  ℹ 库里暂无「同一 bizKey 多版本」的存证，跳过 ⑨ 断言')
+  }
+}
+
+// ── ⑩ 报文快照：没有快照的存证只能证明「哈希没变」，拿不出原文给人核验 ──
+{
+  const missing = Number(sqlOne(
+    "SELECT COUNT(*) FROM db_common.blockchain_record WHERE status=1 AND (payload_json IS NULL OR payload_json='')") || 0)
+  const health2 = (await api('/blockchain/health', {}, token))?.data || {}
+  check(Number(health2.payloadMissing) === missing, '⑩ health.payloadMissing 与库内一致',
+    `health=${health2.payloadMissing} db=${missing}`)
+  const withSnap = Number(sqlOne(
+    "SELECT COUNT(*) FROM db_common.blockchain_record WHERE status=1 AND payload_json IS NOT NULL AND payload_json<>''") || 0)
+  check(withSnap > 0, '⑩ 库内已有带报文快照的存证', `${withSnap} 条`)
+}
+
+// ── ⑬ 迁移接口：后台化 + 单飞，不再把几十分钟的写链压在 HTTP 请求里 ──
+{
+  const st = (await api('/blockchain/migrate/legacy/status', {}, token))?.data
+  check(st !== undefined && typeof st?.running === 'boolean', '⑬ 迁移状态接口可用（running 为布尔）',
+    `running=${st?.running} remaining=${st?.remaining}`)
+  if (!local) {
+    // dryRun 走同步分支，只数条数不发交易：既能验接口形状，又不给链上添东西
+    const dry = (await api('/blockchain/migrate/legacy?limit=5&dryRun=true', { method: 'POST' }, token))?.data
+    check(dry !== undefined && dry.dryRun === true && typeof dry.payloadMissing === 'number',
+      '⑬ dryRun 仍走同步分支并回报待迁条数/缺快照条数', `picked=${dry?.picked} 缺快照=${dry?.payloadMissing}`)
   }
 }
 

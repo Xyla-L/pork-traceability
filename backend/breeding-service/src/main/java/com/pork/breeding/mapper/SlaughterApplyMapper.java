@@ -41,4 +41,15 @@ public interface SlaughterApplyMapper extends BaseMapper<SlaughterApply> {
     List<Map<String, Object>> selectGroupRows(@Param("approvalStatus") Integer approvalStatus,
                                               @Param("farmId") Long farmId,
                                               @Param("limit") int limit);
+
+    /** 单据分页：一张申报单一行（一单多头），按状态过滤；不再按 pig_id 反查归属 */
+    @Select("<script>"
+            + "SELECT * FROM slaughter_apply WHERE 1=1 "
+            + "<if test='farmId != null'> AND farm_id = #{farmId}</if>"
+            + "<if test='approvalStatus != null'> AND approval_status = #{approvalStatus}</if>"
+            + " ORDER BY apply_time DESC, id DESC"
+            + "</script>")
+    com.baomidou.mybatisplus.extension.plugins.pagination.Page<SlaughterApply> selectDocPage(
+            com.baomidou.mybatisplus.extension.plugins.pagination.Page<SlaughterApply> page,
+            @Param("farmId") Long farmId, @Param("approvalStatus") Integer approvalStatus);
 }

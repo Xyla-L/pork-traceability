@@ -68,13 +68,26 @@ public class BlockchainController {
 
     /**
      * 把 local 时期的历史存证补写到真实链上（只在 evm 模式可用，幂等）。
-     * 建议先 dryRun=true 看待迁条数，再按批（如 limit=100）反复调用直到 remaining=0。
+     * <p>
+     * 默认走后台执行，立即返回；用 {@link #migrateStatus()} 看进度。
+     * 需要「等这批跑完再返回」的老用法显式传 {@code async=false}。
+     * 两个入口共用一把单飞锁：已有任务在跑时直接拒绝，不会重复上链。
      */
     @PostMapping("/migrate/legacy")
     public Result<Map<String, Object>> migrateLegacy(
             @RequestParam(defaultValue = "50") int limit,
-            @RequestParam(defaultValue = "false") boolean dryRun) {
-        return Result.success(service.migrateLegacy(limit, dryRun));
+            @RequestParam(defaultValue = "false") boolean dryRun,
+            @RequestParam(defaultValue = "true") boolean async) {
+        if (!async) return Result.success(service.migrateLegacy(limit, dryRun));
+        // dryRun 只是数条数，没必要排队：任务在跑时也允许
+        if (dryRun) return Result.success(service.migrateLegacy(limit, true));
+        return Result.success(service.startMigrate(limit));
+    }
+
+    /** 迁移进度：running / 上一轮结果 / 剩余待迁条数 */
+    @GetMapping("/migrate/legacy/status")
+    public Result<Map<String, Object>> migrateStatus() {
+        return Result.success(service.migrateStatus());
     }
 
     @GetMapping("/status/{batchNo}")

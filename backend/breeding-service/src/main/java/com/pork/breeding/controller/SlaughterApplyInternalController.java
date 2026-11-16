@@ -2,7 +2,9 @@ package com.pork.breeding.controller;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.pork.breeding.entity.SlaughterApply;
+import com.pork.breeding.entity.SlaughterApplyPig;
 import com.pork.breeding.mapper.SlaughterApplyMapper;
+import com.pork.breeding.mapper.SlaughterApplyPigMapper;
 import com.pork.core.result.Result;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -11,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -31,6 +34,7 @@ public class SlaughterApplyInternalController {
     private static final int STATUS_REJECTED = 2;
 
     private final SlaughterApplyMapper applyMapper;
+    private final SlaughterApplyPigMapper applyPigMapper;
 
     /**
      * 按生猪查最新一条出栏申报的审批状态。
@@ -41,11 +45,20 @@ public class SlaughterApplyInternalController {
      */
     @GetMapping("/by-pig")
     public Result<Map<String, Object>> byPig(@RequestParam Long pigId) {
-        SlaughterApply apply = pigId == null ? null : applyMapper.selectOne(
-                Wrappers.<SlaughterApply>lambdaQuery()
-                        .eq(SlaughterApply::getPigId, pigId)
+        // 单据化后「这头猪在哪张申报单上」由成员表回答：一张单可以覆盖一车猪
+        SlaughterApply apply = null;
+        if (pigId != null) {
+            List<Long> applyIds = applyPigMapper.selectList(Wrappers.<SlaughterApplyPig>lambdaQuery()
+                            .eq(SlaughterApplyPig::getPigId, pigId))
+                    .stream().map(SlaughterApplyPig::getApplyId).distinct().toList();
+            if (!applyIds.isEmpty()) {
+                List<SlaughterApply> found = applyMapper.selectList(Wrappers.<SlaughterApply>lambdaQuery()
+                        .in(SlaughterApply::getId, applyIds)
                         .orderByDesc(SlaughterApply::getId)
                         .last("LIMIT 1"));
+                apply = found.isEmpty() ? null : found.get(0);
+            }
+        }
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("pigId", pigId);

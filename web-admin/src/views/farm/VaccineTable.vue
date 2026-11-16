@@ -1,9 +1,9 @@
 <template>
   <div class="vaccine-table">
     <!--
-      主行 = 一次免疫动作（同一批、同一天、同一种疫苗），展开 = 这一次覆盖的逐头明细。
-      聚合只是为了不再把「整批打一次疫苗」刷成 30 行耳标；哪一头打了、哪一头被作废，
-      展开后一条不少 —— 追溯查的永远是单头，聚合不能把这层能力弄丢。
+      主行 = 一张免疫批次单（同场 + 同疫苗 + 同生产批号 + 同一天自动归批），
+      展开 = 这张批次单的「关联生猪」。批次号是存下来的单据号，不是页面临时算的；
+      哪一头打了、哪一头被作废，展开后一条不少 —— 追溯查的永远是单头。
     -->
     <el-table
       v-loading="loading"
@@ -16,7 +16,7 @@
       <el-table-column type="expand">
         <template #default="{ row }">
           <div class="member-panel">
-            <div class="member-panel__title">本次免疫覆盖 {{ row.headCount }} 头</div>
+            <div class="member-panel__title">关联生猪 {{ row.headCount }} 头</div>
             <el-table :data="row.members" size="small" border :row-class-name="memberRowClass">
               <el-table-column prop="earTagNo" label="耳标号" min-width="150" show-overflow-tooltip />
               <el-table-column prop="injectTime" label="注射时间" min-width="160" align="center" />
@@ -59,15 +59,10 @@
         </template>
       </el-table-column>
 
-      <el-table-column label="批次" min-width="180" show-overflow-tooltip>
+      <el-table-column label="免疫批次" min-width="200" show-overflow-tooltip>
         <template #default="{ row }">
-          <template v-if="row.batchNo">
-            <span class="batch-no">{{ row.batchNo }}</span>
-            <span class="batch-count">{{ row.headCount }} 头</span>
-          </template>
-          <el-tooltip v-else content="这些猪尚未登记归属批次（如外购零星补栏），逐头独立成行" placement="top">
-            <el-tag type="info" size="small" effect="plain">未归批</el-tag>
-          </el-tooltip>
+          <span class="batch-no">{{ row.docNo || '--' }}</span>
+          <span class="batch-count">{{ row.headCount }} 头</span>
         </template>
       </el-table-column>
       <el-table-column prop="title" label="疫苗名称" min-width="150" show-overflow-tooltip />
@@ -83,12 +78,6 @@
       <el-table-column label="覆盖头数" width="100" align="center">
         <template #default="{ row }">
           <span class="head-count">{{ row.headCount }}</span>
-        </template>
-      </el-table-column>
-      <el-table-column label="耳标区间" min-width="230" show-overflow-tooltip>
-        <template #default="{ row }">
-          <span v-if="row.tagStart" class="tag-range">{{ tagRange(row) }}</span>
-          <span v-else class="empty-cell">--</span>
         </template>
       </el-table-column>
       <el-table-column label="操作人" min-width="120" show-overflow-tooltip>
@@ -166,12 +155,6 @@ defineProps({
 })
 
 const emit = defineEmits(['voided'])
-
-/** 耳标区间：起止相同时直接显示单个耳标，避免「X ~ X」看着像有范围 */
-const tagRange = (row) => {
-  if (!row.tagStart) return '--'
-  return row.tagStart === row.tagEnd ? row.tagStart : `${row.tagStart} ~ ${row.tagEnd}`
-}
 
 /** 明细里已作废的那几条置灰：仍在原位可追溯，但一眼能看出「这条不算了」 */
 const memberRowClass = ({ row }) => (row.voidFlag === 1 ? 'row-voided' : '')

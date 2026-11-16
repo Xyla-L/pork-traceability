@@ -7,6 +7,7 @@ import com.pork.core.exception.BusinessException;
 import com.pork.core.result.PageResult;
 import com.pork.core.util.BusinessNoGenerator;
 import com.pork.core.util.HashUtil;
+import com.pork.core.util.TraceQrCode;
 import com.pork.mq.ChainEventPublisher;
 import com.pork.mq.ChainTxMessage;
 import com.pork.sales.dto.SalesRequests;
@@ -143,10 +144,38 @@ public class SalesServiceImpl implements SalesService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public RetailSale sell(SalesRequests.SaleCreate request, Long storeId) {
-        RetailSale row = saleMapper.selectOne(Wrappers.<RetailSale>lambdaQuery().eq(RetailSale::getProductQrCode, request.qrCode()));
-        require(row, "二维码对应产品不存在");
+        // 售出前的第一道闸：扫进来的必须真是本系统的码。
+        // 收银台扫到付款码 / 会员码 / 别家商品码时，直接说清楚，不去库里绕一圈再报「不存在」。
+        String qrCode = TraceQrCode.extract(request.qrCode());
+        if (qrCode == null) {
+            throw new BusinessException(ErrorCode.PARAM_ERROR, TraceQrCode.NOT_TRACE_CODE);
+        }
+        RetailSale row = saleMapper.selectOne(Wrappers.<RetailSale>lambdaQuery()
+                .eq(RetailSale::getProductQrCode, qrCode));
+        if (row == null) {
+            // 与消费者端同一口径：不是「假货」，是这个码在本平台没有登记
+            throw new BusinessException(ErrorCode.RECORD_NOT_FOUND,
+                    "该二维码不是本平台已入库的商品码：请核对是否贴错标签，或先在「产品二维码」里生成");
+        }
         requireStore(storeId, row.getStoreId(), "该商品");
-        if (row.getStatus() != 1 || row.getIsActivated() != 1) throw new BusinessException(ErrorCode.BUSINESS_ERROR, "产品未激活或已不可售");
+        // 顺序有讲究：先报「商品本身出了什么事」（已售/过期/召回），再说「还没上架」。
+        // 召回只改 status、不动激活位，未上架的货被召回后如果先判激活，
+        // 收银员只会看到「尚未上架激活」，掩盖了真正的原因（这批货是被召回的）。
+        if (row.getStatus() == 4) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "该产品已被召回，禁止销售");
+        }
+        if (row.getStatus() == 2) {
+            throw new BusinessException(ErrorCode.RECORD_ALREADY_EXISTS, "该产品已售出，不能重复销售");
+        }
+        if (row.getStatus() == 3) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "该产品已过保质期，不能销售");
+        }
+        if (row.getIsActivated() != 1) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "该产品尚未上架激活，不能销售");
+        }
+        if (row.getStatus() != 1) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "该产品当前不可销售");
+        }
         if (row.getExpireDate().isBefore(LocalDate.now())) throw new BusinessException(ErrorCode.BUSINESS_ERROR, "产品已过期");
         int changed = saleMapper.update(null, Wrappers.<RetailSale>lambdaUpdate()
                 .eq(RetailSale::getId, row.getId()).eq(RetailSale::getStatus, 1)

@@ -13,7 +13,12 @@ import java.time.LocalDateTime;
 public class QuarantineCertificate {
     @TableId(type = IdType.AUTO)
     private Long id;
+    /** 兼容列：单据化后一张证覆盖多头，成员见 quarantine_cert_pig（新写入不再使用） */
     private Long pigId;
+    /** 养殖场（机构隔离与列表过滤用） */
+    private Long farmId;
+    /** 证面覆盖头数 */
+    private Integer pigCount;
     private String certNo;
     private String issueOrg;
     private LocalDateTime issueTime;

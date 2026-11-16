@@ -38,6 +38,8 @@ spring:
 blockchain:
   # local=数据库模拟账本（开发调试用）；evm=真实上链（EVM 兼容链）
   type: ${BLOCKCHAIN_TYPE:local}
+  # 上链前脱敏：人名保姓打码、手机号/身份证只留头尾（链上不可篡改，写进去就删不掉）
+  mask-phi: ${BLOCKCHAIN_MASK_PHI:true}
   evm:
     # 本地 Ganache 默认 http://localhost:8545；Sepolia 测试网可用 https://rpc.sepolia.org
     rpc-url: ${EVM_RPC_URL:http://localhost:8545}

@@ -2,16 +2,21 @@ package com.pork.blockchain.service.impl;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pork.blockchain.adapter.BlockchainAdapter;
 import com.pork.blockchain.entity.BlockchainRecord;
 import com.pork.blockchain.entity.ChainLedger;
 import com.pork.blockchain.mapper.BlockchainRecordMapper;
 import com.pork.blockchain.mapper.ChainLedgerMapper;
 import com.pork.blockchain.service.BlockchainService;
+import com.pork.blockchain.support.PhiMasker;
 import com.pork.core.enums.ErrorCode;
 import com.pork.core.exception.BusinessException;
 import com.pork.core.result.PageResult;
+import com.pork.core.util.CanonicalStringBuilder;
 import com.pork.mq.ChainTxMessage;
+import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,6 +32,9 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
 @Service
@@ -35,6 +43,8 @@ public class BlockchainServiceImpl implements BlockchainService {
 
     /** 未完成存证的容忍窗口：超过这个时间还没写入，就不再是「正在重试」而是积压 */
     private static final long PENDING_TOLERANCE_MINUTES = 30;
+
+    private static final ObjectMapper JSON = new ObjectMapper();
 
     private final BlockchainRecordMapper mapper;
     private final ChainLedgerMapper ledgerMapper;
@@ -46,12 +56,35 @@ public class BlockchainServiceImpl implements BlockchainService {
     @Value("${blockchain.evm.contract-address:}")
     private String contractAddress;
 
+    @Value("${blockchain.evm.rpc-url:}")
+    private String rpcUrl;
+
+    @Value("${blockchain.evm.chain-id:1337}")
+    private long chainId;
+
+    /** 上链前脱敏开关：默认开。关掉只应出现在「要拿链上原文做取证」的场合，且需自己承担合规责任 */
+    @Value("${blockchain.mask-phi:true}")
+    private boolean maskPhi;
+
+    /** 迁移任务单飞：并发点两次会重复上链（合约同 hash 幂等，但会多打版本、账本行也会打架） */
+    private final AtomicBoolean migrating = new AtomicBoolean(false);
+    private volatile Map<String, Object> lastMigrateResult;
+    private volatile String lastMigrateError;
+    private final ExecutorService migrateExecutor = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "chain-migrate");
+        t.setDaemon(true);
+        return t;
+    });
+
     @Override
     @Transactional(noRollbackFor = ChainStoreException.class)
     public void store(ChainTxMessage message) {
         BlockchainRecord record = mapper.selectOne(Wrappers.<BlockchainRecord>lambdaQuery()
                 .eq(BlockchainRecord::getEventId, message.eventId()));
         if (record != null && record.getStatus() == 1) return;
+        // 上链报文在这里定型：脱敏后的这一份既写链、也当快照留档，两边必须完全一致，
+        // 否则验真时没法证明「链上原文」与「本地留存」是一回事
+        Map<String, Object> onChainPayload = maskPhi ? PhiMasker.mask(message.payload()) : message.payload();
         if (record == null) {
             record = new BlockchainRecord();
             record.setEventId(message.eventId());
@@ -59,15 +92,22 @@ public class BlockchainServiceImpl implements BlockchainService {
             record.setBizId(message.bizId());
             record.setBizKey(message.bizKey());
             record.setContentHash(message.contentHash());
+            // 报文必须与哈希同批落库：只有哈希的话，失败重试就没东西可重放，链上只剩一个数字
+            record.setPayloadJson(payloadJson(onChainPayload));
             record.setStatus(0);
             record.setChainMode(adapter.mode());
             record.setRetryCount(0);
             record.setCreateTime(LocalDateTime.now());
             record.setUpdateTime(LocalDateTime.now());
             mapper.insert(record);
+        } else if (!StringUtils.hasText(record.getPayloadJson()) && onChainPayload != null && !onChainPayload.isEmpty()) {
+            // 加列之前写入的记录（或首次因故没留下快照的）：这次既然带着原文来，就补上
+            record.setPayloadJson(payloadJson(onChainPayload));
+            record.setUpdateTime(LocalDateTime.now());
+            mapper.updateById(record);
         }
         try {
-            BlockchainAdapter.TxResult tx = adapter.storeOnChain(record.getBizType(), record.getBizKey(), record.getContentHash(), message.payload());
+            BlockchainAdapter.TxResult tx = adapter.storeOnChain(record.getBizType(), record.getBizKey(), record.getContentHash(), onChainPayload);
             record.setTxHash(tx.txHash());
             record.setBlockNumber(tx.blockNumber());
             record.setChainTime(tx.chainTime());
@@ -114,7 +154,7 @@ public class BlockchainServiceImpl implements BlockchainService {
         if (Integer.valueOf(1).equals(row.getStatus())) return row;
         try {
             store(new ChainTxMessage(row.getEventId(), row.getBizType(), row.getBizId(), row.getBizKey(),
-                    row.getContentHash(), Map.of(), row.getCreateTime()));
+                    row.getContentHash(), payloadOf(row), row.getCreateTime()));
         } catch (RuntimeException e) {
             throw new BusinessException(ErrorCode.BLOCKCHAIN_ERROR, "上链重试失败");
         }
@@ -154,6 +194,18 @@ public class BlockchainServiceImpl implements BlockchainService {
         view.put("txHash", row.getTxHash());
         view.put("blockNumber", row.getBlockNumber());
         view.put("chainTime", row.getChainTime());
+        // 有快照才谈得上「拿原文核验」；没有快照的只能证明哈希与链上一致，如实标出来
+        boolean payloadAvailable = StringUtils.hasText(row.getPayloadJson());
+        view.put("payloadAvailable", payloadAvailable);
+        // 上链原文：审计员可以自己算指纹、也可以跟业务页面逐字对（历史记录没有快照，给 null）
+        view.put("payload", payloadAvailable ? row.getPayloadJson() : null);
+        // 链上原文 vs 本地快照：证明「我们留的原文」就是当初上链的那一份。
+        // 只有链上能读到报文时才给结论（local 账本没有报文，返回 null 而不是 false）
+        Boolean payloadOnChainMatched = null;
+        if (payloadAvailable && StringUtils.hasText(v.chainPayload())) {
+            payloadOnChainMatched = canonicalJson(row.getPayloadJson()).equals(canonicalJson(v.chainPayload()));
+        }
+        view.put("payloadOnChainMatched", payloadOnChainMatched);
         view.put("explorerUrl", explorerUrl);
         return view;
     }
@@ -199,6 +251,14 @@ public class BlockchainServiceImpl implements BlockchainService {
                 : "存证记录保存在平台数据库内，未写入区块链；可用于平台内一致性核对，不能作为第三方链上核验依据");
         view.put("explorerUrl", onChain && StringUtils.hasText(explorerUrl) ? explorerUrl : null);
         view.put("contractAddress", onChain && StringUtils.hasText(contractAddress) ? contractAddress : null);
+        view.put("chainId", onChain ? chainId : null);
+        // 开发链要自己说出来：单节点 + 无浏览器 = 第三方没法独立核验，页面不能只写「区块链存证」
+        boolean developerChain = onChain && isDeveloperChain();
+        view.put("developerChain", developerChain);
+        view.put("chainWarning", developerChain
+                ? "当前接入的是开发链（单节点、无区块浏览器）：交易哈希可自查，但第三方无法独立核验，不能据此对外宣称「已上链可查」"
+                : null);
+        view.put("maskPhi", maskPhi);
         // 切到 evm 后仍有「写于本地账本时期」的记录：页面必须能说清还有多少条没补写链上
         view.put("legacyLocal", onChain ? legacyLocalCount() : 0);
         view.put("migrated", onChain ? migratedCount() : 0);
@@ -210,6 +270,16 @@ public class BlockchainServiceImpl implements BlockchainService {
                 .eq(BlockchainRecord::getChainMode, "local").eq(BlockchainRecord::getStatus, 1));
     }
 
+    /**
+     * 开发链判定：没有区块浏览器，或 RPC 指向本机/ganache。
+     * 这类链「能写、能读、能自证」，但拿不到第三方可访问的公开账本——页面必须把话说明白。
+     */
+    private boolean isDeveloperChain() {
+        if (!StringUtils.hasText(explorerUrl)) return true;
+        String rpc = rpcUrl == null ? "" : rpcUrl.toLowerCase();
+        return rpc.contains("localhost") || rpc.contains("127.0.0.1") || rpc.contains("ganache");
+    }
+
     private long migratedCount() {
         return mapper.selectCount(Wrappers.<BlockchainRecord>lambdaQuery()
                 .isNotNull(BlockchainRecord::getMigratedAt));
@@ -217,22 +287,84 @@ public class BlockchainServiceImpl implements BlockchainService {
 
     @Override
     public Map<String, Object> migrateLegacy(int limit, boolean dryRun) {
-        if (!"evm".equals(adapter.mode())) {
-            throw new BusinessException(ErrorCode.BLOCKCHAIN_ERROR, "当前是本地账本模式，历史存证本来就在本地账本里，无需迁移");
+        requireEvm("当前是本地账本模式，历史存证本来就在本地账本里，无需迁移");
+        // 同步入口也要单飞：两个管理员同时点会重复上链（合约同 hash 幂等，但会多打版本、账本行互相打架）
+        if (!migrating.compareAndSet(false, true)) {
+            throw new BusinessException(ErrorCode.BLOCKCHAIN_ERROR, "已有迁移任务在执行，等它跑完再点");
         }
-        int batch = Math.max(1, Math.min(limit <= 0 ? 50 : limit, 200));
+        try {
+            return migrateLegacyInternal(boundLimit(limit), dryRun);
+        } finally {
+            migrating.set(false);
+        }
+    }
+
+    @Override
+    public Map<String, Object> startMigrate(int limit) {
+        requireEvm("当前是本地账本模式，历史存证本来就在本地账本里，无需迁移");
+        int batch = boundLimit(limit);
+        Map<String, Object> view = new LinkedHashMap<>();
+        if (!migrating.compareAndSet(false, true)) {
+            view.put("started", false);
+            view.put("running", true);
+            view.put("reason", "已有迁移任务在执行，等它跑完再点");
+            return view;
+        }
+        lastMigrateError = null;
+        migrateExecutor.submit(() -> {
+            try {
+                lastMigrateResult = migrateLegacyInternal(batch, false);
+            } catch (RuntimeException e) {
+                lastMigrateError = crop(e.getMessage());
+                log.warn("chain_migrate_async_failed err={}", lastMigrateError);
+            } finally {
+                migrating.set(false);
+            }
+        });
+        log.info("chain_migrate_async_started limit={}", batch);
+        view.put("started", true);
+        view.put("running", true);
+        view.put("limit", batch);
+        view.put("note", "已在后台执行，用 GET /blockchain/migrate/legacy/status 看进度");
+        return view;
+    }
+
+    @Override
+    public Map<String, Object> migrateStatus() {
+        Map<String, Object> view = new LinkedHashMap<>();
+        view.put("running", migrating.get());
+        view.put("lastResult", lastMigrateResult);
+        view.put("lastError", lastMigrateError);
+        view.put("remaining", "evm".equals(adapter.mode()) ? legacyLocalCount() : 0);
+        return view;
+    }
+
+    private void requireEvm(String message) {
+        if (!"evm".equals(adapter.mode())) throw new BusinessException(ErrorCode.BLOCKCHAIN_ERROR, message);
+    }
+
+    /** 单轮上限 200：再多就是几十分钟的写链，出问题不好收场 */
+    private int boundLimit(int limit) {
+        return Math.max(1, Math.min(limit <= 0 ? 50 : limit, 200));
+    }
+
+    private Map<String, Object> migrateLegacyInternal(int batch, boolean dryRun) {
         List<BlockchainRecord> rows = mapper.selectList(Wrappers.<BlockchainRecord>lambdaQuery()
                 .eq(BlockchainRecord::getChainMode, "local").eq(BlockchainRecord::getStatus, 1)
                 .orderByAsc(BlockchainRecord::getId).last("LIMIT " + batch));
         int ok = 0;
         int failed = 0;
+        int payloadMissing = 0;
         List<String> errors = new ArrayList<>();
         for (BlockchainRecord row : rows) {
+            // 加列之前写入的本地存证没有报文快照：这类只能凭哈希补写，链上不会有可读内容，
+            // 结果里如实报数，别让「迁移完成」被理解成「内容都在链上」
+            if (!StringUtils.hasText(row.getPayloadJson())) payloadMissing++;
             if (dryRun) { ok++; continue; }
             try {
                 // 重放的是同一条 contentHash：链上留的是原始内容指纹，不是事后重新算的
                 BlockchainAdapter.TxResult tx = adapter.storeOnChain(
-                        row.getBizType(), row.getBizKey(), row.getContentHash(), Map.of());
+                        row.getBizType(), row.getBizKey(), row.getContentHash(), payloadOf(row));
                 String oldTx = row.getTxHash();
                 if (StringUtils.hasText(oldTx)) {
                     // 账本行必须跟着改挂：否则旧 tx_hash 在 record 里消失，历史块会全部变孤儿
@@ -268,6 +400,7 @@ public class BlockchainServiceImpl implements BlockchainService {
         result.put("migrated", dryRun ? 0 : ok);
         result.put("checked", ok);
         result.put("failed", failed);
+        result.put("payloadMissing", payloadMissing);
         result.put("remaining", remaining);
         result.put("errors", errors);
         return result;
@@ -308,6 +441,10 @@ public class BlockchainServiceImpl implements BlockchainService {
         // 切 evm 后还有多少条「写于本地账本时期」的记录没补写链上：这是如实披露的重要一项
         view.put("legacyLocal", "evm".equals(adapter.mode()) ? legacyLocalCount() : 0);
         view.put("migrated", migratedCount());
+        // 已上链但没留报文快照的条数：链上只有指纹没有内容，第三方无法据此独立核验
+        view.put("payloadMissing", payloadMissingCount());
+        view.put("developerChain", "evm".equals(adapter.mode()) && isDeveloperChain());
+        view.put("maskPhi", maskPhi);
         view.put("issues", issues(failed, dangling, orphanRecent, oldestPendingMinutes));
         view.put("checkedAt", LocalDateTime.now());
         return view;
@@ -348,7 +485,7 @@ public class BlockchainServiceImpl implements BlockchainService {
         for (BlockchainRecord row : rows) {
             try {
                 store(new ChainTxMessage(row.getEventId(), row.getBizType(), row.getBizId(), row.getBizKey(),
-                        row.getContentHash(), Map.of(), row.getCreateTime()));
+                        row.getContentHash(), payloadOf(row), row.getCreateTime()));
             } catch (RuntimeException ex) {
                 // 失败状态与次数由 store() 落库；这里补一条日志，别让补偿任务静默失败
                 log.warn("chain_retry_failed eventId={} bizType={} retry={} err={}",
@@ -361,6 +498,50 @@ public class BlockchainServiceImpl implements BlockchainService {
     private String crop(String message) {
         if (message == null) return "unknown blockchain error";
         return message.length() <= 500 ? message : message.substring(0, 500);
+    }
+
+    /** 报文快照落库格式：空报文存 NULL，便于用「是否为空」区分「当初没留」与「留了空对象」 */
+    private String payloadJson(Map<String, Object> payload) {
+        if (payload == null || payload.isEmpty()) return null;
+        try {
+            return JSON.writeValueAsString(payload);
+        } catch (Exception e) {
+            log.warn("chain_payload_serialize_failed err={}", crop(e.getMessage()));
+            return null;
+        }
+    }
+
+    /** 重放报文：快照缺失时退化为空报文（历史记录没有原文可还原），不能因此阻断重试 */
+    private Map<String, Object> payloadOf(BlockchainRecord row) {
+        if (!StringUtils.hasText(row.getPayloadJson())) return Map.of();
+        try {
+            return JSON.readValue(row.getPayloadJson(), new TypeReference<Map<String, Object>>() { });
+        } catch (Exception e) {
+            log.warn("chain_payload_unreadable id={} err={}", row.getId(), crop(e.getMessage()));
+            return Map.of();
+        }
+    }
+
+    /** 规范化后再比：键序、空格差异不该被当成「链上原文与本地快照不一致」 */
+    private String canonicalJson(String json) {
+        if (!StringUtils.hasText(json)) return "";
+        try {
+            return CanonicalStringBuilder.build(com.alibaba.fastjson2.JSON.parse(json));
+        } catch (Exception e) {
+            return json;
+        }
+    }
+
+    @PreDestroy
+    void shutdownExecutor() {
+        migrateExecutor.shutdownNow();
+    }
+
+    /** 已存证但没有报文快照的条数：只能证明「哈希没变」，拿不出原文给人核验 */
+    private long payloadMissingCount() {
+        return mapper.selectCount(Wrappers.<BlockchainRecord>lambdaQuery()
+                .eq(BlockchainRecord::getStatus, 1)
+                .and(w -> w.isNull(BlockchainRecord::getPayloadJson).or().eq(BlockchainRecord::getPayloadJson, "")));
     }
 
     private static final class ChainStoreException extends RuntimeException {

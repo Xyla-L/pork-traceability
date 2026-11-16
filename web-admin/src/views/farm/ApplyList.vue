@@ -17,7 +17,7 @@
 
     <!-- 分页：total 是「组数」不是「头数」——列表按批聚合，一头一行会让翻页错位 -->
     <div v-if="pagination.total > 0" class="pagination-wrapper">
-      <span class="group-total">共 {{ pagination.total }} 组（按批聚合，点行首箭头看逐头）</span>
+      <span class="group-total">共 {{ pagination.total }} 组</span>
       <el-pagination
         v-model:current-page="pagination.pageNum"
         v-model:page-size="pagination.pageSize"
@@ -263,31 +263,22 @@ const handleBatchApprove = (group) => {
 }
 
 const handleBatchSubmit = async ({ approvalStatus, remark }) => {
-  const pending = (batchGroup.value.members || []).filter((m) => m.approvalStatus === 0)
-  if (pending.length === 0) return
+  const members = batchGroup.value.members || []
+  if (members.length === 0) return
 
+  // 单据级审批：一张申报单只有一条审批接口调用，整单通过或整单驳回。
+  // 通过后后端把单据里的每一头都推进为「已出栏」，不需要前端逐头调。
+  const applyId = members[0].id
   const approved = approvalStatus === 1
-  const comment = remark || (approved ? '按批通过（同一批同日申报）' : '')
-  let ok = 0
-  const failed = []
-  for (const m of pending) {
-    try {
-      await request.put(`/breeding/applies/${m.id}/approve`, { approved, comment })
-      ok++
-    } catch {
-      failed.push(m.earTagNo || `#${m.id}`)
-    }
+  const comment = remark || (approved ? '按单通过' : '')
+  try {
+    await request.put(`/breeding/applies/${applyId}/approve`, { approved, comment })
+    ElMessage.success(`已${approved ? '通过' : '驳回'} ${batchGroup.value.headCount || members.length} 头`)
+    batchDialogVisible.value = false
+  } catch {
+    // 失败时弹窗保持打开，错误提示由 request 拦截器统一弹出
+    return
   }
-
-  if (failed.length === 0) {
-    ElMessage.success(`已${approved ? '通过' : '驳回'} ${ok} 头`)
-  } else {
-    ElMessage.warning(
-      `${approved ? '通过' : '驳回'} ${ok} 头，失败 ${failed.length} 头：${failed.slice(0, 3).join('、')}`
-        + `${failed.length > 3 ? ' 等' : ''}`,
-    )
-  }
-  batchDialogVisible.value = false
   fetchList()
   fetchCounts()
 }

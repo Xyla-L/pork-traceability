@@ -15,6 +15,18 @@ public class QuarantineCertVO {
     @Schema(description = "生猪ID")
     private Long pigId;
 
+    @Schema(description = "养殖场ID")
+    private Long farmId;
+
+    @Schema(description = "证面覆盖头数（一证多头）")
+    private Integer pigCount;
+
+    @Schema(description = "覆盖的生猪ID列表")
+    private java.util.List<Long> pigIds;
+
+    @Schema(description = "覆盖的耳标号列表（单证多头时给页面直接展示）")
+    private java.util.List<String> earTagNos;
+
     @Schema(description = "检疫证明编号")
     private String certNo;
 

@@ -2,6 +2,7 @@ package com.pork.trace.service.impl;
 
 import com.pork.core.enums.ErrorCode;
 import com.pork.core.exception.BusinessException;
+import com.pork.core.util.TraceQrCode;
 import com.pork.trace.client.TraceRemoteClient;
 import com.pork.trace.service.TraceQueryService;
 import com.pork.trace.vo.SafeBuyVO;
@@ -22,7 +23,15 @@ public class TraceQueryServiceImpl implements TraceQueryService {
     @Override
     public Map<String, Object> search(String keyword) {
         if (keyword == null || keyword.isBlank()) throw new BusinessException(ErrorCode.PARAM_MISSING, "检索关键词不能为空");
-        return keyword.toUpperCase(Locale.ROOT).startsWith("QR-") ? scan(keyword) : full(keyword);
+        String trimmed = keyword.trim();
+        if (trimmed.toUpperCase(Locale.ROOT).startsWith("QR-")) {
+            // 以 QR- 开头却不像本系统的码：直接说「扫错了」，
+            // 别退化成按批次号搜（那样只会得到「批次不存在」，同样误导）
+            String code = TraceQrCode.extract(trimmed);
+            if (code == null) throw new BusinessException(ErrorCode.PARAM_ERROR, TraceQrCode.NOT_TRACE_CODE);
+            return scan(code);
+        }
+        return full(trimmed);
     }
 
     @Override
@@ -137,11 +146,15 @@ public class TraceQueryServiceImpl implements TraceQueryService {
 
     @Override
     public Map<String, Object> verify(String qrCode) {
-        Map<String, Object> product = map(clients.productByQr(qrCode));
+        // 验真同样不能对「付款码」放行：否则会回一句「存在未确认或缺失的存证记录」，
+        // 听起来像这盒肉有问题，其实只是扫错了码。
+        String code = TraceQrCode.extract(qrCode);
+        if (code == null) throw new BusinessException(ErrorCode.PARAM_ERROR, TraceQrCode.NOT_TRACE_CODE);
+        Map<String, Object> product = map(clients.productByQr(code));
         Map<String, Object> split = map(clients.split(number(product.get("splitBatchId")).longValue()));
         String batchNo = Objects.toString(split.get("batchNo"), "");
         List<Object> details = new ArrayList<>();
-        addRecords(details, clients.chainStatus(qrCode));
+        addRecords(details, clients.chainStatus(code));
         addRecords(details, clients.chainStatus(batchNo));
         List<Map<String, Object>> comparisons = details.stream().map(this::verifyRecord).toList();
         boolean verified = !comparisons.isEmpty() && comparisons.stream()
@@ -166,7 +179,11 @@ public class TraceQueryServiceImpl implements TraceQueryService {
 
     @Override
     public Map<String, Object> scan(String qrCode) {
-        Map<String, Object> product = map(clients.productByQr(qrCode));
+        // 进来第一件事：确认这是本系统的溯源码。
+        // 拦在这里，下游（sales / distribution）就不用为「付款码」这种脏输入各写一套兜底。
+        String code = TraceQrCode.extract(qrCode);
+        if (code == null) throw new BusinessException(ErrorCode.PARAM_ERROR, TraceQrCode.NOT_TRACE_CODE);
+        Map<String, Object> product = map(clients.productByQr(code));
         Map<String, Object> split = map(clients.split(number(product.get("splitBatchId")).longValue()));
         String batchNo = Objects.toString(split.get("batchNo"), "");
         Map<String, Object> productView = new LinkedHashMap<>(product);
@@ -178,7 +195,7 @@ public class TraceQueryServiceImpl implements TraceQueryService {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("product", productView);
         result.put("traceChain", full(batchNo));
-        result.put("verification", verify(qrCode));
+        result.put("verification", verify(code));
         return result;
     }
 

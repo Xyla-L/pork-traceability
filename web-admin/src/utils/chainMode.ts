@@ -9,6 +9,15 @@ export interface ChainMode {
   summary: string
   explorerUrl?: string | null
   contractAddress?: string | null
+  chainId?: number | null
+  /**
+   * 开发链：单节点、无公开浏览器。能写能读能自证，但第三方没法独立核验，
+   * 页面不能只挂「区块链存证」四个字就完事。
+   */
+  developerChain?: boolean
+  chainWarning?: string | null
+  /** 上链前是否做了个人信息脱敏 */
+  maskPhi?: boolean
 }
 
 /**
@@ -41,6 +50,10 @@ export function loadChainMode(force = false): Promise<ChainMode> {
         summary: data.summary || FALLBACK.summary,
         explorerUrl: data.explorerUrl || null,
         contractAddress: data.contractAddress || null,
+        chainId: data.chainId ?? null,
+        developerChain: !!data.developerChain,
+        chainWarning: data.chainWarning || null,
+        maskPhi: data.maskPhi !== false,
       }
       loaded = true
       return chainMode.value

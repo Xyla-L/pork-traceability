@@ -6,6 +6,7 @@ import com.pork.core.exception.BusinessException;
 import com.pork.core.query.PageQuery;
 import com.pork.core.result.PageResult;
 import com.pork.core.result.Result;
+import com.pork.core.util.TraceQrCode;
 import com.pork.sales.dto.SalesRequests;
 import com.pork.sales.entity.ExpireWarning;
 import com.pork.sales.entity.RecallOrder;
@@ -126,16 +127,26 @@ public class SalesController {
 
     @GetMapping("/internal/products/qr/{qrCode}")
     public Result<RetailSale> productByQr(@PathVariable String qrCode) {
-        RetailSale row = saleMapper.selectOne(Wrappers.<RetailSale>lambdaQuery().eq(RetailSale::getProductQrCode, qrCode));
+        // 第一道闸：扫进来的到底是不是本系统的码。
+        // 付款码、公众号码、网址码都到不了查库这一步 —— 消费者的扫码页只会看到
+        // 「这不是本系统的猪肉溯源码」，而不是一句像「查无此货」的「产品不存在」。
+        String code = TraceQrCode.extract(qrCode);
+        if (code == null) {
+            throw new BusinessException(ErrorCode.PARAM_ERROR, TraceQrCode.NOT_TRACE_CODE);
+        }
+        RetailSale row = saleMapper.selectOne(Wrappers.<RetailSale>lambdaQuery()
+                .eq(RetailSale::getProductQrCode, code));
         if (row == null) {
             // 有效商品里查不到时，再看是不是「曾经存在但已作废」——扫码场景必须区分这两件事
-            RetailSale voided = saleMapper.selectVoidedByQr(qrCode);
+            RetailSale voided = saleMapper.selectVoidedByQr(code);
             if (voided != null) {
                 throw new BusinessException(ErrorCode.RECORD_NOT_FOUND,
-                        "该商品已被作废，不再作为有效销售记录。作废理由：" + voided.getVoidReason()
+                        "该商品已被作废，不能销售、也不再提供溯源信息。作废理由：" + voided.getVoidReason()
                                 + "（操作人 " + voided.getVoidOperator() + "）");
             }
-            throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, "二维码对应产品不存在");
+            // 格式对但库里没有：不是「假货」，是「这个码在本平台没有登记」
+            throw new BusinessException(ErrorCode.RECORD_NOT_FOUND,
+                    "未查询到该溯源码对应的产品：可能是尚未入库，或不是本平台印制并激活的码");
         }
         return Result.success(row);
     }

@@ -18,6 +18,18 @@ public class SlaughterApplyVO {
     @Schema(description = "生猪ID")
     private Long pigId;
 
+    @Schema(description = "养殖场ID")
+    private Long farmId;
+
+    @Schema(description = "申报头数（一单多头）")
+    private Integer pigCount;
+
+    @Schema(description = "申报总重（逐头体重之和）")
+    private BigDecimal totalWeightKg;
+
+    @Schema(description = "覆盖的耳标号列表")
+    private java.util.List<String> earTagNos;
+
     @Schema(description = "耳标号")
     private String earTagNo;
 

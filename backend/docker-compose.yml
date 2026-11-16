@@ -274,6 +274,10 @@ services:
       EVM_PRIVATE_KEY: ${EVM_PRIVATE_KEY:-0x4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d}
       # 合约地址固定：ganache 数据已落卷（ganache-data），重启后合约仍在；换链/清卷时才需要改
       EVM_CONTRACT_ADDRESS: ${EVM_CONTRACT_ADDRESS:-0xe78a0f7e598cc8b0bb87894b0f60dd2a88d6a8ab}
+      # 区块浏览器（如 https://sepolia.etherscan.io）。留空=页面不给「链上查看」链接，并如实标注「开发链」
+      EVM_EXPLORER_URL: ${EVM_EXPLORER_URL:-}
+      # 上链前脱敏：默认开。关掉等于把人名/联系方式明文写进不可篡改的链，合规上要自己兜
+      BLOCKCHAIN_MASK_PHI: ${BLOCKCHAIN_MASK_PHI:-true}
       # 存证对账出问题时推管理员收件箱（trace 通知中心内部接口）
       SERVICES_TRACE_URL: http://trace-service:8086
       # 本地 ganache 即时出块，回执 300ms 就够；默认 2s 会让批量补写历史存证慢一个数量级

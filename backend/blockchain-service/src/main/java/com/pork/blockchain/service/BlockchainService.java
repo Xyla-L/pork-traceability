@@ -41,5 +41,16 @@ public interface BlockchainService {
      */
     Map<String, Object> migrateLegacy(int limit, boolean dryRun);
 
+    /**
+     * 后台批量补写历史存证：立即返回，不占住 HTTP 请求（同步跑 200 条要一分钟以上，网关先超时）。
+     * <p>
+     * 单飞：同一时刻只允许一个迁移任务（同步入口与后台入口共用一把锁），
+     * 已有任务在跑时返回 started=false，不会排队堆积。
+     */
+    Map<String, Object> startMigrate(int limit);
+
+    /** 迁移进度：running + 上一轮结果 + 剩余待迁条数 */
+    Map<String, Object> migrateStatus();
+
     void retryPending();
 }

@@ -28,6 +28,13 @@
       </el-tag>
       <el-tag type="info" size="large">存证记录: {{ stats.totalTx }}</el-tag>
       <el-tag type="info" size="large">今日新增: {{ stats.todayTx }}</el-tag>
+      <el-tooltip v-if="chainMode.developerChain" :content="chainMode.chainWarning || '当前接入的是开发链'" placement="bottom">
+        <el-tag type="warning" size="large">开发链（单节点）</el-tag>
+      </el-tooltip>
+      <el-tooltip v-if="chainMode.onChain && chainMode.maskPhi" placement="bottom"
+                  content="写入链上前已对人名/手机号/证件号做去标识化；真实身份仍在平台库内按业务键可查">
+        <el-tag type="info" size="large">上链前已脱敏</el-tag>
+      </el-tooltip>
       <span class="stats-hint">{{ chainMode.onChain ? '区块高度' : '账本序号' }}: #{{ stats.latestBlock }}</span>
     </div>
 
@@ -54,6 +61,10 @@
         </span>
         <span :title="'历史遗留：账本有块但存证表无对应记录，无法验真，也不应删除'">
           历史孤儿块 {{ health.orphanLedger ?? '-' }}（近24h +{{ health.orphanLedgerRecent ?? 0 }}）
+        </span>
+        <span v-if="(health.payloadMissing ?? 0) > 0"
+              :title="'这些存证已上链，但当初没留存报文快照：只能核对哈希，拿不出原文给人重算'">
+          缺报文快照 {{ health.payloadMissing }}
         </span>
       </div>
       <div class="health-issues" v-if="health.issues?.length">
@@ -104,6 +115,11 @@
           </el-tag>
         </template>
       </el-table-column>
+      <el-table-column label="操作" width="100" align="center" fixed="right">
+        <template #default="{ row }">
+          <el-button link type="primary" size="small" @click="openEvidence(row)">看原文</el-button>
+        </template>
+      </el-table-column>
     </el-table>
 
     <div class="pagination-wrapper">
@@ -111,6 +127,31 @@
         :page-sizes="[10, 20, 50, 100]" :total="pagination.total" layout="total, sizes, prev, pager, next, jumper"
         background @size-change="handleSizeChange" @current-change="handlePageChange" />
     </div>
+
+    <!-- 存证原文：审计员自己算指纹、跟业务页面逐字对；顺带给出「链上原文 vs 本地快照」的结论 -->
+    <el-dialog v-model="evidenceVisible" title="存证原文与验真" width="720px" destroy-on-close>
+      <div v-if="evidenceLoading" v-loading="true" style="height: 140px" />
+      <template v-else>
+        <div class="ev-meta">
+          <span>业务键：{{ evidence.bizKey || '-' }}</span>
+          <span>载体：{{ evidence.onChain ? '区块链' : '平台本地账本' }}</span>
+          <span>链上哈希：{{ shortHash(evidence.onChainHash) }}</span>
+        </div>
+        <div class="ev-tags">
+          <el-tag v-if="evidence.matched" type="success" size="small">指纹与链上一致</el-tag>
+          <el-tag v-else type="danger" size="small">指纹与链上不一致</el-tag>
+          <el-tag v-if="evidence.payloadAvailable" type="info" size="small">本地留有原文快照</el-tag>
+          <el-tag v-else type="info" size="small">历史记录未留原文</el-tag>
+          <el-tag v-if="evidence.payloadOnChainMatched === true" type="success" size="small">链上原文与快照一致</el-tag>
+          <el-tag v-else-if="evidence.payloadOnChainMatched === false" type="danger" size="small">链上原文与快照不一致</el-tag>
+        </div>
+        <pre v-if="evidence.payload" class="ev-payload">{{ prettyPayload(evidence.payload) }}</pre>
+        <div v-else class="ev-empty">这条存证写于加列之前，当初没有留报文快照：只能核对哈希，拿不出原文重算。</div>
+      </template>
+      <template #footer>
+        <el-button @click="evidenceVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -135,6 +176,31 @@ const health = ref<any>({ ok: false, issues: [] })
 const pagination = reactive({ pageNum: 1, pageSize: 10, total: 0 })
 
 const stats = reactive({ totalTx: 0, todayTx: 0, pendingTx: 0, latestBlock: 0 })
+
+// 原文弹窗：走验真接口取这条存证的上链报文（列表接口不返回报文，避免一页几十 KB）
+const evidenceVisible = ref(false)
+const evidenceLoading = ref(false)
+const evidence = ref<any>({})
+
+async function openEvidence(row: any) {
+  evidenceVisible.value = true
+  evidenceLoading.value = true
+  evidence.value = {}
+  try {
+    const res: any = await blockchainApi.verifyIntegrity(row.bizType, row.bizId)
+    evidence.value = res?.data ?? res ?? {}
+  } catch {
+    evidence.value = { bizKey: row.bizKey, onChain: false }
+  } finally {
+    evidenceLoading.value = false
+  }
+}
+
+const shortHash = (hash?: string) => (hash ? `${hash.slice(0, 16)}…` : '-')
+
+function prettyPayload(json: string) {
+  try { return JSON.stringify(JSON.parse(json), null, 2) } catch { return json }
+}
 
 // 类型字典统一在 @/utils/chainBizType，页面不再各自维护一份
 const operTypeLabel = chainBizTypeLabel
@@ -212,5 +278,10 @@ onMounted(() => { loadChainMode(); fetchList(); fetchStats(); fetchHealth() })
   .health-note { margin-top: 6px; font-size: 12px; color: #909399; }
 }
 .hash-cell { font-family: 'Courier New', monospace; font-size: 12px; color: #909399; background: #f5f7fa; padding: 1px 6px; border-radius: 3px; }
+.ev-meta { display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; color: #606266; margin-bottom: 8px; }
+.ev-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.ev-payload { max-height: 320px; overflow: auto; margin: 0; padding: 12px; background: #f5f7fa; border-radius: 4px;
+  font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.6; color: #303133; white-space: pre-wrap; word-break: break-all; }
+.ev-empty { padding: 12px; background: #fafafa; border-radius: 4px; font-size: 12px; color: #909399; line-height: 1.7; }
 .pagination-wrapper { display: flex; justify-content: center; padding-top: 16px; margin-top: 16px; border-top: 1px solid #ebeef5; }
 </style>

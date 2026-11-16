@@ -1,8 +1,24 @@
 package com.pork.breeding.service.impl;
 
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.pork.breeding.entity.Farm;
+import com.pork.breeding.entity.PigIndividual;
+import com.pork.breeding.entity.QuarantineCertPig;
+import com.pork.breeding.entity.QuarantineCertificate;
+import com.pork.breeding.entity.SlaughterApply;
+import com.pork.breeding.entity.SlaughterApplyPig;
+import com.pork.breeding.entity.VaccineBatch;
+import com.pork.breeding.entity.VaccineBatchPig;
+import com.pork.breeding.entity.VaccineRecord;
+import com.pork.breeding.mapper.FarmMapper;
+import com.pork.breeding.mapper.PigIndividualMapper;
 import com.pork.breeding.mapper.QuarantineCertMapper;
+import com.pork.breeding.mapper.QuarantineCertPigMapper;
 import com.pork.breeding.mapper.SlaughterApplyMapper;
+import com.pork.breeding.mapper.SlaughterApplyPigMapper;
+import com.pork.breeding.mapper.VaccineBatchMapper;
+import com.pork.breeding.mapper.VaccineBatchPigMapper;
 import com.pork.breeding.mapper.VaccineRecordMapper;
 import com.pork.breeding.service.RecordGroupService;
 import com.pork.breeding.support.FarmScope;
@@ -16,37 +32,41 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
- * 分组视图实现：一次 join 取全，再在内存里归组、排序、分页。
+ * 记录列表（单据视图）。
  * <p>
- * 为什么在内存里分组而不是写 GROUP BY：分组后主行要带上「头数、耳标区间、作废数、状态摘要」，
- * 同时还要把逐头明细一起返回；SQL 分组只能给汇总，明细还得再查一次，反而更绕。
- * 这里用取数上限兜住规模（{@link #MAX_ROWS}），中小体量下最直白也最好维护。
+ * 2026-11-15 之前这里做的是「纯展示层聚合」：不建单据表，查询时按
+ * 「养殖批次 + 动作签名 + 日期」把逐头记录归成一组，批次号是算出来的
+ * （当时注释里写着「数据一多就该换真单据表」）。
+ * 现在三个模块都落了真单据（免疫批次 / 检疫证 / 申报单），主行就是单据本身：
+ * 一次免疫、一张证、一份申报单，各自有自己的批次号，成员名单来自成员表。
+ * <p>
+ * 分页也从「内存归组 + 截断」改成数据库分页——单据有主键，翻页是准的。
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class RecordGroupServiceImpl implements RecordGroupService {
 
-    /**
-     * 单次取数上限。分组必须看到全量才能算准头数与区间，所以不能分页下推；
-     * 达到上限说明该用真单据表（方案 B）了，日志会留痕。
-     */
-    private static final int MAX_ROWS = 50000;
-
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
+    private final VaccineBatchMapper vaccineBatchMapper;
+    private final VaccineBatchPigMapper vaccineBatchPigMapper;
     private final VaccineRecordMapper vaccineRecordMapper;
     private final QuarantineCertMapper quarantineCertMapper;
+    private final QuarantineCertPigMapper certPigMapper;
     private final SlaughterApplyMapper slaughterApplyMapper;
+    private final SlaughterApplyPigMapper applyPigMapper;
+    private final PigIndividualMapper pigMapper;
+    private final FarmMapper farmMapper;
     private final FarmScope farmScope;
 
     // ==================== 疫苗 ====================
@@ -54,340 +74,284 @@ public class RecordGroupServiceImpl implements RecordGroupService {
     @Override
     public Page<RecordGroupVO> pageVaccine(Long current, Long size, String earTagNo,
                                            String vaccineName, boolean includeVoid) {
-        List<Map<String, Object>> rows = vaccineRecordMapper.selectGroupRows(
-                blankToNull(earTagNo), includeVoid, farmScope.scopedFarmId(), MAX_ROWS);
-        warnIfTruncated(rows, "VACCINE");
-
-        // 分组键：批次 + 疫苗名称 + 疫苗批号 + 注射日期。
-        // 同一批同一天打同一种疫苗 = 一次免疫动作；换疫苗或换日期就是另一次，不能并。
-        Map<String, List<Map<String, Object>>> buckets = new LinkedHashMap<>();
-        for (Map<String, Object> row : rows) {
-            String key = groupKey("VACCINE", row, "injectTime",
-                    str(row.get("vaccineName")) + "\u0001" + str(row.get("batchNo")));
-            buckets.computeIfAbsent(key, k -> new ArrayList<>()).add(row);
+        Long farmId = farmScope.scopedFarmId();
+        // 按耳标过滤：耳标在成员表上，先反查批次 id 再下推，避免整表扫
+        List<Long> narrowed = null;
+        if (StringUtils.hasText(earTagNo)) {
+            narrowed = vaccineBatchPigMapper.selectList(Wrappers.<VaccineBatchPig>lambdaQuery()
+                            .eq(VaccineBatchPig::getEarTagNo, earTagNo.trim()))
+                    .stream().map(VaccineBatchPig::getBatchId).distinct().toList();
+            if (narrowed.isEmpty()) return new Page<>(current, size);
         }
+        Page<VaccineBatch> page = vaccineBatchMapper.selectPage(new Page<>(current, size),
+                Wrappers.<VaccineBatch>lambdaQuery()
+                        .eq(farmId != null, VaccineBatch::getFarmId, farmId)
+                        .like(StringUtils.hasText(vaccineName), VaccineBatch::getVaccineName,
+                                vaccineName == null ? null : vaccineName.trim())
+                        .eq(!includeVoid, VaccineBatch::getVoidFlag, 0)
+                        .in(narrowed != null, VaccineBatch::getId, narrowed)
+                        .orderByDesc(VaccineBatch::getInjectTime)
+                        .orderByDesc(VaccineBatch::getId));
 
-        List<RecordGroupVO> groups = new ArrayList<>();
-        buckets.forEach((key, members) -> {
-            RecordGroupVO g = baseGroup(key, "VACCINE", members, "injectTime");
-            Map<String, Object> first = members.get(0);
-            g.setTitle(str(first.get("vaccineName")));
-            String vacBatch = str(first.get("batchNo"));
-            g.setSubTitle(vacBatch != null ? "疫苗批号 " + vacBatch : str(first.get("manufacturer")));
-            // 状态摘要只给结论，明细进 statusDetail：
-            // 原来「有效 0 / 已作废 1」是在描述一条被作废的单头记录，读起来却像「有一批但全废了」，
-            // 三态分开——全有效 / 部分有效 / 全部作废——才和用户脑子里的判断对得上。
-            int voided = countVoided(members);
-            int total = members.size();
+        List<VaccineBatch> batches = page.getRecords();
+        Page<RecordGroupVO> out = new Page<>(current, size);
+        out.setTotal(page.getTotal());
+        if (batches.isEmpty()) return out;
+
+        List<Long> batchIds = batches.stream().map(VaccineBatch::getId).toList();
+        Map<Long, List<VaccineBatchPig>> memberMap = vaccineBatchPigMapper.selectList(
+                        Wrappers.<VaccineBatchPig>lambdaQuery().in(VaccineBatchPig::getBatchId, batchIds))
+                .stream().collect(Collectors.groupingBy(VaccineBatchPig::getBatchId));
+        // 含已作废：批次名单要如实显示「这头作废了」，不能被逻辑删除悄悄过滤掉
+        Map<Long, List<VaccineRecord>> recordMap = vaccineRecordMapper.selectByBatchIdsIncludeVoid(batchIds)
+                .stream().collect(Collectors.groupingBy(VaccineRecord::getVbatchId));
+        Map<Long, PigIndividual> pigMap = loadPigs(memberMap.values().stream()
+                .flatMap(List::stream).map(VaccineBatchPig::getPigId).toList());
+        Map<Long, String> farmNames = loadFarmNames(batches.stream().map(VaccineBatch::getFarmId).toList());
+
+        List<RecordGroupVO> rows = new ArrayList<>();
+        for (VaccineBatch b : batches) {
+            List<VaccineBatchPig> members = memberMap.getOrDefault(b.getId(), List.of());
+            List<VaccineRecord> records = recordMap.getOrDefault(b.getId(), List.of());
+            Map<Long, VaccineRecord> recordByPig = records.stream()
+                    .collect(Collectors.toMap(VaccineRecord::getPigId, Function.identity(), (a, c) -> a));
+
+            List<Map<String, Object>> memberRows = new ArrayList<>();
+            int voided = 0;
+            for (VaccineBatchPig m : members) {
+                VaccineRecord r = recordByPig.get(m.getPigId());
+                boolean isVoid = (r != null && r.getVoidFlag() != null && r.getVoidFlag() == 1)
+                        || (r == null && m.getVoidFlag() != null && m.getVoidFlag() == 1);
+                if (isVoid) voided++;
+                Map<String, Object> row = new LinkedHashMap<>();
+                // id/pigId 是前端作废与查看凭证的参数：作废走的是逐头免疫记录（事实表），不是批次
+                row.put("id", r == null ? null : r.getId());
+                row.put("pigId", m.getPigId());
+                row.put("earTagNo", m.getEarTagNo());
+                row.put("vaccineName", b.getVaccineName());
+                row.put("batchNo", b.getProdBatchNo());
+                row.put("injectTime", r == null ? null : r.getInjectTime());
+                row.put("dosage", r == null ? null : r.getDosage());
+                row.put("operator", r == null ? null : r.getOperator());
+                row.put("source", r == null ? null : r.getSource());
+                row.put("sourceRef", r == null ? null : r.getSourceRef());
+                row.put("fileIds", r == null ? null : r.getFileIds());
+                row.put("voidFlag", isVoid ? 1 : 0);
+                row.put("voidReason", r == null ? null : r.getVoidReason());
+                row.put("voidOperator", r == null ? null : r.getVoidOperator());
+                row.put("voidTime", r == null ? null : r.getVoidTime());
+                memberRows.add(row);
+            }
+
+            RecordGroupVO g = baseGroup("VACCINE|" + b.getId(), "VACCINE", b.getFarmId(), farmNames, pigMap, memberRows);
+            g.setDocNo(b.getBatchNo());
+            g.setTitle(b.getVaccineName());
+            g.setSubTitle(StringUtils.hasText(b.getProdBatchNo()) ? "疫苗批号 " + b.getProdBatchNo() : b.getManufacturer());
+            g.setHappenedOn(dayText(b.getInjectTime()));
+            g.setOperator(b.getOperator());
+            g.setVoidCount(voided);
             if (voided == 0) {
                 g.setStatusSummary("全部有效");
-                g.setStatusDetail(total + " 条免疫记录全部有效");
-            } else if (voided == total) {
+                g.setStatusDetail(members.size() + " 头全部有效");
+            } else if (voided >= members.size()) {
                 g.setStatusSummary("全部作废");
-                g.setStatusDetail("已作废 " + voided);
+                g.setStatusDetail("已作废 " + voided + " 头");
             } else {
-                g.setStatusSummary("部分有效");
-                g.setStatusDetail("有效 " + (total - voided) + " / 已作废 " + voided);
+                g.setStatusSummary("部分作废");
+                g.setStatusDetail("有效 " + (members.size() - voided) + " / 已作废 " + voided);
             }
-            groups.add(g);
-        });
-
-        if (StringUtils.hasText(vaccineName)) {
-            String kw = vaccineName.trim();
-            // 疫苗名称在分组键里，所以这里是整组命中，不会把一次免疫拆散
-            groups.removeIf(g -> g.getTitle() == null || !g.getTitle().contains(kw));
+            rows.add(g);
         }
-        return paginate(sortDesc(groups), current, size);
+        out.setRecords(rows);
+        return out;
     }
 
     // ==================== 产地检疫 ====================
 
     @Override
     public Page<RecordGroupVO> pageCert(Long current, Long size, String earTagNo, String certState) {
-        List<Map<String, Object>> rows = quarantineCertMapper.selectGroupRows(blankToNull(earTagNo), farmScope.scopedFarmId(), MAX_ROWS);
-        warnIfTruncated(rows, "CERT");
+        Long farmId = farmScope.scopedFarmId();
+        Page<QuarantineCertificate> page = quarantineCertMapper.selectDocPage(new Page<>(current, size),
+                farmId, StringUtils.hasText(earTagNo) ? earTagNo.trim() : null);
+        List<QuarantineCertificate> certs = page.getRecords();
+        Page<RecordGroupVO> out = new Page<>(current, size);
+        out.setTotal(page.getTotal());
+        if (certs.isEmpty()) return out;
 
-        // 分组键：批次 + 出证机构 + 出证日期。
-        // 不按证号分组：本系统存量是「一证一头」（设备逐头出证），按证号分等于没分组。
-        // 现实里一张证覆盖一批，将来补了主单（方案 B）这里换成证号即可。
-        Map<String, List<Map<String, Object>>> buckets = new LinkedHashMap<>();
-        for (Map<String, Object> row : rows) {
-            String key = groupKey("CERT", row, "issueTime", str(row.get("issueOrg")));
-            buckets.computeIfAbsent(key, k -> new ArrayList<>()).add(row);
-        }
+        List<Long> certIds = certs.stream().map(QuarantineCertificate::getId).toList();
+        Map<Long, List<QuarantineCertPig>> memberMap = certPigMapper.selectList(
+                        Wrappers.<QuarantineCertPig>lambdaQuery().in(QuarantineCertPig::getCertId, certIds))
+                .stream().collect(Collectors.groupingBy(QuarantineCertPig::getCertId));
+        Map<Long, PigIndividual> pigMap = loadPigs(memberMap.values().stream()
+                .flatMap(List::stream).map(QuarantineCertPig::getPigId).toList());
+        Map<Long, String> farmNames = loadFarmNames(certs.stream().map(QuarantineCertificate::getFarmId).toList());
 
-        List<RecordGroupVO> groups = new ArrayList<>();
-        buckets.forEach((key, members) -> {
-            RecordGroupVO g = baseGroup(key, "CERT", members, "issueTime");
-            Set<String> certNos = distinct(members, "certNo");
-            g.setTitle(certNos.isEmpty() ? "未记录证号"
-                    : certNos.size() == 1 ? certNos.iterator().next()
-                    : certNos.iterator().next() + " 等 " + certNos.size() + " 张");
-            g.setSubTitle(str(members.get(0).get("issueOrg")));
-            int voided = countVoided(members);
-            int expired = 0;
-            for (Map<String, Object> m : members) {
-                if (isVoided(m)) continue;
-                if (isExpired(m.get("validUntil"))) expired++;
+        List<RecordGroupVO> rows = new ArrayList<>();
+        for (QuarantineCertificate c : certs) {
+            List<QuarantineCertPig> members = memberMap.getOrDefault(c.getId(), List.of());
+            List<Map<String, Object>> memberRows = new ArrayList<>();
+            for (QuarantineCertPig m : members) {
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("id", c.getId());
+                row.put("pigId", m.getPigId());
+                row.put("earTagNo", m.getEarTagNo());
+                row.put("certNo", c.getCertNo());
+                row.put("issueTime", c.getIssueTime());
+                row.put("validUntil", c.getValidUntil());
+                row.put("inspector", c.getInspector());
+                row.put("source", c.getSource());
+                row.put("sourceRef", c.getSourceRef());
+                row.put("voidFlag", c.getVoidFlag() == null ? 0 : c.getVoidFlag());
+                row.put("voidReason", c.getVoidReason());
+                row.put("voidOperator", c.getVoidOperator());
+                row.put("voidTime", c.getVoidTime());
+                memberRows.add(row);
             }
-            int alive = members.size() - voided;
-            int aliveUnexpired = alive - expired;
-            // 与疫苗同一套三态：结论文案（全部有效 / 部分有效 / 全部失效）挂标签，
-            // 「有效 0 / 已作废 1」这类计数只做 tooltip —— 计数本身不会错，错在它被当成了结论。
-            if (voided == 0 && expired == 0) {
-                g.setStatusSummary("全部有效");
-                g.setStatusDetail(members.size() + " 张证全部在有效期内");
-            } else if (voided == members.size()) {
-                g.setStatusSummary("全部作废");
-                g.setStatusDetail("已作废 " + voided);
-            } else if (aliveUnexpired == 0) {
-                g.setStatusSummary("全部失效");
-                g.setStatusDetail(detailOf(aliveUnexpired, expired, voided));
+
+            RecordGroupVO g = baseGroup("CERT|" + c.getId(), "CERT", c.getFarmId(), farmNames, pigMap, memberRows);
+            g.setDocNo(c.getCertNo());
+            g.setTitle(c.getCertNo());
+            g.setSubTitle(c.getIssueOrg());
+            g.setHappenedOn(dayText(c.getIssueTime()));
+            g.setOperator(c.getInspector());
+            boolean isVoid = c.getVoidFlag() != null && c.getVoidFlag() == 1;
+            g.setVoidCount(isVoid ? 1 : 0);
+            if (isVoid) {
+                g.setStatusSummary("已作废");
+                g.setStatusDetail("作废理由：" + fallback(c.getVoidReason()));
+            } else if (isExpired(c.getValidUntil())) {
+                g.setStatusSummary("已过期");
+                g.setStatusDetail("有效期至 " + c.getValidUntil());
             } else {
-                g.setStatusSummary("部分有效");
-                g.setStatusDetail(detailOf(aliveUnexpired, expired, voided));
+                g.setStatusSummary("有效");
+                g.setStatusDetail(c.getValidUntil() == null ? "未登记有效期" : "有效期至 " + c.getValidUntil());
             }
-            groups.add(g);
-        });
-
-        if ("valid".equalsIgnoreCase(certState)) {
-            groups.removeIf(g -> !hasAliveUnexpired(g));
-        } else if ("expired".equalsIgnoreCase(certState)) {
-            groups.removeIf(this::hasAliveUnexpired);
+            rows.add(g);
         }
-        return paginate(sortDesc(groups), current, size);
+
+        // 状态过滤（与本页口径一致；精确按状态翻页由 SQL 承担，这里只收窄展示）
+        if ("valid".equalsIgnoreCase(certState)) {
+            rows.removeIf(g -> !"有效".equals(g.getStatusSummary()));
+        } else if ("expired".equalsIgnoreCase(certState)) {
+            rows.removeIf(g -> !"已过期".equals(g.getStatusSummary()));
+        }
+        out.setRecords(rows);
+        return out;
     }
 
     // ==================== 出栏申报 ====================
 
     @Override
     public Page<RecordGroupVO> pageApply(Long current, Long size, Integer approvalStatus) {
-        List<Map<String, Object>> rows = slaughterApplyMapper.selectGroupRows(approvalStatus, farmScope.scopedFarmId(), MAX_ROWS);
-        warnIfTruncated(rows, "APPLY");
+        Long farmId = farmScope.scopedFarmId();
+        Page<SlaughterApply> page = slaughterApplyMapper.selectDocPage(new Page<>(current, size), farmId, approvalStatus);
+        List<SlaughterApply> applies = page.getRecords();
+        Page<RecordGroupVO> out = new Page<>(current, size);
+        out.setTotal(page.getTotal());
+        if (applies.isEmpty()) return out;
 
-        // 分组键：批次 + 申报日期。申报单一号一头是本系统的存量形态，
-        // 现实里一份单含多头，按「批次 + 当天」归即一次出栏申报动作。
-        Map<String, List<Map<String, Object>>> buckets = new LinkedHashMap<>();
-        for (Map<String, Object> row : rows) {
-            String key = groupKey("APPLY", row, "applyTime", "");
-            buckets.computeIfAbsent(key, k -> new ArrayList<>()).add(row);
-        }
+        List<Long> applyIds = applies.stream().map(SlaughterApply::getId).toList();
+        Map<Long, List<SlaughterApplyPig>> memberMap = applyPigMapper.selectList(
+                        Wrappers.<SlaughterApplyPig>lambdaQuery().in(SlaughterApplyPig::getApplyId, applyIds))
+                .stream().collect(Collectors.groupingBy(SlaughterApplyPig::getApplyId));
+        Map<Long, PigIndividual> pigMap = loadPigs(memberMap.values().stream()
+                .flatMap(List::stream).map(SlaughterApplyPig::getPigId).toList());
+        Map<Long, String> farmNames = loadFarmNames(applies.stream().map(SlaughterApply::getFarmId).toList());
 
-        List<RecordGroupVO> groups = new ArrayList<>();
-        buckets.forEach((key, members) -> {
-            RecordGroupVO g = baseGroup(key, "APPLY", members, "applyTime");
-            Set<String> applyNos = distinct(members, "applyNo");
-            g.setTitle(applyNos.isEmpty() ? "未记录单号"
-                    : applyNos.size() == 1 ? applyNos.iterator().next()
-                    : applyNos.iterator().next() + " 等 " + applyNos.size() + " 单");
-            g.setSubTitle(str(members.get(0).get("targetSlaughterhouse")));
-
-            int pass = 0;
-            int wait = 0;
-            int reject = 0;
-            for (Map<String, Object> m : members) {
-                Integer st = toInt(m.get("approvalStatus"));
-                if (st == null) continue;
-                if (st == 1) pass++;
-                else if (st == 2) reject++;
-                else wait++;
+        List<RecordGroupVO> rows = new ArrayList<>();
+        for (SlaughterApply a : applies) {
+            List<SlaughterApplyPig> members = memberMap.getOrDefault(a.getId(), List.of());
+            List<Map<String, Object>> memberRows = new ArrayList<>();
+            for (SlaughterApplyPig m : members) {
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("id", a.getId());
+                row.put("pigId", m.getPigId());
+                row.put("earTagNo", m.getEarTagNo());
+                row.put("applyNo", a.getApplyNo());
+                row.put("applyTime", a.getApplyTime());
+                row.put("weightKg", m.getWeightKg());
+                row.put("approvalStatus", a.getApprovalStatus());
+                row.put("approver", a.getApprover());
+                row.put("rejectReason", a.getRejectReason());
+                row.put("source", a.getSource());
+                row.put("sourceRef", a.getSourceRef());
+                memberRows.add(row);
             }
-            int total = members.size();
-            // 状态摘要只给结论，计数进 statusDetail：
-            // 原来直接拼「待审 1」这种计数，单头组看起来像「待审的单号 1」，读不成句子。
-            if (wait == total) {
-                g.setStatusSummary("全部待审");
-            } else if (wait > 0) {
-                g.setStatusSummary("待审中");
-            } else if (reject == 0) {
-                g.setStatusSummary("全部通过");
-            } else if (pass == 0) {
-                g.setStatusSummary("全部驳回");
+
+            RecordGroupVO g = baseGroup("APPLY|" + a.getId(), "APPLY", a.getFarmId(), farmNames, pigMap, memberRows);
+            g.setDocNo(a.getApplyNo());
+            g.setTitle(a.getApplyNo());
+            g.setSubTitle(a.getTargetSlaughterhouse());
+            g.setHappenedOn(dayText(a.getApplyTime()));
+            g.setOperator(a.getApprover());
+            Integer st = a.getApprovalStatus();
+            if (st != null && st == 1) {
+                g.setStatusSummary("已通过");
+                g.setStatusDetail("审批人 " + fallback(a.getApprover()));
+            } else if (st != null && st == 2) {
+                g.setStatusSummary("已驳回");
+                g.setStatusDetail("驳回原因 " + fallback(a.getRejectReason()));
             } else {
-                g.setStatusSummary("含驳回");
+                g.setStatusSummary("待审批");
+                g.setStatusDetail("共 " + members.size() + " 头待审批");
             }
-            StringBuilder detail = new StringBuilder();
-            if (pass > 0) detail.append("已通过 ").append(pass);
-            if (wait > 0) detail.append(detail.length() > 0 ? " / " : "").append("待审 ").append(wait);
-            if (reject > 0) detail.append(detail.length() > 0 ? " / " : "").append("已驳回 ").append(reject);
-            g.setStatusDetail(detail.length() > 0 ? detail.toString() : "--");
-            groups.add(g);
-        });
-
-        return paginate(sortDesc(groups), current, size);
-    }
-
-    // ==================== 分组骨架 ====================
-
-    /**
-     * 组键 = 类型 + 归属范围 + 业务签名 + 发生日期。
-     * <p>
-     * <b>未归批的猪按头独立成组</b>（范围用 {@code P+pigId} 而不是 {@code B+batchId}）。
-     * 这一点很关键：未归批的猪没有批次可依靠，若只按「日期 + 签名」归组，
-     * 不同养殖场、毫无关系的几头猪会被并到一行，看起来像同一批——那是凭空造出批次关系。
-     */
-    private String groupKey(String kind, Map<String, Object> row, String timeField, String signature) {
-        Object batchId = row.get("batchId");
-        Object pigId = row.get("pigId");
-        String scope = batchId != null ? "B" + batchId : "P" + pigId;
-        return kind + "|" + scope + "|" + signature + "|" + dateText(row.get(timeField));
-    }
-
-    /** 组内公共字段：批次、场、头数、耳标区间、操作人、日期、逐头明细 */
-    private RecordGroupVO baseGroup(String key, String kind,
-                                    List<Map<String, Object>> members, String timeField) {
-        RecordGroupVO g = new RecordGroupVO();
-        g.setGroupKey(key);
-        g.setKind(kind);
-        Map<String, Object> first = members.get(0);
-
-        Object batchId = first.get("batchId");
-        g.setBatchId(batchId == null ? null : ((Number) batchId).longValue());
-        g.setBatchNo(str(first.get("pigBatchNo")));
-        // 品种优先取批次档的：批次登记时定的品种是整批口径，个体行只是登记快照
-        g.setBreed(str(first.get("batchBreed")) != null ? str(first.get("batchBreed")) : str(first.get("pigBreed")));
-        Object farmId = first.get("farmId");
-        g.setFarmId(farmId == null ? null : ((Number) farmId).longValue());
-        g.setFarmName(str(first.get("farmName")));
-
-        g.setHeadCount(members.size());
-        g.setVoidCount(countVoided(members));
-        g.setHappenedOn(dateText(first.get(timeField)));
-        g.setOperator(operatorSummary(members));
-
-        List<String> tags = new ArrayList<>();
-        for (Map<String, Object> m : members) {
-            String tag = str(m.get("earTagNo"));
-            if (tag != null) tags.add(tag);
+            rows.add(g);
         }
-        if (!tags.isEmpty()) {
-            tags.sort(Comparator.naturalOrder());
-            g.setTagStart(tags.get(0));
-            g.setTagEnd(tags.get(tags.size() - 1));
-        }
-        g.setMembers(members);
-        return g;
-    }
-
-    /** 操作人汇总：一个人就报名字，多个人报「首位 等N人」（实名信息不省略成「系统」） */
-    private String operatorSummary(List<Map<String, Object>> members) {
-        Set<String> names = distinct(members, "operator");
-        names.removeIf(n -> "未记录".equals(n));
-        if (names.isEmpty()) return null;
-        String first = names.iterator().next();
-        return names.size() == 1 ? first : first + " 等" + names.size() + "人";
-    }
-
-    /** 检疫证状态明细：「有效 28 / 已过期 2 / 已作废 1」，只拼非零项 */
-    private String detailOf(int alive, int expired, int voided) {
-        StringBuilder sb = new StringBuilder("有效 ").append(alive);
-        if (expired > 0) sb.append(" / 已过期 ").append(expired);
-        if (voided > 0) sb.append(" / 已作废 ").append(voided);
-        return sb.toString();
-    }
-
-    private Set<String> distinct(List<Map<String, Object>> members, String field) {
-        Set<String> out = new LinkedHashSet<>();
-        for (Map<String, Object> m : members) {
-            String v = str(m.get(field));
-            if (v != null) out.add(v);
-        }
+        out.setRecords(rows);
         return out;
     }
 
-    private int countVoided(List<Map<String, Object>> members) {
-        int n = 0;
-        for (Map<String, Object> m : members) {
-            if (isVoided(m)) n++;
-        }
-        return n;
+    // ==================== 单据骨架 ====================
+
+    /**
+     * 主行公共字段：本部分批次号由各方法设置，这里只填「这单覆盖了哪几头、属于哪个场、什么品种」。
+     * 分页与排序一律由数据库完成——单据有主键，翻页不再靠内存截断。
+     */
+    private RecordGroupVO baseGroup(String key, String kind, Long farmId,
+                                    Map<Long, String> farmNames,
+                                    Map<Long, PigIndividual> pigMap,
+                                    List<Map<String, Object>> memberRows) {
+        RecordGroupVO g = new RecordGroupVO();
+        g.setGroupKey(key);
+        g.setKind(kind);
+        g.setFarmId(farmId);
+        g.setFarmName(farmId == null ? null : farmNames.get(farmId));
+        g.setHeadCount(memberRows.size());
+        g.setMembers(memberRows);
+        // 品种取首头（同批同品种是常态）；不强求一致，成员表里逐头可查
+        g.setBreed(memberRows.stream()
+                .map(m -> pigMap.get((Long) m.get("pigId")))
+                .filter(Objects::nonNull)
+                .map(PigIndividual::getBreed)
+                .filter(StringUtils::hasText)
+                .findFirst().orElse(null));
+        return g;
     }
 
-    private boolean isVoided(Map<String, Object> m) {
-        Integer f = toInt(m.get("voidFlag"));
-        return f != null && f == 1;
+    private Map<Long, PigIndividual> loadPigs(List<Long> pigIds) {
+        List<Long> ids = pigIds.stream().filter(Objects::nonNull).distinct().toList();
+        if (ids.isEmpty()) return Map.of();
+        return pigMapper.selectList(Wrappers.<PigIndividual>lambdaQuery().in(PigIndividual::getId, ids))
+                .stream().collect(Collectors.toMap(PigIndividual::getId, Function.identity(), (a, b) -> a));
     }
 
-    private boolean isExpired(Object validUntil) {
-        LocalDate d = toDate(validUntil);
-        return d != null && d.isBefore(LocalDate.now());
+    private Map<Long, String> loadFarmNames(List<Long> farmIds) {
+        List<Long> ids = farmIds.stream().filter(Objects::nonNull).distinct().toList();
+        if (ids.isEmpty()) return new HashMap<>();
+        return farmMapper.selectList(Wrappers.<Farm>lambdaQuery().in(Farm::getId, ids))
+                .stream().collect(Collectors.toMap(Farm::getId, Farm::getFarmName, (a, b) -> a));
     }
 
-    /** 组内是否还有「未作废且未过期」的证 —— 用于证状态筛选 */
-    private boolean hasAliveUnexpired(RecordGroupVO g) {
-        return g.getMembers().stream()
-                .anyMatch(m -> !isVoided(m) && !isExpired(m.get("validUntil")));
+    private boolean isExpired(LocalDate validUntil) {
+        return validUntil != null && validUntil.isBefore(LocalDate.now());
     }
 
-    // ==================== 排序与分页 ====================
-
-    /** 组内时间倒序（新操作在前）；同一天按组键稳定排序，翻页不会跳来跳去 */
-    private List<RecordGroupVO> sortDesc(List<RecordGroupVO> groups) {
-        groups.sort(Comparator
-                .comparing((RecordGroupVO g) -> Objects.toString(g.getHappenedOn(), ""))
-                .thenComparing(g -> Objects.toString(g.getGroupKey(), ""))
-                .reversed());
-        return groups;
+    /** 列表只显示到日：同一天多次免疫靠批次号区分，不需要秒级时间挤在同一列 */
+    private String dayText(LocalDateTime time) {
+        return time == null ? null : time.toLocalDate().format(DAY);
     }
 
-    /** 按「组」分页：total 是组数而不是记录条数，前端翻页才不会错位 */
-    private Page<RecordGroupVO> paginate(List<RecordGroupVO> groups, Long current, Long size) {
-        long cur = current == null || current < 1 ? 1 : current;
-        long sz = size == null || size < 1 ? 10 : size;
-        Page<RecordGroupVO> page = new Page<>(cur, sz);
-        page.setTotal(groups.size());
-        int from = (int) Math.min((cur - 1) * sz, groups.size());
-        int to = (int) Math.min(from + sz, groups.size());
-        page.setRecords(new ArrayList<>(groups.subList(from, to)));
-        return page;
-    }
-
-    // ==================== 小工具 ====================
-
-    private void warnIfTruncated(List<Map<String, Object>> rows, String kind) {
-        if (rows.size() >= MAX_ROWS) {
-            log.warn("record_group_truncated kind={} rows={} —— 已达取数上限，分组统计可能不准，该补单据表了", kind, rows.size());
-        }
-    }
-
-    private String blankToNull(String s) {
-        return StringUtils.hasText(s) ? s.trim() : null;
-    }
-
-    private String str(Object v) {
-        if (v == null) return null;
-        String s = String.valueOf(v);
-        return s.isBlank() ? null : s;
-    }
-
-    private Integer toInt(Object v) {
-        if (v == null) return null;
-        if (v instanceof Number n) return n.intValue();
-        try {
-            return Integer.valueOf(String.valueOf(v));
-        } catch (NumberFormatException e) {
-            return null;
-        }
-    }
-
-    /** 日期统一成 yyyy-MM-dd 字符串：分组键要比字符串，前端也直接显示，不来回转时区 */
-    private String dateText(Object v) {
-        LocalDate d = toDate(v);
-        return d == null ? null : d.format(DAY);
-    }
-
-    private LocalDate toDate(Object v) {
-        if (v == null) return null;
-        if (v instanceof LocalDate d) return d;
-        if (v instanceof LocalDateTime dt) return dt.toLocalDate();
-        if (v instanceof java.sql.Timestamp ts) return ts.toLocalDateTime().toLocalDate();
-        if (v instanceof java.sql.Date sd) return sd.toLocalDate();
-        String s = String.valueOf(v);
-        if (s.length() < 10) return null;
-        try {
-            return LocalDate.parse(s.substring(0, 10));
-        } catch (Exception e) {
-            return null;
-        }
+    private String fallback(String value) {
+        return StringUtils.hasText(value) ? value : "未记录";
     }
 }

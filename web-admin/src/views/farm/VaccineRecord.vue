@@ -45,9 +45,9 @@
       @voided="fetchList"
     />
 
-    <!-- 分页：total 是「组数」不是「头数」——列表按批聚合，一头一行会让翻页错位 -->
+    <!-- 分页：total 是「批次数」不是「头数」——主行是免疫批次单，一头一行会让翻页错位 -->
     <div class="pagination-wrapper">
-      <span class="group-total">共 {{ pagination.total }} 组（按批聚合，点行首箭头看逐头）</span>
+      <span class="group-total">共 {{ pagination.total }} 个免疫批次（点行首箭头看关联生猪）</span>
       <el-pagination
         v-model:current-page="pagination.pageNum"
         v-model:page-size="pagination.pageSize"

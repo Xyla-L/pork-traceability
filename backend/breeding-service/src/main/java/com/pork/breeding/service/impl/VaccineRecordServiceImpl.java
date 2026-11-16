@@ -47,6 +47,7 @@ public class VaccineRecordServiceImpl extends ServiceImpl<VaccineRecordMapper, V
     private final SourceGuard sourceGuard;
     private final ChainEventPublisher chainEvents;
     private final FarmScope farmScope;
+    private final com.pork.breeding.service.VaccineBatchService vaccineBatchService;
 
     @Override
     public Page<VaccineRecordVO> pageQuery(Long current, Long size, Long pigId) {
@@ -86,6 +87,9 @@ public class VaccineRecordServiceImpl extends ServiceImpl<VaccineRecordMapper, V
         if (baseMapper.voidById(record.getId(), cleanReason, operator) == 0) {
             throw new BusinessException(ErrorCode.BUSINESS_ERROR, "作废失败：记录可能已被他人作废");
         }
+        // 同步成员的作废标记：成员行仍留在免疫批次名单里（「它本来在名单里」是可追溯的事实），
+        // 只是不再计入有效
+        vaccineBatchService.markMemberVoid(record.getVbatchId(), record.getPigId());
         Map<String, Object> payload = new HashMap<>();
         payload.put("pigId", record.getPigId());
         payload.put("vaccineName", record.getVaccineName());

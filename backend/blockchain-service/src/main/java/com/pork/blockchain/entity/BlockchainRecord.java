@@ -3,6 +3,7 @@ package com.pork.blockchain.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -17,6 +18,15 @@ public class BlockchainRecord {
     private Long bizId;
     private String bizKey;
     private String contentHash;
+    /**
+     * 上链报文快照（JSON）。
+     * <p>
+     * 重试与历史迁移要重放「当初那条报文」，没有快照就只能往链上写空 payload——
+     * 那等于只保住一个数字，链上存证失去可读内容。历史记录（加列之前写入的）为 null。
+     * 不对外序列化：列表接口按页返回，报文正文只走 verifyView 的 payloadAvailable 披露是否有。
+     */
+    @JsonIgnore
+    private String payloadJson;
     private String txHash;
     private Long blockNumber;
     private LocalDateTime chainTime;

@@ -75,4 +75,13 @@ public interface VaccineRecordMapper extends BaseMapper<VaccineRecord> {
      */
     @Select("SELECT * FROM vaccine_record WHERE pig_id = #{pigId} ORDER BY create_time DESC, id DESC")
     List<VaccineRecord> selectByPigIncludeVoid(@Param("pigId") Long pigId);
+
+    /**
+     * 按免疫批次取逐头记录（<b>包含已作废</b>）：{@code @TableLogic} 会把作废记录过滤掉，
+     * 但批次名单里必须能看到「这头本来是作废的」，否则名单会凭空少人。
+     */
+    @Select("<script>SELECT * FROM vaccine_record WHERE vbatch_id IN "
+            + "<foreach collection='ids' item='id' open='(' separator=',' close=')'>#{id}</foreach>"
+            + "</script>")
+    List<VaccineRecord> selectByBatchIdsIncludeVoid(@Param("ids") List<Long> ids);
 }

@@ -57,8 +57,24 @@ public interface QuarantineCertMapper extends BaseMapper<QuarantineCertificate> 
      * 该生猪「已作废」的检疫证（仅供追溯侧标注使用，原生 SQL 显式绕过逻辑删除，只读）。
      * 检疫证被作废后若在追溯里凭空消失，等于给了「悄悄撤证」的口子。
      */
-    @Select("SELECT id, cert_no AS bizNo, void_reason AS voidReason, "
-            + "void_operator AS voidOperator, void_time AS voidTime "
-            + "FROM quarantine_certificate WHERE pig_id = #{pigId} AND void_flag = 1 ORDER BY void_time DESC")
+    @Select("SELECT c.id, c.cert_no AS bizNo, c.void_reason AS voidReason, "
+            + "c.void_operator AS voidOperator, c.void_time AS voidTime "
+            + "FROM quarantine_certificate c JOIN quarantine_cert_pig m ON m.cert_id = c.id "
+            + "WHERE m.pig_id = #{pigId} AND c.void_flag = 1 ORDER BY c.void_time DESC")
     List<Map<String, Object>> selectVoidedByPig(@Param("pigId") Long pigId);
+
+    /**
+     * 单据分页（包含已作废）：检疫证现在是单据，作废的证仍要能在列表里看到（可追溯），
+     * 而 {@code @TableLogic} 会把 void_flag=1 自动过滤掉，所以这里用原生 SQL 显式取全。
+     */
+    @Select("<script>"
+            + "SELECT * FROM quarantine_certificate WHERE 1=1 "
+            + "<if test='farmId != null'> AND farm_id = #{farmId}</if>"
+            + "<if test='earTagNo != null and earTagNo != \"\"'> AND id IN "
+            + "(SELECT cert_id FROM quarantine_cert_pig WHERE ear_tag_no = #{earTagNo})</if>"
+            + " ORDER BY issue_time DESC, id DESC"
+            + "</script>")
+    com.baomidou.mybatisplus.extension.plugins.pagination.Page<QuarantineCertificate> selectDocPage(
+            com.baomidou.mybatisplus.extension.plugins.pagination.Page<QuarantineCertificate> page,
+            @Param("farmId") Long farmId, @Param("earTagNo") String earTagNo);
 }

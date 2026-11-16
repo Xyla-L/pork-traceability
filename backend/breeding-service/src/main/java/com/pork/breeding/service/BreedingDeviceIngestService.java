@@ -5,11 +5,16 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.pork.breeding.dto.BreedingDeviceIngestRequests;
 import com.pork.breeding.entity.PigIndividual;
 import com.pork.breeding.entity.QuarantineCertificate;
+import com.pork.breeding.entity.QuarantineCertPig;
 import com.pork.breeding.entity.SlaughterApply;
+import com.pork.breeding.entity.SlaughterApplyPig;
+import com.pork.breeding.entity.VaccineBatch;
 import com.pork.breeding.entity.VaccineRecord;
 import com.pork.breeding.mapper.PigIndividualMapper;
 import com.pork.breeding.mapper.QuarantineCertMapper;
+import com.pork.breeding.mapper.QuarantineCertPigMapper;
 import com.pork.breeding.mapper.SlaughterApplyMapper;
+import com.pork.breeding.mapper.SlaughterApplyPigMapper;
 import com.pork.breeding.mapper.VaccineRecordMapper;
 import com.pork.breeding.support.ImmunityGate;
 import com.pork.core.util.BusinessNoGenerator;
@@ -22,6 +27,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -58,6 +65,9 @@ public class BreedingDeviceIngestService {
     private final VaccineRecordMapper vaccineMapper;
     private final QuarantineCertMapper certMapper;
     private final SlaughterApplyMapper applyMapper;
+    private final QuarantineCertPigMapper certPigMapper;
+    private final SlaughterApplyPigMapper applyPigMapper;
+    private final VaccineBatchService vaccineBatchService;
     private final ChainEventPublisher chainEvents;
     private final ImmunityGate immunityGate;
 
@@ -112,12 +122,22 @@ public class BreedingDeviceIngestService {
             return written(exists.getId(), "该免疫记录已存在，返回既有记录");
         }
 
+        LocalDateTime injectAt = request.getInjectTime() == null ? LocalDateTime.now() : request.getInjectTime();
+        // 免疫批次：同场+同疫苗+同生产批号+同一天 = 一次免疫作业。
+        // 设备是一条一头猪报，靠这里自动归到同一张批次单上，人工不需要先建单。
+        VaccineBatch batch = pig == null ? null : vaccineBatchService.attach(
+                pig.getFarmId(), request.getVaccineName(), request.getVaccineBatchNo(),
+                request.getManufacturer(), injectAt,
+                StringUtils.hasText(request.getOperator()) ? request.getOperator() : "未记录",
+                SOURCE_DEVICE, request.getSourceRef(), pig);
+
         VaccineRecord record = new VaccineRecord();
         record.setPigId(request.getPigId());
+        record.setVbatchId(batch == null ? null : batch.getId());
         record.setVaccineName(request.getVaccineName());
         record.setBatchNo(request.getVaccineBatchNo());
         record.setManufacturer(request.getManufacturer());
-        record.setInjectTime(request.getInjectTime() == null ? LocalDateTime.now() : request.getInjectTime());
+        record.setInjectTime(injectAt);
         record.setDosage(request.getDosage());
         record.setInjectSite(request.getInjectSite());
         // 接种人只能是现场操作注射器的兽医本人：拿不到就如实记「未记录」，
@@ -177,24 +197,35 @@ public class BreedingDeviceIngestService {
             return refused(immunityBlock);
         }
 
-        // 1) 同一张证重复登记：设备重发或网络重试都会走到这里，幂等返回既有记录，不新建
+        // 1) 同一张证重复登记：一张证覆盖一车猪，扫码终端会逐头扫同一张证。
+        //    证已存在而这一头还没进名单 = 正常补录成员；已在名单 = 幂等返回。
         QuarantineCertificate exists = certMapper.selectOne(Wrappers.<QuarantineCertificate>lambdaQuery()
                 .eq(QuarantineCertificate::getCertNo, request.getCertNo()).last("LIMIT 1"));
         if (exists != null) {
-            log.info("ingest_quarantine_duplicate certNo={} id={}", request.getCertNo(), exists.getId());
-            return written(exists.getId(), "该检疫证已登记，返回既有记录");
+            boolean already = certPigMapper.selectCount(Wrappers.<QuarantineCertPig>lambdaQuery()
+                    .eq(QuarantineCertPig::getCertId, exists.getId())
+                    .eq(QuarantineCertPig::getPigId, request.getPigId())) > 0;
+            if (already) {
+                log.info("ingest_quarantine_duplicate certNo={} id={} pigId={}",
+                        request.getCertNo(), exists.getId(), request.getPigId());
+                return written(exists.getId(), "该检疫证已登记且已包含这头猪，返回既有记录");
+            }
+            addCertMember(exists.getId(), request.getPigId(), request.getEarTagNo());
+            refreshCertCount(exists.getId());
+            return written(exists.getId(), "该耳标已加入检疫证 " + request.getCertNo() + "（一证多头）");
         }
 
         // 2) 这头猪已有一张有效证：属于换发场景。作废是终态动作、必须实名留痕，
         //    所以不在这里悄悄覆盖，交人工确认（先作废原证，再放行这条）
-        QuarantineCertificate current = certMapper.selectOne(Wrappers.<QuarantineCertificate>lambdaQuery()
-                .eq(QuarantineCertificate::getPigId, request.getPigId()).last("LIMIT 1"));
+        QuarantineCertificate current = activeCertOfPig(request.getPigId());
         if (current != null) {
             return manual("该生猪已有有效检疫证（" + current.getCertNo() + "），如需换发请先作废原证再登记");
         }
 
         QuarantineCertificate cert = new QuarantineCertificate();
-        cert.setPigId(request.getPigId());
+        // 单据化：一张证覆盖多头，pig_id 不再代表单头（成员写 quarantine_cert_pig）
+        cert.setFarmId(pig == null ? null : pig.getFarmId());
+        cert.setPigCount(1);
         cert.setCertNo(request.getCertNo());
         cert.setIssueOrg(request.getIssueOrg());
         cert.setIssueTime(certIssueTime);
@@ -213,10 +244,12 @@ public class BreedingDeviceIngestService {
         cert.setRawPayload(request.getRawPayload());
         cert.setCreateTime(LocalDateTime.now());
         certMapper.insert(cert);
+        addCertMember(cert.getId(), request.getPigId(), request.getEarTagNo());
+        refreshCertCount(cert.getId());
 
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("certNo", cert.getCertNo());
-        payload.put("pigId", cert.getPigId());
+        payload.put("pigId", request.getPigId());
         payload.put("earTagNo", request.getEarTagNo());
         payload.put("issueOrg", cert.getIssueOrg());
         payload.put("inspector", cert.getInspector());
@@ -248,10 +281,8 @@ public class BreedingDeviceIngestService {
             return manual("未关联到生猪档案（耳标 " + request.getEarTagNo() + "），请人工核对");
         }
 
-        SlaughterApply exists = applyMapper.selectOne(Wrappers.<SlaughterApply>lambdaQuery()
-                .eq(SlaughterApply::getPigId, request.getPigId())
-                .orderByDesc(SlaughterApply::getId)
-                .last("LIMIT 1"));
+        // 单据化后一头猪的申报关系在成员表里：先看这头猪有没有落在某张申报单上
+        SlaughterApply exists = latestApplyOfPig(request.getPigId());
         if (exists != null && exists.getApprovalStatus() != null) {
             if (exists.getApprovalStatus() == APPLY_STATUS_APPROVED) {
                 return refused("该生猪的出栏申报已通过，本次称重不再重复申报");
@@ -265,23 +296,34 @@ public class BreedingDeviceIngestService {
                     + "，如确需重新出栏，请人工确认后申报");
         }
 
-        SlaughterApply apply = new SlaughterApply();
-        apply.setPigId(request.getPigId());
-        apply.setApplyNo(BusinessNoGenerator.next("SA"));
-        // 称重时刻取报文值，缺失时用入库时刻兜底（猪走出栏口即登记，两者等价）
-        apply.setApplyTime(request.getApplyTime() == null ? LocalDateTime.now() : request.getApplyTime());
-        apply.setWeightKg(request.getWeightKg() == null ? null : request.getWeightKg().doubleValue());
-        apply.setTargetSlaughterhouse(request.getTargetSlaughterhouse());
-        apply.setApprovalStatus(APPLY_STATUS_PENDING);
-        apply.setSource(SOURCE_DEVICE);
-        apply.setSourceRef(request.getSourceRef());
-        apply.setRawPayload(request.getRawPayload());
-        apply.setCreateTime(LocalDateTime.now());
-        applyMapper.insert(apply);
+        // 地磅是逐头称重，一车猪会连着上报多条：同场 + 同目标屠宰场 + 同一天 + 仍待审批
+        // 视为同一张申报单，后来的猪并进去，避免「一车猪拆成 N 张单」
+        LocalDateTime applyAt = request.getApplyTime() == null ? LocalDateTime.now() : request.getApplyTime();
+        SlaughterApply apply = openApplyOfDay(pigFarmId(request.getPigId()), request.getTargetSlaughterhouse(), applyAt);
+        boolean created = false;
+        if (apply == null) {
+            apply = new SlaughterApply();
+            apply.setFarmId(pigFarmId(request.getPigId()));
+            apply.setPigCount(1);
+            apply.setApplyNo(BusinessNoGenerator.next("SA"));
+            apply.setApplyTime(applyAt);
+            apply.setTargetSlaughterhouse(request.getTargetSlaughterhouse());
+            apply.setApprovalStatus(APPLY_STATUS_PENDING);
+            apply.setSource(SOURCE_DEVICE);
+            apply.setSourceRef(request.getSourceRef());
+            apply.setRawPayload(request.getRawPayload());
+            apply.setCreateTime(LocalDateTime.now());
+            apply.setTotalWeightKg(BigDecimal.ZERO);
+            applyMapper.insert(apply);
+            created = true;
+        }
+        addApplyMember(apply.getId(), request.getPigId(), request.getEarTagNo(), request.getWeightKg());
+        refreshApplyTotals(apply.getId());
 
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("applyNo", apply.getApplyNo());
-        payload.put("pigId", apply.getPigId());
+        // 单据化后 apply.pig_id 不再代表单头，链上存证记的是「本次称重的那一头」
+        payload.put("pigId", request.getPigId());
         payload.put("earTagNo", request.getEarTagNo());
         payload.put("weightKg", apply.getWeightKg());
         payload.put("targetSlaughterhouse", apply.getTargetSlaughterhouse());
@@ -291,7 +333,110 @@ public class BreedingDeviceIngestService {
                 HashUtil.sha256Json(request), payload));
 
         return written(apply.getId(), "出栏称重登记完成（耳标 " + request.getEarTagNo() + "，"
-                + (apply.getWeightKg() == null ? "体重未记录" : apply.getWeightKg() + " kg") + "）");
+                + (request.getWeightKg() == null ? "体重未记录" : request.getWeightKg() + " kg") + "）"
+                + (created ? "，已新建申报单 " + apply.getApplyNo() : "，已并入申报单 " + apply.getApplyNo()));
+    }
+
+    private Long pigFarmId(Long pigId) {
+        PigIndividual pig = pigId == null ? null : pigMapper.selectById(pigId);
+        return pig == null ? null : pig.getFarmId();
+    }
+
+    /** 这头猪当前落在哪张申报单上（取最新一张，含已驳回——驳回要能被读到才能给出「不自动复活」的结论） */
+    private SlaughterApply latestApplyOfPig(Long pigId) {
+        List<SlaughterApplyPig> members = applyPigMapper.selectList(Wrappers.<SlaughterApplyPig>lambdaQuery()
+                .eq(SlaughterApplyPig::getPigId, pigId));
+        if (members.isEmpty()) return null;
+        List<Long> applyIds = members.stream().map(SlaughterApplyPig::getApplyId).distinct().toList();
+        List<SlaughterApply> applies = applyMapper.selectList(Wrappers.<SlaughterApply>lambdaQuery()
+                .in(SlaughterApply::getId, applyIds)
+                .orderByDesc(SlaughterApply::getId)
+                .last("LIMIT 1"));
+        return applies.isEmpty() ? null : applies.get(0);
+    }
+
+    /** 同场 + 同目标屠宰场 + 同一天 + 仍待审批的申报单（地磅逐头称重并入同一车） */
+    private SlaughterApply openApplyOfDay(Long farmId, String target, LocalDateTime at) {
+        if (farmId == null) return null;
+        LocalDateTime dayStart = at.toLocalDate().atStartOfDay();
+        List<SlaughterApply> found = applyMapper.selectList(Wrappers.<SlaughterApply>lambdaQuery()
+                .eq(SlaughterApply::getFarmId, farmId)
+                .eq(SlaughterApply::getApprovalStatus, APPLY_STATUS_PENDING)
+                .and(w -> {
+                    if (StringUtils.hasText(target)) {
+                        w.eq(SlaughterApply::getTargetSlaughterhouse, target);
+                    } else {
+                        w.isNull(SlaughterApply::getTargetSlaughterhouse)
+                                .or().eq(SlaughterApply::getTargetSlaughterhouse, "");
+                    }
+                })
+                .ge(SlaughterApply::getApplyTime, dayStart)
+                .lt(SlaughterApply::getApplyTime, dayStart.plusDays(1))
+                .orderByDesc(SlaughterApply::getId)
+                .last("LIMIT 1"));
+        return found.isEmpty() ? null : found.get(0);
+    }
+
+    private void addApplyMember(Long applyId, Long pigId, String earTagNo, BigDecimal weightKg) {
+        boolean exists = applyPigMapper.selectCount(Wrappers.<SlaughterApplyPig>lambdaQuery()
+                .eq(SlaughterApplyPig::getApplyId, applyId)
+                .eq(SlaughterApplyPig::getPigId, pigId)) > 0;
+        if (exists) return;
+        SlaughterApplyPig member = new SlaughterApplyPig();
+        member.setApplyId(applyId);
+        member.setPigId(pigId);
+        member.setEarTagNo(earTagNo);
+        member.setWeightKg(weightKg);
+        member.setCreateTime(LocalDateTime.now());
+        applyPigMapper.insert(member);
+    }
+
+    /** 申报单的头数与总重由成员表重算：地磅是逐头来的，单据上的汇总永远是派生值 */
+    void refreshApplyTotals(Long applyId) {
+        List<SlaughterApplyPig> members = applyPigMapper.selectList(Wrappers.<SlaughterApplyPig>lambdaQuery()
+                .eq(SlaughterApplyPig::getApplyId, applyId));
+        BigDecimal total = members.stream().map(SlaughterApplyPig::getWeightKg)
+                .filter(java.util.Objects::nonNull).reduce(BigDecimal.ZERO, BigDecimal::add);
+        applyMapper.update(null, Wrappers.<SlaughterApply>lambdaUpdate()
+                .eq(SlaughterApply::getId, applyId)
+                .set(SlaughterApply::getPigCount, members.size())
+                .set(SlaughterApply::getTotalWeightKg, total));
+    }
+
+    /** 检疫证成员：一张证覆盖多头，成员只增不删（错录凭「整证作废 + 重出」更正） */
+    private void addCertMember(Long certId, Long pigId, String earTagNo) {
+        if (certId == null || pigId == null) return;
+        boolean exists = certPigMapper.selectCount(Wrappers.<QuarantineCertPig>lambdaQuery()
+                .eq(QuarantineCertPig::getCertId, certId)
+                .eq(QuarantineCertPig::getPigId, pigId)) > 0;
+        if (exists) return;
+        QuarantineCertPig member = new QuarantineCertPig();
+        member.setCertId(certId);
+        member.setPigId(pigId);
+        member.setEarTagNo(earTagNo);
+        member.setCreateTime(LocalDateTime.now());
+        certPigMapper.insert(member);
+    }
+
+    private void refreshCertCount(Long certId) {
+        Long count = certPigMapper.selectCount(Wrappers.<QuarantineCertPig>lambdaQuery()
+                .eq(QuarantineCertPig::getCertId, certId));
+        certMapper.update(null, Wrappers.<QuarantineCertificate>lambdaUpdate()
+                .eq(QuarantineCertificate::getId, certId)
+                .set(QuarantineCertificate::getPigCount, count == null ? 0 : count.intValue()));
+    }
+
+    /** 这头猪当前持有的有效检疫证（未作废）；没有返回 null */
+    private QuarantineCertificate activeCertOfPig(Long pigId) {
+        List<QuarantineCertPig> members = certPigMapper.selectList(Wrappers.<QuarantineCertPig>lambdaQuery()
+                .eq(QuarantineCertPig::getPigId, pigId));
+        if (members.isEmpty()) return null;
+        List<Long> certIds = members.stream().map(QuarantineCertPig::getCertId).distinct().toList();
+        List<QuarantineCertificate> certs = certMapper.selectList(Wrappers.<QuarantineCertificate>lambdaQuery()
+                .in(QuarantineCertificate::getId, certIds)
+                .orderByDesc(QuarantineCertificate::getId)
+                .last("LIMIT 1"));
+        return certs.isEmpty() ? null : certs.get(0);
     }
 
     private Map<String, Object> written(Long id, String reason) {

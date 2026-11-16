@@ -1,7 +1,9 @@
 <template>
   <view class="page">
-    <!-- 隐藏 canvas：用于从相册图片解析二维码像素 -->
+    <!-- 隐藏 canvas：仅 H5 从相册图片解析二维码像素时用，小程序走原生扫码 -->
+    <!-- #ifdef H5 -->
     <canvas id="scan-canvas" type="2d" class="scan-canvas" />
+    <!-- #endif -->
     <!-- 头部品牌区 -->
     <view class="hero">
       <view class="hero-logo"></view>
@@ -69,9 +71,12 @@
 <script setup>
 import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
+// #ifdef H5
 import jsQR from 'jsqr'
+// #endif
 import EmptyState from '@/components/EmptyState.vue'
 import { getRecentScans } from '@/utils/recentScans'
+import { extractTraceCode, NOT_TRACE_CODE } from '@/utils/qrCode'
 
 const keyword = ref('')
 const recentList = ref(getRecentScans())
@@ -82,23 +87,61 @@ onShow(() => {
 })
 
 async function handleScan() {
-  let path = ''
+  let raw = ''
   try {
-    path = await chooseImage()
-    const qrCode = await decodeQr(path)
-    if (qrCode) {
-      uni.navigateTo({ url: `/pages/scan-result/scan-result?qrCode=${encodeURIComponent(qrCode)}` })
-    } else {
-      uni.showToast({ title: '未识别到二维码', icon: 'none' })
-    }
+    raw = await readCode()
   } catch (e) {
-    // 用户取消选图不提示
+    // 用户取消扫码/选图不提示
     if (e?.message !== 'cancel') {
-      uni.showToast({ title: e?.message || '解析失败，请重试', icon: 'none' })
+      uni.showToast({ title: e?.message || '扫码失败，请重试', icon: 'none' })
     }
+    return
   }
+  goScanResult(raw)
 }
 
+/**
+ * 取二维码原文。
+ * 小程序用原生扫码：scanType 只声明 qrCode，条码类（多数会员码、超市自编码）根本不会被识别；
+ * 二维码形式的付款码扫得出来，靠下面 goScanResult 的前缀判定拦掉。
+ * H5 没有摄像头扫码能力，只能选相册图 + jsQR 解像素（本地联调用）。
+ */
+function readCode() {
+  // #ifdef MP-WEIXIN
+  return new Promise((resolve, reject) => {
+    uni.scanCode({
+      scanType: ['qrCode'],
+      // 允许从相册选：包装袋上的码经常是拍照存下来的，只能对着实物扫会很别扭
+      onlyFromCamera: false,
+      success: (res) => resolve(res.result || ''),
+      fail: (err) => {
+        const msg = String(err?.errMsg || '')
+        reject(new Error(/cancel/i.test(msg) ? 'cancel' : '扫码失败，请重试'))
+      },
+    })
+  })
+  // #endif
+  // #ifdef H5
+  return chooseImage().then(decodeQr)
+  // #endif
+}
+
+/** 扫码/搜索的落点：先判是不是本系统的码，再决定跳不跳转（不把脏串送去查库） */
+function goScanResult(raw) {
+  if (!raw) {
+    uni.showToast({ title: '未识别到二维码', icon: 'none' })
+    return
+  }
+  const code = extractTraceCode(raw)
+  if (!code) {
+    // 用弹窗而不是 toast：这句话要说清楚「该扫什么」，toast 一闪而过看不完
+    uni.showModal({ title: '扫到的不是溯源码', content: NOT_TRACE_CODE, showCancel: false, confirmText: '我知道了' })
+    return
+  }
+  uni.navigateTo({ url: `/pages/scan-result/scan-result?qrCode=${encodeURIComponent(code)}` })
+}
+
+// #ifdef H5
 /** 从相册选择一张图片，返回临时路径；取消时 reject('cancel') */
 function chooseImage() {
   return new Promise((resolve, reject) => {
@@ -145,6 +188,7 @@ function decodeQr(path) {
     })
   })
 }
+// #endif
 
 function handleSearch() {
   const kw = keyword.value.trim()
@@ -152,10 +196,17 @@ function handleSearch() {
     uni.showToast({ title: '请输入搜索内容', icon: 'none' })
     return
   }
-  // 区分二维码号 / 批次号：以 QR- 开头按二维码扫，否则按批次号搜索
-  const isQr = /^QR-/i.test(kw)
-  const query = isQr ? `qrCode=${encodeURIComponent(kw)}` : `keyword=${encodeURIComponent(kw)}`
-  uni.navigateTo({ url: `/pages/scan-result/scan-result?${query}` })
+  // 以 QR- 开头就必须是合法溯源码：不合规还按批次号去搜，只会得到「查无此批次」，同样误导
+  if (/^QR-/i.test(kw)) {
+    const code = extractTraceCode(kw)
+    if (!code) {
+      uni.showModal({ title: '不是有效的溯源码', content: NOT_TRACE_CODE, showCancel: false, confirmText: '我知道了' })
+      return
+    }
+    uni.navigateTo({ url: `/pages/scan-result/scan-result?qrCode=${encodeURIComponent(code)}` })
+    return
+  }
+  uni.navigateTo({ url: `/pages/scan-result/scan-result?keyword=${encodeURIComponent(kw)}` })
 }
 
 function handleOpen(item) {

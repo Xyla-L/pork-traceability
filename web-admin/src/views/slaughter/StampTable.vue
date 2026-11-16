@@ -61,12 +61,6 @@
           </el-tooltip>
         </template>
       </el-table-column>
-      <el-table-column label="耳标区间" min-width="230" show-overflow-tooltip>
-        <template #default="{ row }">
-          <span v-if="row.tagStart" class="tag-range">{{ tagRange(row) }}</span>
-          <span v-else class="empty-cell">--</span>
-        </template>
-      </el-table-column>
       <el-table-column label="印章类型" min-width="170" align="center">
         <template #default="{ row }">{{ typeSummary(row) }}</template>
       </el-table-column>
@@ -131,11 +125,6 @@ const handleView = (row) => {
   viewVisible.value = true
 }
 
-const tagRange = (row) => {
-  if (!row.tagStart) return '--'
-  return row.tagStart === row.tagEnd ? row.tagStart : `${row.tagStart} ~ ${row.tagEnd}`
-}
-
 const timeRange = (row) => {
   if (!row.firstTime) return '--'
   return row.firstTime === row.lastTime ? row.firstTime : `${row.firstTime} ~ ${row.lastTime}`
@@ -194,7 +183,6 @@ const handleVoid = async (row) => {
   background: #f4f4f5;
   border-radius: 9px;
 }
-.tag-range { font-family: 'Courier New', monospace; font-size: 12px; color: #606266; }
 .empty-cell { color: #c0c4cc; }
 .member-panel {
   padding: 8px 12px 12px 48px;

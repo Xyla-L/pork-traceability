@@ -8,8 +8,10 @@ import com.pork.breeding.dto.SlaughterApplyApproveDTO;
 import com.pork.breeding.dto.SlaughterApplyDTO;
 import com.pork.breeding.entity.PigIndividual;
 import com.pork.breeding.entity.SlaughterApply;
+import com.pork.breeding.entity.SlaughterApplyPig;
 import com.pork.breeding.mapper.PigIndividualMapper;
 import com.pork.breeding.mapper.SlaughterApplyMapper;
+import com.pork.breeding.mapper.SlaughterApplyPigMapper;
 import com.pork.breeding.service.SlaughterApplyService;
 import com.pork.breeding.support.FarmScope;
 import com.pork.breeding.vo.SlaughterApplyVO;
@@ -26,10 +28,19 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 出栏申报（单据化）：一张申报单含多头。
+ * <p>
+ * 改造前 uk_pig 限制一头猪一生只能有一条申报，等于把「一车猪一次申报」拆成了一头一单。
+ * 现在申报号唯一在单据上，成员在 {@code slaughter_apply_pig}；审批是单据级，
+ * 通过后把成员逐头推进为「已出栏」（逐头状态才是下游入场查验认的东西）。
+ */
 @Service
 @RequiredArgsConstructor
 public class SlaughterApplyServiceImpl extends ServiceImpl<SlaughterApplyMapper, SlaughterApply> implements SlaughterApplyService {
@@ -50,48 +61,35 @@ public class SlaughterApplyServiceImpl extends ServiceImpl<SlaughterApplyMapper,
     private static final String SOURCE_MANUAL = "MANUAL";
 
     private final PigIndividualMapper pigIndividualMapper;
+    private final SlaughterApplyPigMapper applyPigMapper;
     private final SourceGuard sourceGuard;
     private final FarmScope farmScope;
 
     @Override
     public Page<SlaughterApplyVO> pageQuery(Long current, Long size, Integer approvalStatus) {
-        // 机构隔离：养殖角色只看自己场的申报。申报表只挂 pig_id，场维度用 inSql 下推，
-        // 分页在数据库里做完——内存过滤会让「总数」和「每页行数」对不上
-        String pigScopeSql = farmScope.pigIdsInFarmSql();
+        // 机构隔离：单据带 farm_id，直接等值下推，不再靠 pig_id 反查（拆单/并单都不影响归属）
+        Long scopedFarmId = farmScope.scopedFarmId();
         Page<SlaughterApply> page = this.page(
                 new Page<>(current, size),
                 Wrappers.<SlaughterApply>lambdaQuery()
                         .eq(approvalStatus != null, SlaughterApply::getApprovalStatus, approvalStatus)
-                        .inSql(pigScopeSql != null, SlaughterApply::getPigId, pigScopeSql)
+                        .eq(scopedFarmId != null, SlaughterApply::getFarmId, scopedFarmId)
+                        .orderByDesc(SlaughterApply::getId)
         );
         Page<SlaughterApplyVO> voPage = new Page<>(current, size);
         BeanUtils.copyProperties(page, voPage);
-        voPage.setRecords(page.getRecords().stream().map(apply -> {
-            SlaughterApplyVO vo = new SlaughterApplyVO();
-            BeanUtils.copyProperties(apply, vo);
-            // 实体 weightKg 为 Double，VO 为 BigDecimal，copyProperties 类型不匹配会跳过，需手动转换
-            if (apply.getWeightKg() != null) {
-                vo.setWeightKg(BigDecimal.valueOf(apply.getWeightKg()));
-            }
-            // 关联查询耳标号
-            PigIndividual pig = pigIndividualMapper.selectById(apply.getPigId());
-            if (pig != null) {
-                vo.setEarTagNo(pig.getEarTagNo());
-            }
-            return vo;
-        }).toList());
+        voPage.setRecords(page.getRecords().stream().map(this::convertToVO).toList());
         return voPage;
     }
 
     @Override
     public Map<Integer, Long> countByStatus() {
-        // 一次 GROUP BY 查出各状态数量，缺失的状态补 0。
-        // 机构隔离与列表同口径：养殖角色的角标只数自己场的，否则「列表 3 条、角标 30 条」对不上
-        String pigScopeSql = farmScope.pigIdsInFarmSql();
+        // 一次 GROUP BY 查出各状态数量，缺失的状态补 0；机构隔离与列表同口径
+        Long scopedFarmId = farmScope.scopedFarmId();
         List<Map<String, Object>> rows = this.listMaps(
                 new QueryWrapper<SlaughterApply>()
                         .select("approval_status AS status", "COUNT(*) AS cnt")
-                        .inSql(pigScopeSql != null, "pig_id", pigScopeSql)
+                        .eq(scopedFarmId != null, "farm_id", scopedFarmId)
                         .groupBy("approval_status")
         );
         Map<Integer, Long> result = new HashMap<>();
@@ -124,50 +122,47 @@ public class SlaughterApplyServiceImpl extends ServiceImpl<SlaughterApplyMapper,
         // 这是全项目第二个人工采集入口（另一个是产地检疫出证），写入强制实名并标注来源为人工。
         ManualOperator operator = sourceGuard.requireManualAllowed(TraceStage.EXIT_APPLY, "申请出栏");
 
-        PigIndividual pig = pigIndividualMapper.selectById(dto.getPigId());
-        if (pig == null) {
-            throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, "生猪档案不存在");
-        }
-
-        // 数据库 UK(uk_pig) 保证同一头猪仅一条申报记录：
-        // 待审/已通过 一律拦截；已驳回(2) 允许在同一行上重新提交，避免驳回后这头猪再也申报不了
-        SlaughterApply exists = this.getOne(
-                Wrappers.<SlaughterApply>lambdaQuery()
-                        .eq(SlaughterApply::getPigId, dto.getPigId())
-                        .orderByDesc(SlaughterApply::getId)
-                        .last("LIMIT 1"));
-        if (exists != null && exists.getApprovalStatus() != null && exists.getApprovalStatus() != STATUS_REJECTED) {
-            throw new BusinessException(ErrorCode.BUSINESS_ERROR, exists.getApprovalStatus() == STATUS_APPROVED
-                    ? "该生猪出栏申报已通过，不能重复申报"
-                    : "该生猪已存在待审批的出栏申报，请等待审批结果");
-        }
-
-        Double weightKg = dto.getWeightKg() == null ? null : dto.getWeightKg().doubleValue();
-        if (exists != null) {
-            // 驳回后重新申报：复用原行（uk_pig 只允许一行），重置为待审并清空上一次的审批结论
-            boolean updated = this.update(Wrappers.<SlaughterApply>lambdaUpdate()
-                    .eq(SlaughterApply::getId, exists.getId())
-                    .set(SlaughterApply::getApplyNo, BusinessNoGenerator.next("SA"))
-                    .set(SlaughterApply::getApplyTime, LocalDateTime.now())
-                    .set(SlaughterApply::getWeightKg, weightKg)
-                    .set(SlaughterApply::getTargetSlaughterhouse, dto.getTargetSlaughterhouse())
-                    .set(SlaughterApply::getApprovalStatus, STATUS_PENDING)
-                    .set(SlaughterApply::getApprover, null)
-                    .set(SlaughterApply::getApprovalTime, null)
-                    .set(SlaughterApply::getRejectReason, null)
-                    .set(SlaughterApply::getSource, SOURCE_MANUAL)
-                    .set(SlaughterApply::getSourceRef, operator.display()));
-            if (!updated) {
-                throw new BusinessException(ErrorCode.DATABASE_ERROR, "出栏申报重新提交失败");
+        List<Long> pigIds = resolvePigIds(dto);
+        List<PigIndividual> pigs = new ArrayList<>();
+        for (Long pigId : pigIds) {
+            PigIndividual pig = pigIndividualMapper.selectById(pigId);
+            if (pig == null) throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, "生猪档案不存在：" + pigId);
+            if (pig.getStatus() != null && pig.getStatus() != PIG_STATUS_FARMING) {
+                throw new BusinessException(ErrorCode.BUSINESS_ERROR,
+                        "生猪 " + pig.getEarTagNo() + " 当前不是「在养」状态，不能申报出栏");
             }
-            return exists.getId();
+            pigs.add(pig);
+        }
+        Long farmId = pigs.get(0).getFarmId();
+        for (PigIndividual pig : pigs) {
+            if (farmId != null && pig.getFarmId() != null && !farmId.equals(pig.getFarmId())) {
+                throw new BusinessException(ErrorCode.BUSINESS_ERROR,
+                        "一张申报单只能覆盖同一个养殖场的生猪（" + pig.getEarTagNo() + " 不属于本场）");
+            }
+        }
+
+        // 同一头猪不允许同时挂在两张未完成的申报单上：待审/已通过 一律拦截；
+        // 已驳回可以重新申报（新建一张单，旧单保留为「曾被驳回」的事实，可追溯）
+        List<String> busy = new ArrayList<>();
+        for (PigIndividual pig : pigs) {
+            SlaughterApply open = latestOpenApplyOfPig(pig.getId());
+            if (open != null) {
+                busy.add(pig.getEarTagNo() + "（" + open.getApplyNo() + " "
+                        + (open.getApprovalStatus() == STATUS_APPROVED ? "已通过" : "待审批") + "）");
+            }
+        }
+        if (!busy.isEmpty()) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR,
+                    "以下生猪已有未完成的出栏申报，不能重复申报：" + String.join("、", busy));
         }
 
         SlaughterApply apply = new SlaughterApply();
-        apply.setPigId(dto.getPigId());
+        apply.setFarmId(farmId);
         apply.setApplyNo(BusinessNoGenerator.next("SA"));
         apply.setApplyTime(LocalDateTime.now());
-        apply.setWeightKg(weightKg);
+        apply.setPigCount(pigs.size());
+        apply.setWeightKg(dto.getWeightKg() == null ? null : dto.getWeightKg().doubleValue());
+        apply.setTotalWeightKg(dto.getWeightKg());
         apply.setTargetSlaughterhouse(dto.getTargetSlaughterhouse());
         apply.setApprovalStatus(STATUS_PENDING);
         apply.setSource(SOURCE_MANUAL);
@@ -175,6 +170,14 @@ public class SlaughterApplyServiceImpl extends ServiceImpl<SlaughterApplyMapper,
         apply.setCreateTime(LocalDateTime.now());
         if (!this.save(apply)) {
             throw new BusinessException(ErrorCode.DATABASE_ERROR, "出栏申报保存失败");
+        }
+        for (PigIndividual pig : pigs) {
+            SlaughterApplyPig member = new SlaughterApplyPig();
+            member.setApplyId(apply.getId());
+            member.setPigId(pig.getId());
+            member.setEarTagNo(pig.getEarTagNo());
+            member.setCreateTime(LocalDateTime.now());
+            applyPigMapper.insert(member);
         }
         return apply.getId();
     }
@@ -208,13 +211,15 @@ public class SlaughterApplyServiceImpl extends ServiceImpl<SlaughterApplyMapper,
             throw new BusinessException(ErrorCode.DATABASE_ERROR, "出栏申报审批失败");
         }
 
-        // 审批通过：将生猪状态推进为「已出栏」
+        // 审批通过：把这张单上的每一头都推进为「已出栏」——逐头状态才是入场查验认的结论
         if (approved) {
-            PigIndividual pig = pigIndividualMapper.selectById(apply.getPigId());
-            if (pig != null && (pig.getStatus() == null || pig.getStatus() == PIG_STATUS_FARMING)) {
-                pig.setStatus(PIG_STATUS_SLAUGHTERED_OUT);
-                pig.setUpdateTime(LocalDateTime.now());
-                pigIndividualMapper.updateById(pig);
+            for (SlaughterApplyPig member : membersOf(apply.getId())) {
+                PigIndividual pig = pigIndividualMapper.selectById(member.getPigId());
+                if (pig != null && (pig.getStatus() == null || pig.getStatus() == PIG_STATUS_FARMING)) {
+                    pig.setStatus(PIG_STATUS_SLAUGHTERED_OUT);
+                    pig.setUpdateTime(LocalDateTime.now());
+                    pigIndividualMapper.updateById(pig);
+                }
             }
         }
     }
@@ -225,11 +230,44 @@ public class SlaughterApplyServiceImpl extends ServiceImpl<SlaughterApplyMapper,
         if (apply.getWeightKg() != null) {
             vo.setWeightKg(BigDecimal.valueOf(apply.getWeightKg()));
         }
-        // 关联查询耳标号
-        PigIndividual pig = pigIndividualMapper.selectById(apply.getPigId());
-        if (pig != null) {
-            vo.setEarTagNo(pig.getEarTagNo());
+        List<SlaughterApplyPig> members = membersOf(apply.getId());
+        vo.setEarTagNos(members.stream().map(SlaughterApplyPig::getEarTagNo).toList());
+        if (vo.getPigCount() == null) vo.setPigCount(members.size());
+        // 兼容旧字段：单头单时把首头耳标带出来，页面对「一单一头」仍有单值可显示
+        if (vo.getEarTagNo() == null && members.size() == 1) {
+            vo.setEarTagNo(members.get(0).getEarTagNo());
         }
         return vo;
+    }
+
+    private List<SlaughterApplyPig> membersOf(Long applyId) {
+        return applyPigMapper.selectList(Wrappers.<SlaughterApplyPig>lambdaQuery()
+                .eq(SlaughterApplyPig::getApplyId, applyId));
+    }
+
+    /** 这头猪当前挂着的未完成申报（待审/已通过）；已驳回不算，允许重新申报 */
+    private SlaughterApply latestOpenApplyOfPig(Long pigId) {
+        List<SlaughterApplyPig> members = applyPigMapper.selectList(Wrappers.<SlaughterApplyPig>lambdaQuery()
+                .eq(SlaughterApplyPig::getPigId, pigId));
+        if (members.isEmpty()) return null;
+        List<Long> applyIds = members.stream().map(SlaughterApplyPig::getApplyId).distinct().toList();
+        List<SlaughterApply> applies = this.list(Wrappers.<SlaughterApply>lambdaQuery()
+                .in(SlaughterApply::getId, applyIds)
+                .in(SlaughterApply::getApprovalStatus, STATUS_PENDING, STATUS_APPROVED)
+                .orderByDesc(SlaughterApply::getId)
+                .last("LIMIT 1"));
+        return applies.isEmpty() ? null : applies.get(0);
+    }
+
+    private List<Long> resolvePigIds(SlaughterApplyDTO dto) {
+        LinkedHashSet<Long> ids = new LinkedHashSet<>();
+        if (dto.getPigIds() != null) {
+            dto.getPigIds().stream().filter(java.util.Objects::nonNull).forEach(ids::add);
+        }
+        if (ids.isEmpty() && dto.getPigId() != null) ids.add(dto.getPigId());
+        if (ids.isEmpty()) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "至少选择一头生猪才能申报出栏");
+        }
+        return new ArrayList<>(ids);
     }
 }

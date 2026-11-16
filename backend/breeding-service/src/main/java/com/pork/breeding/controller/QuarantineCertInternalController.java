@@ -2,8 +2,10 @@ package com.pork.breeding.controller;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.pork.breeding.entity.PigIndividual;
+import com.pork.breeding.entity.QuarantineCertPig;
 import com.pork.breeding.entity.QuarantineCertificate;
 import com.pork.breeding.mapper.QuarantineCertMapper;
+import com.pork.breeding.mapper.QuarantineCertPigMapper;
 import com.pork.breeding.service.PigIndividualService;
 import com.pork.core.result.Result;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -29,6 +32,7 @@ import java.util.Map;
 public class QuarantineCertInternalController {
 
     private final QuarantineCertMapper certMapper;
+    private final QuarantineCertPigMapper certPigMapper;
     private final PigIndividualService pigIndividualService;
 
     @GetMapping("/verify")
@@ -57,9 +61,14 @@ public class QuarantineCertInternalController {
         data.put("issueTime", cert.getIssueTime());
         data.put("validUntil", cert.getValidUntil());
 
-        // 证上这头猪
-        PigIndividual certPig = pigIndividualService.getById(cert.getPigId());
-        data.put("certEarTagNo", certPig == null ? null : certPig.getEarTagNo());
+        // 证覆盖的猪：一张证可覆盖多头（一证多头），成员在 quarantine_cert_pig。
+        // 闸口扫到的耳标只要在这张证的名单里就算一致——这才是「证与猪对得上」的真实含义。
+        List<QuarantineCertPig> members = certPigMapper.selectList(
+                Wrappers.<QuarantineCertPig>lambdaQuery().eq(QuarantineCertPig::getCertId, cert.getId()));
+        List<String> certEarTags = members.stream().map(QuarantineCertPig::getEarTagNo).toList();
+        data.put("certEarTagNos", certEarTags);
+        data.put("pigCount", members.size());
+        data.put("certEarTagNo", certEarTags.isEmpty() ? null : certEarTags.get(0));
 
         if (cert.getValidUntil() != null && cert.getValidUntil().isBefore(LocalDate.now())) {
             data.put("reason", "检疫证已过有效期 " + cert.getValidUntil());
@@ -67,8 +76,8 @@ public class QuarantineCertInternalController {
         }
 
         if (earTagNo != null && !earTagNo.isBlank()) {
-            if (certPig == null || !earTagNo.equals(certPig.getEarTagNo())) {
-                data.put("reason", "检疫证登记的耳标与闸口扫描的耳标不一致");
+            if (!certEarTags.contains(earTagNo)) {
+                data.put("reason", "检疫证覆盖的生猪名单里没有闸口扫描的耳标 " + earTagNo);
                 return Result.success(data);
             }
         }

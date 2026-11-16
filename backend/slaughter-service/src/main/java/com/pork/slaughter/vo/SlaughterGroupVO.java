@@ -31,12 +31,6 @@ public class SlaughterGroupVO {
     @Schema(description = "未归批时的单头 pigId；归批时为 null")
     private Long pigId;
 
-    @Schema(description = "耳标区间起（组内最小耳标）")
-    private String tagStart;
-
-    @Schema(description = "耳标区间止（组内最大耳标）")
-    private String tagEnd;
-
     @Schema(description = "组内记录条数（= 该批涉及的头数）")
     private Integer headCount;
 

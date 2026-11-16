@@ -168,6 +168,68 @@ public class EvmBlockchainAdapter implements BlockchainAdapter, DisposableBean {
     }
 
     /**
+     * 验真按「整段历史」比对，而不是只比最新版。
+     * <p>
+     * 同一个 bizKey 下可以有多个版本（一车三店签收就是 3 个版本，bizKey 都是车号），
+     * 而存证记录是按 bizId 存的。只拿链上最新版去比，前两店的记录必然判成「不一致」——
+     * 数据其实一个字都没改。合约已有 {@code versionCount} / {@code evidenceAt(bizKey, version)}，
+     * 逐版本找命中的哈希即可，不用改合约。
+     */
+    @Override
+    public Verification verifyHash(String bizKey, String localHash) {
+        if (!StringUtils.hasText(localHash)) return new Verification(false, localHash, null);
+        long versions = versionCount(bizKey);
+        if (versions <= 0) return new Verification(false, localHash, null);
+        String latest = null;
+        // 从最新版往回找：绝大多数记录就是最新版，一次调用即命中
+        for (long v = versions; v >= 1; v--) {
+            Evidence evidence = evidenceAt(bizKey, v);
+            if (evidence == null || !StringUtils.hasText(evidence.contentHash())) continue;
+            if (latest == null) latest = evidence.contentHash();
+            if (evidence.contentHash().equalsIgnoreCase(localHash)) {
+                return new Verification(true, localHash, evidence.contentHash(), evidence.payload());
+            }
+        }
+        return new Verification(false, localHash, latest);
+    }
+
+    private long versionCount(String bizKey) {
+        Function function = new Function("versionCount",
+                List.<Type>of(new Utf8String(bizKey)),
+                List.<TypeReference<?>>of(new TypeReference<Uint256>() { }));
+        List<Type> decoded = callReadOnly(function);
+        return decoded.isEmpty() ? 0 : ((Uint) decoded.get(0)).getValue().longValueExact();
+    }
+
+    /** 某一版的哈希 + 原文：原文给验真用（核对本地留存的是不是当初上链的那份）；越界按「取不到」处理 */
+    private Evidence evidenceAt(String bizKey, long version) {
+        Function function = new Function("evidenceAt",
+                Arrays.asList(new Utf8String(bizKey), new Uint256(BigInteger.valueOf(version))),
+                Arrays.asList(new TypeReference<Utf8String>() { }, new TypeReference<Utf8String>() { },
+                        new TypeReference<Utf8String>() { }, new TypeReference<Uint256>() { },
+                        new TypeReference<Uint256>() { }));
+        List<Type> decoded = callReadOnly(function);
+        if (decoded.size() < 3) return null;
+        return new Evidence(decoded.get(1).getValue().toString(), decoded.get(2).getValue().toString());
+    }
+
+    private record Evidence(String contentHash, String payload) { }
+
+    private List<Type> callReadOnly(Function function) {
+        try {
+            EthCall response = web3j.ethCall(Transaction.createEthCallTransaction(
+                            credentials.getAddress(), contractAddress, FunctionEncoder.encode(function)),
+                    DefaultBlockParameterName.LATEST).send();
+            if (response.hasError() || response.isReverted() || !StringUtils.hasText(response.getValue())) {
+                return List.of();
+            }
+            return FunctionReturnDecoder.decode(response.getValue(), function.getOutputParameters());
+        } catch (IOException e) {
+            throw new IllegalStateException("查询链上存证失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
      * 链上交易落地的同时补一行「平台镜像账本」：存证记录 ↔ 账本行的配对断言
      * （悬空存证 / 孤儿块对账）依赖这张表。不写的话 evm 模式下每条新存证都是悬空的。
      * tx_hash 是真实交易哈希（每笔唯一），不会撞 uk_tx_hash。

@@ -7,6 +7,7 @@ import lombok.Data;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Schema(description = "产地检疫证DTO")
@@ -14,9 +15,12 @@ public class QuarantineCertDTO {
     @Schema(description = "主键ID")
     private Long id;
 
-    @NotNull(message = "生猪ID不能为空")
-    @Schema(description = "生猪ID", requiredMode = Schema.RequiredMode.REQUIRED)
+    /** 单头出证时由路径变量注入；多头出证用 pigIds（一证多头，现实里一张证覆盖一车） */
+    @Schema(description = "生猪ID（单头出证时由路径变量注入）")
     private Long pigId;
+
+    @Schema(description = "覆盖的生猪ID列表（一证多头；留空则用路径上的单头）")
+    private List<Long> pigIds;
 
     @NotBlank(message = "检疫证编号不能为空")
     @Schema(description = "检疫证编号", requiredMode = Schema.RequiredMode.REQUIRED)

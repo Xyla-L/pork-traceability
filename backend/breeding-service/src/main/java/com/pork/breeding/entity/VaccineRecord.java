@@ -13,6 +13,8 @@ public class VaccineRecord {
     @TableId(type = IdType.AUTO)
     private Long id;
     private Long pigId;
+    /** 所属免疫批次 vaccine_batch.id（同场+同疫苗+同生产批号+同一天自动归批） */
+    private Long vbatchId;
     private String vaccineName;
     private String batchNo;
     private String manufacturer;

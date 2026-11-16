@@ -2,7 +2,9 @@ package com.pork.breeding.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pork.breeding.dto.SlaughterApplyApproveDTO;
+import com.pork.breeding.dto.SlaughterApplyDTO;
 import com.pork.breeding.service.SlaughterApplyService;
+import com.pork.breeding.support.FarmScope;
 import com.pork.breeding.vo.SlaughterApplyVO;
 import com.pork.core.result.PageResult;
 import com.pork.core.result.Result;
@@ -21,6 +23,19 @@ import java.util.Map;
 public class SlaughterApplyController {
 
     private final SlaughterApplyService slaughterApplyService;
+    private final FarmScope farmScope;
+
+    @PostMapping
+    @Operation(summary = "新建出栏申报（一单多头）")
+    public Result<Long> create(@Valid @RequestBody SlaughterApplyDTO dto) {
+        // 机构隔离：逐头核对归属，不能替别家的猪申报
+        if (dto.getPigIds() != null) {
+            for (Long pigId : dto.getPigIds()) {
+                if (pigId != null) farmScope.requirePigOfFarm(pigId, "该出栏申报");
+            }
+        }
+        return Result.success(slaughterApplyService.createApply(dto));
+    }
 
     @GetMapping({"", "/page"})
     @Operation(summary = "分页查询出栏申报列表")
