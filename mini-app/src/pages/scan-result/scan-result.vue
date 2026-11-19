@@ -64,6 +64,8 @@
         <text>{{ blockchainOnChain ? '一键区块链验真' : '一键存证核对' }}</text>
       </view>
     </view>
+    <!-- 全局 AI 助手：扫码后带上下文问答 -->
+    <AiAssistantFloat :qr-code="qrCode" />
   </view>
 </template>
 
@@ -73,6 +75,7 @@ import { onLoad } from '@dcloudio/uni-app'
 import { useProductStore } from '@/stores/product'
 import { addRecentScan } from '@/utils/recentScans'
 import ProductInfoCard from '@/components/ProductInfoCard.vue'
+import AiAssistantFloat from '@/components/AiAssistantFloat.vue'
 import TraceTimeline from '@/components/TraceTimeline.vue'
 import SafeBuyPanel from '@/components/SafeBuyPanel.vue'
 import EmptyState from '@/components/EmptyState.vue'

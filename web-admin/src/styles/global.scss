@@ -79,3 +79,67 @@ a {
   padding-bottom: 12px;
   border-bottom: 1px solid $border-color-light;
 }
+
+// ========== AI 输出（轻量 Markdown）==========
+// v-html 生成的内容不带 scoped 的 data-v 标记，所以这套样式必须放在全局，
+// 由 web-admin/src/utils/markdownLite.ts 的 renderMarkdownLite 产出结构配套使用。
+.ai-markdown {
+  font-size: 14px;
+  line-height: 1.75;
+  color: #303133;
+  word-break: break-word;
+
+  h1,
+  h2 {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1f2d3d;
+    margin: 14px 0 8px;
+    padding-left: 8px;
+    border-left: 3px solid #409eff;
+  }
+
+  h3,
+  h4 {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 12px 0 6px;
+  }
+
+  p {
+    margin: 4px 0;
+  }
+
+  .gap {
+    height: 6px;
+  }
+
+  ul {
+    margin: 4px 0;
+    padding-left: 20px;
+  }
+
+  li {
+    margin: 2px 0;
+  }
+
+  .md-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 8px 0;
+    font-size: 13px;
+
+    th,
+    td {
+      border: 1px solid #ebeef5;
+      padding: 6px 10px;
+      text-align: left;
+    }
+
+    th {
+      background: #f5f7fa;
+      font-weight: 600;
+      color: #606266;
+    }
+  }
+}

@@ -65,6 +65,8 @@
         </view>
       </view>
     </view>
+    <!-- 全局 AI 助手：扫码后带上下文问答 -->
+    <AiAssistantFloat />
   </view>
 </template>
 
@@ -75,6 +77,7 @@ import { onShow } from '@dcloudio/uni-app'
 import jsQR from 'jsqr'
 // #endif
 import EmptyState from '@/components/EmptyState.vue'
+import AiAssistantFloat from '@/components/AiAssistantFloat.vue'
 import { getRecentScans } from '@/utils/recentScans'
 import { extractTraceCode, NOT_TRACE_CODE } from '@/utils/qrCode'
 

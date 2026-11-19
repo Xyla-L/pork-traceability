@@ -73,6 +73,9 @@
       </el-card>
     </div>
 
+    <!-- ========== AI 监管简报（内嵌实验室千问） ========== -->
+    <AiReportPanel class="ai-report-row" />
+
     <!-- ========== 待办 ========== -->
     <el-card v-if="todoList.length" class="table-card todo-card">
       <template #header>
@@ -113,6 +116,7 @@ import {
 import * as echarts from 'echarts'
 import { dashboardApi } from '@/api/modules/dashboard'
 import type { DashboardOverview, DashboardBlock } from '@/types/dashboard'
+import AiReportPanel from '@/components/ai/AiReportPanel.vue'
 
 const router = useRouter()
 
@@ -362,6 +366,11 @@ onUnmounted(() => {
 <style lang="scss" scoped>
 .dashboard {
   padding: 20px;
+}
+
+// ========== AI 监管简报 ==========
+.ai-report-row {
+  margin-bottom: 20px;
 }
 
 // ========== 角色头 ==========

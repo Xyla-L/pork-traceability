@@ -50,6 +50,13 @@ spring:
           predicates:
             - Path=/api/v1/blockchain/**
           filters: *strip-api-prefix
+        # AI 助手（内嵌实验室 Dify / 千问）
+        # 走 SSE 长连接，网关默认不缓冲，可以直接透传给前端
+        - id: ai-route
+          uri: lb://ai-service
+          predicates:
+            - Path=/api/v1/ai/**
+          filters: *strip-api-prefix
         - id: file-route
           uri: lb://file-service
           predicates:

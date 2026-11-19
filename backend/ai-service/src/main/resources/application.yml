@@ -1,0 +1,55 @@
+server:
+  port: ${SERVICE_PORT:8089}
+
+spring:
+  application:
+    name: ai-service
+  # 默认激活 local profile：本地开发把 Dify 的 Key 放在 application-local.yml（已被 .gitignore 忽略）
+  # 生产环境请设置环境变量 SPRING_PROFILES_ACTIVE=prod，并通过 DIFY_API_KEY 注入密钥
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+  config:
+    import: optional:nacos:${spring.application.name}.yaml
+  cloud:
+    nacos:
+      discovery:
+        server-addr: ${NACOS_ADDR:127.0.0.1:8848}
+        namespace: ${NACOS_NAMESPACE:}
+
+# ============================================================
+# Dify（实验室服务器 · 千问 Qwen3.8-27B · Chatflow）
+# ------------------------------------------------------------
+# 访问链路：本机 9090 --SSH隧道--> frp-use.com --跳板--> 172.17.102.191:80
+# 启动隧道：双击桌面「实验室Dify.bat」，或 ssh -N NodeQW1
+#
+# ⚠️ 这里不写默认 Key。密钥从环境变量 DIFY_API_KEY 或
+#    application-local.yml（本地，已 gitignore）注入，
+#    避免 API Key 跟着代码进 Git 历史。
+# ============================================================
+dify:
+  base-url: ${DIFY_BASE_URL:http://127.0.0.1:9090}
+  api-key: ${DIFY_API_KEY:}
+  # 单次推理最长等待（秒）。千问本地部署，长报告要留足时间
+  timeout-seconds: ${DIFY_TIMEOUT:120}
+  # SSE 流式转发的超时（毫秒），要小于网关和浏览器超时
+  sse-timeout-millis: 180000
+
+# 监管接口的角色校验（见 AdminRoleInterceptor）
+# 本地用 curl 直连 8089 调试时没有网关注入的 X-User-Role，可临时设 AI_ROLE_CHECK=false
+ai:
+  security:
+    role-check-enabled: ${AI_ROLE_CHECK:true}
+
+# 内部服务地址（与 trace-service 保持同一套风格）
+services:
+  trace-url: ${TRACE_SERVICE_URL:http://localhost:8086}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    com.pork.ai: ${LOG_LEVEL:info}

@@ -60,6 +60,8 @@
     <view v-else class="card">
       <EmptyState icon="" text="尚未开始验真" show-retry @retry="startVerify" />
     </view>
+    <!-- 全局 AI 助手：扫码后带上下文问答 -->
+    <AiAssistantFloat :qr-code="qrCode" />
   </view>
 </template>
 
@@ -68,6 +70,7 @@ import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useProductStore } from '@/stores/product'
 import EmptyState from '@/components/EmptyState.vue'
+import AiAssistantFloat from '@/components/AiAssistantFloat.vue'
 import { bizTypeLabel, shortHash } from '@/utils/bizType'
 
 const productStore = useProductStore()
