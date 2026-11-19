@@ -7,3 +7,9 @@ web-admin/src/types/components.d.ts
 target/
 mini-app/dist/
 .idea/
+
+# 智能助手本地密钥（Dify API Key），绝不进 Git
+backend/.env.ai
+
+# 本地记忆文件（内部笔记，不推送）
+.workbuddy/memory/
