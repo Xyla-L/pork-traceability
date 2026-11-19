@@ -39,6 +39,8 @@
     </view>
 
     <button class="submit-btn" :loading="submitting" @click="handleSubmit">提交举报</button>
+    <!-- 全局 AI 助手：扫码后带上下文问答 -->
+    <AiAssistantFloat />
   </view>
 </template>
 
@@ -47,6 +49,7 @@ import { ref, reactive } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useComplaintStore } from '@/stores/complaint'
 import PhotoUpload from '@/components/PhotoUpload.vue'
+import AiAssistantFloat from '@/components/AiAssistantFloat.vue'
 import { uploadFile } from '@/api/modules/file'
 
 const complaintStore = useComplaintStore()

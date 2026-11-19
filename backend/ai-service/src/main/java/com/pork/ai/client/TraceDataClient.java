@@ -80,6 +80,26 @@ public class TraceDataClient {
     }
 
     /**
+     * 管理端问答的按标识检索：关键词以 QR- 开头按溯源码查，否则按批次号查全链路
+     * （分流逻辑在 trace-service 的 TraceQueryService.search 里，这里不重复判断）。
+     *
+     * 为什么走 query 参数编码而不是路径段白名单：
+     *   问答里可能出现中文（场名、门店名），路径段那套白名单只放英文数字，
+     *   会把正常问题直接判成非法字符。query 参数用 encodeQueryParam 编码即可。
+     */
+    public Mono<Map<String, Object>> search(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            throw new IllegalArgumentException("keyword 不能为空");
+        }
+        String trimmed = keyword.trim();
+        if (trimmed.length() > 64) {
+            throw new IllegalArgumentException("keyword 过长");
+        }
+        String encoded = UriUtils.encodeQueryParam(trimmed, StandardCharsets.UTF_8);
+        return get("/trace/search?keyword=" + encoded, "search");
+    }
+
+    /**
      * 校验并编码路径段。
      *
      * 三层防护，顺序不能反：

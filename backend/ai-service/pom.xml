@@ -49,6 +49,13 @@
             <artifactId>spring-cloud-starter-loadbalancer</artifactId>
         </dependency>
 
+        <!-- 健康检查：容器 healthcheck 探 /actuator/health（与其他服务同一套模板），
+             不能探 /ai/health——那条会真的调一次模型 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
         <!-- 接口文档 -->
         <dependency>
             <groupId>com.github.xiaoymin</groupId>

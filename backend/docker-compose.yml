@@ -298,6 +298,76 @@ services:
       FILE_STORAGE_ROOT: /app/data/trace-files
     volumes: ["${FILE_STORAGE_PATH:-./data/trace-files}:/app/data/trace-files"]
 
+  # 智能助手（内嵌实验室 Dify / 千问）。模型在实验室内网，
+  # 经宿主机 SSH 隧道暴露到 127.0.0.1:9090，容器内用 host.docker.internal 访问。
+  # Key 走 .env.ai（已 gitignore），不写进任何被 Git 跟踪的文件。
+  ai-service:
+    <<: *app-defaults
+    build:
+      context: .
+      args: { SERVICE: ai-service }
+    environment:
+      <<: *app-environment
+      # ai-service 的 pom 开启了 spring-boot repackage（为了支持 mvn spring-boot:run），
+      # 产出的是可执行 fat jar（类在 BOOT-INF/classes 下），所以入口用 JarLauncher，
+      # 不能像其他服务那样直接指定 Application 类。
+      MAIN_CLASS: org.springframework.boot.loader.launch.JarLauncher
+      SERVICE_PORT: 8089
+      TRACE_SERVICE_URL: http://trace-service:8086
+      # 模型入口走同网络的 dify-tunnel 容器（容器内建 SSH 隧道），不再依赖宿主机 9090
+      DIFY_BASE_URL: ${DIFY_BASE_URL:-http://dify-tunnel:9090}
+      # DIFY_API_KEY 只从 env_file(.env.ai) 注入；这里不能再写 ${DIFY_API_KEY:-}，
+      # 否则空串会覆盖 env_file 里的真值（踩过）。
+      DIFY_TIMEOUT: ${DIFY_TIMEOUT:-120}
+    env_file: [".env.ai"]
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    depends_on:
+      nacos: { condition: service_healthy }
+      trace-service: { condition: service_started }
+      dify-tunnel: { condition: service_started }
+
+  # 实验室 Dify / 千问的 SSH 隧道（本机 → frp 跳板 → 实验室内网 172.17.102.191:80）。
+  # 隧道放在容器里跑：密钥目录由 SSH_KEY_DIR 指定（写进 .env.ai，不进 Git），
+  # 省掉「每台机器都要配 ~/.ssh/config、还要手动双击 bat」这一步。
+  # 隧道起不来只会让 AI 面板报不可达，不影响其他服务；参数见 .env.ai。
+  dify-tunnel:
+    image: alpine:3.20
+    container_name: pork-traceability-dify-tunnel
+    restart: unless-stopped
+    networks: [pork-net]
+    volumes:
+      # 只读挂载私钥目录；默认 ~/.ssh，Windows 下在 .env.ai 里写绝对路径
+      - "${SSH_KEY_DIR:-~/.ssh}:/keys:ro"
+    environment:
+      JUMP_HOST: ${DIFY_JUMP_HOST:-frp-use.com}
+      JUMP_PORT: ${DIFY_JUMP_PORT:-50480}
+      JUMP_USER: ${DIFY_JUMP_USER:-74276}
+      JUMP_KEY: ${DIFY_JUMP_KEY:-id_rsa}
+      LAB_HOST: ${DIFY_LAB_HOST:-172.17.102.191}
+      LAB_USER: ${DIFY_LAB_USER:-xm}
+      LAB_KEY: ${DIFY_LAB_KEY:-id_ed25519}
+    # 挂载进来的私钥权限是 0644（宿主 Windows 改不动），ssh 会以「bad permissions」拒用，
+    # 所以先复制到 /tmp 再 chmod 600。$$ 是 compose 的转义，容器里看到的是 $。
+    command:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        # alpine 默认的 dl-cdn 源在本机容器网络里基本拉不动（一直卡住），换阿里云源
+        printf 'https://mirrors.aliyun.com/alpine/v3.20/main\nhttps://mirrors.aliyun.com/alpine/v3.20/community\n' > /etc/apk/repositories
+        apk add --no-cache openssh-client >/dev/null
+        mkdir -p /tmp/k
+        cp "/keys/$$JUMP_KEY" /tmp/k/jump
+        cp "/keys/$$LAB_KEY" /tmp/k/lab
+        chmod 600 /tmp/k/jump /tmp/k/lab
+        echo "[tunnel] $$LAB_USER@$$LAB_HOST <- $$JUMP_USER@$$JUMP_HOST:$$JUMP_PORT"
+        exec ssh -N -g \
+          -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+          -o ExitOnForwardFailure=yes -o ServerAliveInterval=20 -o ServerAliveCountMax=3 \
+          -i /tmp/k/lab \
+          -o "ProxyCommand=ssh -p $$JUMP_PORT -i /tmp/k/jump -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -W %h:%p $$JUMP_USER@$$JUMP_HOST" \
+          -L 0.0.0.0:9090:localhost:80 $$LAB_USER@$$LAB_HOST
+
   nginx:
     image: nginx:1.27-alpine
     restart: unless-stopped

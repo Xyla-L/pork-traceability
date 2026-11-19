@@ -73,6 +73,10 @@ async function streamSse(path: string, params: Record<string, string | undefined
   const reader = response.body.getReader()
   const decoder = new TextDecoder('utf-8')
   let buffer = ''
+  // 文档要求：只收到 delta 没有 done（连接被中间层掐断）时，
+  // reader.read() 返回 done=true 视为正常结束，用已收到的内容收尾，
+  // 否则组件的 loading 会永远转圈。
+  let doneFired = false
 
   try {
     while (true) {
@@ -104,6 +108,7 @@ async function streamSse(path: string, params: Record<string, string | undefined
         if (eventName === 'delta') {
           options.onDelta(payload.text ?? '')
         } else if (eventName === 'done') {
+          doneFired = true
           options.onDone?.({
             conversationId: payload.conversationId ?? '',
             chars: payload.chars ?? 0,
@@ -113,6 +118,8 @@ async function streamSse(path: string, params: Record<string, string | undefined
         }
       }
     }
+
+    if (!doneFired) options.onDone?.({ conversationId: '', chars: 0 })
   } catch (e: any) {
     if (e.name !== 'AbortError') {
       options.onError?.(e.message || '流式读取中断')
@@ -126,6 +133,11 @@ export const aiApi = {
   /** 监管端：生成当日监管简报 */
   adminReport(user: string, options: AiStreamOptions) {
     return streamSse('/ai/admin/report', { user }, options)
+  },
+
+  /** 监管端：自由问答。conversationId 传上一轮的值才能延续上下文 */
+  adminAsk(question: string, user: string, conversationId: string, options: AiStreamOptions) {
+    return streamSse('/ai/admin/ask', { q: question, user, conversationId }, options)
   },
 
   /** 消费者端：一键解读溯源信息 */

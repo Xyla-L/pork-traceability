@@ -109,6 +109,24 @@ public class AiAssistantController {
     }
 
     /**
+     * 监管端自由问答。
+     *
+     * 与 /admin/report 共用 AdminRoleInterceptor（/ai/admin/** 全部拦截），
+     * 所以这里不再重复校验角色；数据取什么、怎么取在 AiAssistService.adminAsk 里。
+     */
+    @Operation(summary = "监管端 · 自由问答（需 SUPERVISOR/ADMIN）")
+    @GetMapping(value = "/admin/ask", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter adminAsk(@RequestParam(required = false) String q,
+                               @RequestParam(required = false) String user,
+                               @RequestParam(required = false) String conversationId) {
+        return guarded(() -> {
+            String question = requireText(q, "q", MAX_QUESTION_LEN);
+            return aiAssistService.adminAsk(question,
+                    normalizeUser(user), normalizeConversationId(conversationId));
+        });
+    }
+
+    /**
      * Dify 连通性自检。
      *
      * 两个改动：

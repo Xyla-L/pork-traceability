@@ -33,10 +33,10 @@
     <div v-else class="content-wrap">
       <div v-if="loading && !content" class="thinking">
         <el-icon class="is-loading"><Loading /></el-icon>
-        <span>正在汇总数据并生成报告…</span>
+        <span>正在汇总数据并生成报告，约需 10 秒…</span>
       </div>
 
-      <div class="markdown-body" v-html="renderedHtml"></div>
+      <div class="markdown-body ai-markdown" v-html="renderedHtml"></div>
 
       <div v-if="loading" class="cursor-blink">▍</div>
 
@@ -55,6 +55,7 @@ import { computed, onBeforeUnmount, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { MagicStick, Loading } from '@element-plus/icons-vue'
 import { aiApi } from '@/api/modules/ai'
+import { renderMarkdownLite } from '@/utils/markdownLite'
 
 const props = withDefaults(defineProps<{ userId?: string }>(), {
   userId: 'admin',
@@ -95,70 +96,10 @@ const statusTagType = computed<'success' | 'info' | 'danger'>(() => {
 })
 
 /* ---------------- 轻量 Markdown 渲染 ----------------
- * 只处理报告里真正用到的语法：标题、表格、列表、粗体。
- * 内容全部先做 HTML 转义，避免 AI 输出里夹带标签。
+ * 渲染逻辑与样式都收在 utils/markdownLite.ts + styles/global.scss 的 .ai-markdown 里，
+ * 问答抽屉共用同一份（避免两处实现各自演化）。
  */
-function escapeHtml(s: string) {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-}
-
-function inline(s: string) {
-  return escapeHtml(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-}
-
-const renderedHtml = computed(() => {
-  const lines = content.value.split('\n')
-  const out: string[] = []
-  let i = 0
-
-  while (i < lines.length) {
-    const line = lines[i]
-
-    // 表格：连续以 | 开头的行
-    if (line.trim().startsWith('|')) {
-      const rows: string[] = []
-      while (i < lines.length && lines[i].trim().startsWith('|')) {
-        rows.push(lines[i].trim())
-        i++
-      }
-      const cells = rows.map((r) =>
-        r.replace(/^\||\|$/g, '').split('|').map((c) => c.trim())
-      )
-      const body = cells.filter((row) => !row.every((c) => /^:?-{2,}:?$/.test(c)))
-      if (body.length) {
-        out.push('<table class="md-table"><thead><tr>')
-        body[0].forEach((c) => out.push(`<th>${inline(c)}</th>`))
-        out.push('</tr></thead><tbody>')
-        body.slice(1).forEach((row) => {
-          out.push('<tr>')
-          row.forEach((c) => out.push(`<td>${inline(c)}</td>`))
-          out.push('</tr>')
-        })
-        out.push('</tbody></table>')
-      }
-      continue
-    }
-
-    if (/^####\s+/.test(line)) out.push(`<h4>${inline(line.replace(/^####\s+/, ''))}</h4>`)
-    else if (/^###\s+/.test(line)) out.push(`<h3>${inline(line.replace(/^###\s+/, ''))}</h3>`)
-    else if (/^##\s+/.test(line)) out.push(`<h2>${inline(line.replace(/^##\s+/, ''))}</h2>`)
-    else if (/^#\s+/.test(line)) out.push(`<h1>${inline(line.replace(/^#\s+/, ''))}</h1>`)
-    else if (/^\s*[-*]\s+/.test(line)) out.push(`<li>${inline(line.replace(/^\s*[-*]\s+/, ''))}</li>`)
-    else if (/^\s*\d+\.\s+/.test(line)) out.push(`<li>${inline(line.replace(/^\s*\d+\.\s+/, ''))}</li>`)
-    else if (line.trim() === '') out.push('<div class="gap"></div>')
-    else out.push(`<p>${inline(line)}</p>`)
-
-    i++
-  }
-
-  // 把连续 li 包进 ul
-  return out
-    .join('')
-    .replace(/(<li>[\s\S]*?<\/li>)(?!\s*<li>)/g, '<ul>$1</ul>')
-})
+const renderedHtml = computed(() => renderMarkdownLite(content.value))
 
 /* ---------------- 交互 ---------------- */
 
@@ -179,8 +120,9 @@ function generate() {
       content.value += text
     },
     onDone(info) {
-      conversationId.value = info.conversationId
-      charCount.value = content.value.length
+      // 流被掐断时 api 层会补发 conversationId='' 的收尾事件，此时保留原有会话 ID
+      conversationId.value = info.conversationId || conversationId.value
+      charCount.value = info.chars || content.value.length
       loading.value = false
     },
     onError(msg) {
@@ -256,65 +198,7 @@ onBeforeUnmount(() => {
   padding: 12px 0;
 }
 
-.markdown-body {
-  font-size: 14px;
-  line-height: 1.75;
-  color: #303133;
-}
-
-.markdown-body :deep(h1),
-.markdown-body :deep(h2) {
-  font-size: 15px;
-  font-weight: 600;
-  color: #1f2d3d;
-  margin: 16px 0 8px;
-  padding-left: 8px;
-  border-left: 3px solid #409eff;
-}
-
-.markdown-body :deep(h3),
-.markdown-body :deep(h4) {
-  font-size: 14px;
-  font-weight: 600;
-  margin: 12px 0 6px;
-}
-
-.markdown-body :deep(p) {
-  margin: 4px 0;
-}
-
-.markdown-body :deep(.gap) {
-  height: 6px;
-}
-
-.markdown-body :deep(ul) {
-  margin: 4px 0;
-  padding-left: 20px;
-}
-
-.markdown-body :deep(li) {
-  margin: 2px 0;
-}
-
-.markdown-body :deep(.md-table) {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 8px 0;
-  font-size: 13px;
-}
-
-.markdown-body :deep(.md-table th),
-.markdown-body :deep(.md-table td) {
-  border: 1px solid #ebeef5;
-  padding: 6px 10px;
-  text-align: left;
-}
-
-.markdown-body :deep(.md-table th) {
-  background: #f5f7fa;
-  font-weight: 600;
-  color: #606266;
-}
+/* Markdown 排版统一由 styles/global.scss 的 .ai-markdown 提供（问答抽屉共用） */
 
 .cursor-blink {
   color: #409eff;

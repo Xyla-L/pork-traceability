@@ -38,6 +38,8 @@
         </view>
       </view>
     </view>
+    <!-- 全局 AI 助手：扫码后带上下文问答 -->
+    <AiAssistantFloat />
   </view>
 </template>
 
@@ -46,6 +48,7 @@ import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useComplaintStore } from '@/stores/complaint'
 import EmptyState from '@/components/EmptyState.vue'
+import AiAssistantFloat from '@/components/AiAssistantFloat.vue'
 
 const complaintStore = useComplaintStore()
 const loading = ref(false)

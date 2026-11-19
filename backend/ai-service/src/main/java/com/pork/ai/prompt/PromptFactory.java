@@ -25,8 +25,27 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class PromptFactory {
 
-    /** 数据太长会拖慢推理、也容易超上下文，超过就截断 */
-    private static final int MAX_DATA_CHARS = 6000;
+    /**
+     * 数据太长会拖慢推理、也容易超上下文，超过就截断。
+     * 8000 是实测折中：一条全链路记录裁剪后约 4~6 千字，
+     * 再算上平台总览，6000 会把后面的内容切掉（踩过：门店流向被切，模型答「查不到」）。
+     */
+    private static final int MAX_DATA_CHARS = 8000;
+
+    /**
+     * 字段名不许漏给用户（踩过：回答里出现「`transportCount`（在途批次）值为 5」）。
+     * 模型看见 JSON 键名就原样抄，必须明说「键名不出口」+ 给常用对照，
+     * 否则它分不清 transportCount 该说成什么。
+     */
+    private static final String FIELD_NAMING_RULE = """
+                【字段名规则——硬性】
+                - 回答里禁止出现 transportCount、qrCode、batchNo 这类 JSON 字段名或英文标识符：
+                  数据里的键名只是给你看的，不是给用户看的，一律换成中文说法。
+                  常用对照：transportCount=在途批次数、qrCode=溯源码、batchNo=批次号、
+                  storeName=门店名称、packageCount=包装数、weight=重量、status=状态、
+                  时间戳类=时间。对照里没有的字段，按含义起个中文名，不许照抄原文
+                - 数据里的"值"可以是系统内部代码（如 status=4），数值可以引用，
+                  但要写成「状态代码 4」这种带中文说明的形式，不要让代码裸奔""";
 
     private final ObjectMapper objectMapper;
 
@@ -54,6 +73,8 @@ public class PromptFactory {
                 5. 总字数控制在 200 到 300 字，用纯文本，不要 Markdown 标题
                 6. 只使用下面数据里真实存在的信息。数据里没写的，就不要提；
                    如果关键信息缺失，直接说明"这项信息暂未记录"，不要猜
+
+                """ + FIELD_NAMING_RULE + """
 
                 【溯源数据】
                 %s
@@ -97,6 +118,8 @@ public class PromptFactory {
                 3. 不要输出与监管无关的内容，不要写客套话
                 4. 总量为 0 或数据为空时，直接说明"当前无异常数据"，不要虚构
 
+                """ + FIELD_NAMING_RULE + """
+
                 【监管数据】
                 %s
                 """.formatted(json);
@@ -116,10 +139,50 @@ public class PromptFactory {
                 2. 数据里能查到依据的，说清楚依据；查不到的，明确说"溯源信息里没有记录这项"
                 3. 200 字以内，用生活化语言
 
+                """ + FIELD_NAMING_RULE + """
+
                 【消费者的问题】
                 %s
 
                 【溯源数据】
+                %s
+                """.formatted(question == null ? "" : question, json);
+    }
+
+    /**
+     * 监管端自由问答。
+     *
+     * 与简报的差别：简报是「固定结构 + 全量数据」，问答是「用户指向 + 相关数据」，
+     * 所以这里不规定章节，重点是「不许超出数据说话」——监管场景里编一个数字
+     * 比答不出来严重得多。
+     */
+    public String adminAsk(String question, Map<String, Object> data) {
+        String json = toJson(data);
+        return """
+                你是生猪产品追溯监管领域的数据分析员，正在回答监管人员提出的一个具体问题。
+
+                【回答要求】
+                1. 先给结论（一句话），再给依据；依据必须带具体数字、批次号或时间
+                2. 只能使用【可用数据】里出现过的内容。数据里没有的，直接说"当前数据里查不到这一项"，
+                   不要推测、不要用常识补全、不要编示例数字；也不要用数量做推算或外推
+                   （例如"共 20 包、每店 8 条，所以还剩 20 包"这种结论不要给）
+                3. 如果数据里写着"未取到任何数据"，只回答"暂时取不到数据，请稍后重试"，
+                   不要输出任何分析
+                4. 涉及多个对象时用短表格或列表，不要写成大段叙述
+                5. 200 到 400 字，Markdown 格式；不要复述问题，不要写客套话
+                6. 你只能给"该看什么、该查什么"的建议，不能替监管人员下执法结论
+                   （禁止出现"应当处罚""必须查封"这类定性表述）
+                7. status、type、isActivated 这类取值是系统内部代码，数值可引用但必须带中文说明
+                   （详见下方字段名规则），不要自行翻译成业务含义
+                   （例如不要把 status=4 解释成"未售出"），需要说明时统一写"具体含义按系统口径核对"
+                8. 数据里标注"还有 N 条未列出"时，如实说明只看到部分记录，不要把已列出的当作全部
+
+                """ + FIELD_NAMING_RULE + """
+
+                【监管人员的问题】
+                %s
+
+                【可用数据】
                 %s
                 """.formatted(question == null ? "" : question, json);
     }

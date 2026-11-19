@@ -14,7 +14,7 @@
       <text class="ai-intro-text">
         这是哪来的、干不干净，我帮你把溯源信息翻译成大白话。
       </text>
-      <view class="ai-btn primary" @click="start">
+      <view class="ai-btn primary" @click="start(qrCode)">
         <text>帮我解读</text>
       </view>
     </view>
@@ -28,7 +28,7 @@
 
       <view class="ai-error" v-if="errorMsg">
         <text>{{ errorMsg }}</text>
-        <text class="ai-retry" @click="start">重试</text>
+        <text class="ai-retry" @click="start(qrCode)">重试</text>
       </view>
 
       <view class="ai-actions" v-if="status === 'done'">
@@ -39,11 +39,12 @@
         <input
           class="ai-input"
           v-model="question"
+          maxlength="500"
           placeholder="比如：打过疫苗吗？保质期多久？"
           confirm-type="send"
-          @confirm="ask"
+          @confirm="doAsk"
         />
-        <view class="ai-btn small" @click="ask">
+        <view class="ai-btn small" @click="doAsk">
           <text>问</text>
         </view>
       </view>
@@ -56,9 +57,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, ref } from 'vue'
-import { aiApi } from '@/api/modules/ai'
-import { getDeviceId } from '@/utils/device'
+import { useAiChat } from '@/composables/useAiChat'
 
 const props = defineProps({
   qrCode: { type: String, required: true },
@@ -66,82 +65,15 @@ const props = defineProps({
   autoStart: { type: Boolean, default: false },
 })
 
-const content = ref('')
-const question = ref('')
-const errorMsg = ref('')
-const streaming = ref(false)
-const finished = ref(false)
-const conversationId = ref('')
+const { content, question, errorMsg, status, start, ask } = useAiChat()
 
-let task = null
-
-const status = computed(() => {
-  if (streaming.value) return 'streaming'
-  if (finished.value) return 'done'
-  if (errorMsg.value) return 'error'
-  return 'idle'
-})
-
-function start() {
-  if (streaming.value) return
-  content.value = ''
-  errorMsg.value = ''
-  finished.value = false
-  streaming.value = true
-
-  task = aiApi.consumerInterpret(props.qrCode, getDeviceId(), {
-    onDelta(text) {
-      content.value += text
-    },
-    onDone(info) {
-      streaming.value = false
-      finished.value = true
-      conversationId.value = info?.conversationId || ''
-    },
-    onError(msg) {
-      streaming.value = false
-      errorMsg.value = msg
-    },
-  })
+// 模板事件不带参，包装一层把当前码带上
+function doAsk() {
+  ask(props.qrCode, question.value)
 }
-
-function ask() {
-  const q = question.value.trim()
-  if (!q || streaming.value) return
-
-  question.value = ''
-  content.value = ''
-  errorMsg.value = ''
-  streaming.value = true
-
-  task = aiApi.consumerAsk(
-    props.qrCode,
-    q,
-    getDeviceId(),
-    // 回传上一轮的会话 ID，否则每轮追问都是新会话，上下文白丢
-    conversationId.value,
-    {
-      onDelta(text) {
-        content.value += text
-      },
-      onDone(info) {
-        streaming.value = false
-        conversationId.value = info?.conversationId || conversationId.value
-      },
-      onError(msg) {
-        streaming.value = false
-        errorMsg.value = msg
-      },
-    }
-  )
-}
-
-onBeforeUnmount(() => {
-  task?.abort()
-})
 
 if (props.autoStart) {
-  start()
+  start(props.qrCode)
 }
 </script>
 

@@ -53,6 +53,8 @@
     <view v-else class="card">
       <EmptyState icon="" text="举报信息不存在" show-retry @retry="load" />
     </view>
+    <!-- 全局 AI 助手：扫码后带上下文问答 -->
+    <AiAssistantFloat />
   </view>
 </template>
 
@@ -62,6 +64,7 @@ import { onLoad } from '@dcloudio/uni-app'
 import { useComplaintStore } from '@/stores/complaint'
 import { getDeviceId } from '@/utils/device'
 import EmptyState from '@/components/EmptyState.vue'
+import AiAssistantFloat from '@/components/AiAssistantFloat.vue'
 
 const complaintStore = useComplaintStore()
 const loading = ref(false)

@@ -21,17 +21,28 @@
         </router-view>
       </el-main>
     </el-container>
+
+    <!-- AI 助手：监管端接口只放行 SUPERVISOR/ADMIN，其他角色不显示入口，
+         免得上线后被 403 挡住还以为是坏了 -->
+    <AiChatDrawer v-if="canUseAi" />
   </el-container>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useAppStore } from '@/stores/app'
+import { useAuthStore } from '@/stores/auth'
 import SidebarMenu from './SidebarMenu.vue'
 import TopBar from './TopBar.vue'
+import AiChatDrawer from '@/components/ai/AiChatDrawer.vue'
 
 const appStore = useAppStore()
+const authStore = useAuthStore()
 const isCollapsed = computed(() => appStore.sidebarCollapsed)
+
+/** 与后端 AdminRoleInterceptor 的 ALLOWED_ROLES 保持一致 */
+const AI_ROLES = ['SUPERVISOR', 'ADMIN']
+const canUseAi = computed(() => !!authStore.role && AI_ROLES.includes(authStore.role))
 
 function toggleSidebar() {
   appStore.toggleSidebar()

@@ -118,12 +118,21 @@ function startStream(path, params, handlers) {
   const url = buildUrl(path, params)
   const { onDelta, onDone, onError } = handlers
   let aborted = false
+  // 文档要求：连接被掐断只收到 delta 没有 done 时，视为正常结束，
+  // 补发一次 done 收尾，否则组件的「解读中」状态永远不会结束。
+  let doneFired = false
 
   const dispatch = (eventName, payload) => {
     if (aborted) return
     if (eventName === 'delta') onDelta?.(payload.text ?? '')
-    else if (eventName === 'done') onDone?.(payload)
-    else if (eventName === 'error') onError?.(payload.message || 'AI 生成失败')
+    else if (eventName === 'done') {
+      doneFired = true
+      onDone?.(payload)
+    } else if (eventName === 'error') onError?.(payload.message || 'AI 生成失败')
+  }
+
+  const finishIfNoDone = () => {
+    if (!aborted && !doneFired) dispatch('done', { conversationId: '', chars: 0 })
   }
 
   // #ifdef MP-WEIXIN
@@ -133,7 +142,10 @@ function startStream(path, params, handlers) {
     method: 'GET',
     enableChunked: true,
     header: { Accept: 'text/event-stream' },
-    success: () => {},
+    success: () => {
+      // 请求正常结束但服务端没发 done 事件（连接被中间层掐断）——按正常结束收尾
+      finishIfNoDone()
+    },
     fail: (err) => {
       if (!aborted) onError?.(err?.errMsg || 'AI 服务连接失败')
     },
@@ -180,6 +192,7 @@ function startStream(path, params, handlers) {
         if (done || aborted) break
         parse(decoder.decode(value, { stream: true }))
       }
+      finishIfNoDone()
       reader.cancel().catch(() => {})
     })
     .catch((e) => {
