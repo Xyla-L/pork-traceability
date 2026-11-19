@@ -154,4 +154,132 @@ export const aiApi = {
   health() {
     return fetch(`${API_BASE}/ai/health`).then((r) => r.json())
   },
+
+  // ==================== 自然语言操作 ====================
+  // 和上面的问答不同：这几个返回的是结构化 JSON，不是流。
+  // 要的是「执行了哪个接口、返回了什么」，逐字吐出来反而不好用。
+
+  /** 发一句话，让它翻译成接口调用 */
+  actionChat(text: string, conversationId: string) {
+    return postJson<ActionChatResult>('/ai/action/chat', { text, conversationId })
+  },
+
+  /** 写操作二次确认（参数留在服务端，这里只传会话 id） */
+  actionConfirm(conversationId: string) {
+    return postJson<ActionChatResult>('/ai/action/confirm', { conversationId })
+  },
+
+  /** 检索调试：看看一句话会被理解成哪几个接口 */
+  graphSearch(q: string, topK = 8) {
+    return getJson<{ query: string; count: number; items: GraphSearchItem[] }>(
+      `/ai/graph/search?q=${encodeURIComponent(q)}&topK=${topK}`
+    )
+  },
+
+  /** 图谱规模统计 */
+  graphStats() {
+    return getJson<Record<string, any>>('/ai/graph/stats')
+  },
+}
+
+// ==================== 自然语言操作的类型 ====================
+
+export type ActionPhase = 'UNSUPPORTED' | 'NEED_SLOT' | 'READY' | 'EXECUTED' | 'FAILED'
+
+export interface ActionOperation {
+  id: string
+  summary: string
+  method: string
+  path: string
+  gatewayPath: string
+  module: string
+  service: string
+}
+
+export interface ActionMissingSlot {
+  name: string
+  type: string
+  hint: string
+}
+
+export interface ActionExecution {
+  success: boolean
+  status: number
+  elapsedMs: number
+  /** 下游返回的原始数据（JSON 字符串），前端按需解析 */
+  data?: string | null
+  error?: string | null
+}
+
+export interface ActionCandidate {
+  id: string
+  summary: string
+  method: string
+  score: number
+}
+
+export interface ActionChatResult {
+  phase: ActionPhase
+  conversationId: string
+  operation?: ActionOperation | null
+  slots: Record<string, any>
+  missing: ActionMissingSlot[]
+  question: string
+  answer: string
+  execution?: ActionExecution | null
+  candidates: ActionCandidate[]
+}
+
+export interface GraphSearchItem {
+  id: string
+  method: string
+  path: string
+  gatewayPath: string
+  summary: string
+  score: number
+  hits: string[]
+  executable: boolean
+  /** 不能执行时后端给的原因：internal / 黑名单 / 写操作未点名 */
+  denyReason?: string
+}
+
+/** 普通 JSON 请求。不走 streamSse，但同样要手动带 token（绕过了 axios 拦截器） */
+async function postJson<T>(path: string, body: unknown): Promise<T> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  const token = getToken()
+  if (token) headers.Authorization = `Bearer ${token}`
+
+  const response = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body),
+  })
+  return unwrap<T>(response)
+}
+
+async function getJson<T>(path: string): Promise<T> {
+  const headers: Record<string, string> = {}
+  const token = getToken()
+  if (token) headers.Authorization = `Bearer ${token}`
+  const response = await fetch(`${API_BASE}${path}`, { method: 'GET', headers })
+  return unwrap<T>(response)
+}
+
+/**
+ * 后端统一返回 {code, message, data}。
+ * 业务失败（如 401/503）的 HTTP 状态码可能仍是 200，所以不能只看 response.ok。
+ */
+async function unwrap<T>(response: Response): Promise<T> {
+  const payload = await response.json().catch(() => null)
+  if (!response.ok || !payload) {
+    const msg =
+      response.status === 401
+        ? '登录状态已失效，请重新登录'
+        : payload?.message || `服务返回异常（${response.status}）`
+    throw new Error(msg)
+  }
+  if (payload.code !== 200) {
+    throw new Error(payload.message || '操作失败')
+  }
+  return payload.data as T
 }

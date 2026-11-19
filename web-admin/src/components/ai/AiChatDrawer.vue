@@ -20,7 +20,13 @@
             <el-icon class="head-icon"><MagicStick /></el-icon>
             <div class="head-text">
               <div class="head-title">AI 助手</div>
-              <div class="head-sub">基于平台真实数据回答；查不到会直说，不猜</div>
+              <div class="head-sub">
+                {{
+                  mode === 'ask'
+                    ? '基于平台真实数据回答；查不到会直说，不猜'
+                    : '一句话完成查询与操作；改数据的动作会先问你'
+                }}
+              </div>
             </div>
           </div>
           <div class="head-actions">
@@ -29,33 +35,90 @@
           </div>
         </div>
 
+        <!--
+          模式切换：
+            问答 = 只读，调用 /ai/admin/ask（SSE 流式）
+            操作 = 会真的调接口，调用 /ai/action/chat（结构化 JSON）
+          两者会话互不影响，切回来时各自的上下文还在。
+        -->
+        <div class="mode-switch">
+          <button
+            v-for="m in modes"
+            :key="m.value"
+            type="button"
+            :class="['mode-btn', { active: mode === m.value }]"
+            @click="switchMode(m.value)"
+          >
+            {{ m.label }}
+          </button>
+        </div>
+
         <!-- 消息区 -->
         <div ref="bodyRef" class="chat-body">
-          <!-- 首屏引导 + 快捷问题 -->
-          <div v-if="!messages.length" class="intro">
-            <p class="intro-title">可以问我这些：</p>
-            <div class="chips">
-              <span v-for="q in quickQuestions" :key="q" class="chip" @click="send(q)">{{ q }}</span>
+          <!-- ==================== 问答模式 ==================== -->
+          <template v-if="mode === 'ask'">
+            <!-- 首屏引导 + 快捷问题 -->
+            <div v-if="!messages.length" class="intro">
+              <p class="intro-title">可以问我这些：</p>
+              <div class="chips">
+                <span v-for="q in quickQuestions" :key="q" class="chip" @click="send(q)">{{ q }}</span>
+              </div>
+              <p class="intro-note">
+                想查具体对象时，把<strong>批次号 / 溯源码</strong>带上，回答会更准（例如「PB20261025001 这批到哪了」）。
+              </p>
             </div>
-            <p class="intro-note">
-              想查具体对象时，把<strong>批次号 / 溯源码</strong>带上，回答会更准（例如「PB20261025001 这批到哪了」）。
-            </p>
-          </div>
 
-          <div v-for="(m, i) in messages" :key="i" :class="['msg', m.role]">
-            <div v-if="m.role === 'ai'" class="avatar"><el-icon><MagicStick /></el-icon></div>
-            <div class="bubble">
-              <template v-if="m.role === 'ai'">
-                <div v-if="m.text" class="ai-markdown" v-html="renderMarkdownLite(m.text)"></div>
-                <div v-else-if="m.loading" class="thinking">
-                  <el-icon class="is-loading"><Loading /></el-icon>
-                  <span>正在取数并生成回答…</span>
-                </div>
-                <div v-if="m.error" class="err-text">{{ m.error }}</div>
-              </template>
-              <template v-else>{{ m.text }}</template>
+            <div v-for="(m, i) in messages" :key="i" :class="['msg', m.role]">
+              <div v-if="m.role === 'ai'" class="avatar"><el-icon><MagicStick /></el-icon></div>
+              <div class="bubble">
+                <template v-if="m.role === 'ai'">
+                  <div v-if="m.text" class="ai-markdown" v-html="renderMarkdownLite(m.text)"></div>
+                  <div v-else-if="m.loading" class="thinking">
+                    <el-icon class="is-loading"><Loading /></el-icon>
+                    <span>正在取数并生成回答…</span>
+                  </div>
+                  <div v-if="m.error" class="err-text">{{ m.error }}</div>
+                </template>
+                <template v-else>{{ m.text }}</template>
+              </div>
             </div>
-          </div>
+          </template>
+
+          <!-- ==================== 操作模式 ==================== -->
+          <template v-else>
+            <div v-if="!actionMessages.length" class="intro">
+              <p class="intro-title">可以直接让它动手：</p>
+              <div class="chips">
+                <span v-for="q in actionQuickQuestions" :key="q" class="chip" @click="sendAction(q)">
+                  {{ q }}
+                </span>
+              </div>
+              <p class="intro-note">
+                它会先告诉你<strong>理解成了哪个接口</strong>，参数不够会追问；
+                <strong>查询类直接执行，写操作要你点确认</strong>。
+              </p>
+            </div>
+
+            <div v-for="(m, i) in actionMessages" :key="i" :class="['msg', m.role]">
+              <div v-if="m.role === 'ai'" class="avatar"><el-icon><Operation /></el-icon></div>
+              <div :class="['bubble', m.role === 'ai' ? 'bubble-card' : '']">
+                <template v-if="m.role === 'ai'">
+                  <div v-if="m.loading" class="thinking">
+                    <el-icon class="is-loading"><Loading /></el-icon>
+                    <span>正在理解并路由到接口…</span>
+                  </div>
+                  <ActionBubble
+                    v-else-if="m.action"
+                    :result="m.action"
+                    :confirming="!!m.confirming"
+                    @confirm="confirmAction(i)"
+                  />
+                  <div v-if="m.error" class="err-text">{{ m.error }}</div>
+                </template>
+                <template v-else>{{ m.text }}</template>
+              </div>
+            </div>
+          </template>
         </div>
 
         <!-- 输入区 -->
@@ -67,13 +130,19 @@
             resize="none"
             maxlength="500"
             show-word-limit
-            placeholder="问点什么，Enter 发送 / Shift+Enter 换行"
+            :placeholder="
+              mode === 'ask'
+                ? '问点什么，Enter 发送 / Shift+Enter 换行'
+                : '说你要做什么，比如「查一下所有养殖场」'
+            "
             @keydown.enter.exact.prevent="send()"
           />
           <div class="input-actions">
-            <span class="hint">只读问答，不会改动任何业务数据</span>
+            <span class="hint">
+              {{ mode === 'ask' ? '只读问答，不会改动任何业务数据' : '查询直接执行；改数据的动作会先请你确认' }}
+            </span>
             <div class="btns">
-              <el-button v-if="sending" size="small" @click="stop">停止</el-button>
+              <el-button v-if="sending && mode === 'ask'" size="small" @click="stop">停止</el-button>
               <el-button
                 v-else
                 size="small"
@@ -93,10 +162,11 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
-import { MagicStick, Loading } from '@element-plus/icons-vue'
-import { aiApi } from '@/api/modules/ai'
+import { MagicStick, Loading, Operation } from '@element-plus/icons-vue'
+import { aiApi, type ActionChatResult } from '@/api/modules/ai'
 import { renderMarkdownLite } from '@/utils/markdownLite'
 import { useAuthStore } from '@/stores/auth'
+import ActionBubble from './ActionBubble.vue'
 
 interface ChatMessage {
   role: 'user' | 'ai'
@@ -104,6 +174,24 @@ interface ChatMessage {
   loading?: boolean
   error?: string
 }
+
+/**
+ * 操作模式的消息。
+ *
+ * 和问答模式分开存，是因为两者语义不同：
+ * 问答是一条条文本，操作用是「一次路由结果」——里面带着接口、缺失参数、
+ * 执行状态和确认按钮，硬塞进 ChatMessage 会让问答侧的渲染逻辑到处判空。
+ */
+interface ActionMessage {
+  role: 'user' | 'ai'
+  text?: string
+  loading?: boolean
+  error?: string
+  action?: ActionChatResult
+  confirming?: boolean
+}
+
+type Mode = 'ask' | 'action'
 
 const MAX_QUESTION_LEN = 500
 
@@ -114,6 +202,18 @@ const quickQuestions = [
   '哪些批次被召回了、处理到哪一步了？',
 ]
 
+const actionQuickQuestions = [
+  '查一下所有养殖场',
+  '今天卖了多少猪肉',
+  '看看有哪些过期的产品',
+  '查一下各屠宰场今天的检验记录',
+]
+
+const modes: { label: string; value: Mode }[] = [
+  { label: '问答', value: 'ask' },
+  { label: '操作', value: 'action' },
+]
+
 const authStore = useAuthStore()
 
 const visible = ref(false)
@@ -122,6 +222,12 @@ const messages = ref<ChatMessage[]>([])
 const sending = ref(false)
 const conversationId = ref('')
 const bodyRef = ref<HTMLElement | null>(null)
+
+// 操作模式独立的一套状态：会话 id 不能和问答共用，
+// 否则两边会把各自的上下文串成一条线（问「它怎么样了」会指向完全不同的东西）
+const mode = ref<Mode>('ask')
+const actionMessages = ref<ActionMessage[]>([])
+const actionConversationId = ref('')
 
 let controller: AbortController | null = null
 
@@ -145,6 +251,11 @@ watch(
 )
 
 function send(preset?: string) {
+  // 一个入口两种语义，模板里就不用给每个按钮写两遍绑定
+  if (mode.value === 'action') {
+    void sendAction(preset)
+    return
+  }
   if (sending.value) return
 
   const question = (preset ?? draft.value).trim()
@@ -217,10 +328,84 @@ function stop() {
 
 function clear() {
   controller?.abort()
-  messages.value = []
-  conversationId.value = ''
+  if (mode.value === 'action') {
+    actionMessages.value = []
+    actionConversationId.value = ''
+  } else {
+    messages.value = []
+    conversationId.value = ''
+  }
   sending.value = false
   draft.value = ''
+}
+
+// ==================== 操作模式 ====================
+
+function switchMode(next: Mode) {
+  if (mode.value === next) return
+  mode.value = next
+  nextTick(scrollToBottom)
+}
+
+/**
+ * 发一句话让它执行。
+ *
+ * 注意这里没有「停止」：和问答的 SSE 不同，这是一次普通请求，
+ * 服务端可能已经在执行了，前端中断没有意义 —— 假装能停下来反而更危险。
+ */
+async function sendAction(preset?: string) {
+  if (sending.value) return
+
+  const text = (preset ?? draft.value).trim()
+  if (!text) return
+  if (text.length > MAX_QUESTION_LEN) {
+    actionMessages.value.push({ role: 'ai', error: '描述太长了，精简到 500 字以内' })
+    return
+  }
+
+  draft.value = ''
+  actionMessages.value.push({ role: 'user', text })
+  actionMessages.value.push({ role: 'ai', loading: true })
+  const index = actionMessages.value.length - 1
+  sending.value = true
+  scrollToBottom()
+
+  try {
+    const result = await aiApi.actionChat(text, actionConversationId.value)
+    // 后端可能新建会话，也可能续用旧的；以返回值为准
+    actionConversationId.value = result.conversationId || actionConversationId.value
+    const msg = actionMessages.value[index]
+    if (msg) {
+      msg.loading = false
+      msg.action = result
+    }
+  } catch (e: any) {
+    const msg = actionMessages.value[index]
+    if (msg) {
+      msg.loading = false
+      msg.error = e?.message || '操作失败，请稍后重试'
+    }
+  } finally {
+    sending.value = false
+    scrollToBottom()
+  }
+}
+
+/** 用户点了卡片上的「确认执行」：写操作才会走到这里 */
+async function confirmAction(index: number) {
+  const msg = actionMessages.value[index]
+  if (!msg?.action || msg.confirming) return
+
+  msg.confirming = true
+  try {
+    const result = await aiApi.actionConfirm(msg.action.conversationId)
+    actionMessages.value.push({ role: 'ai', action: result })
+  } catch (e: any) {
+    actionMessages.value.push({ role: 'ai', error: e?.message || '确认失败' })
+  } finally {
+    msg.confirming = false
+    scrollToBottom()
+  }
 }
 
 onBeforeUnmount(() => {
@@ -308,6 +493,37 @@ onBeforeUnmount(() => {
   display: flex;
   gap: 4px;
   flex-shrink: 0;
+}
+
+.mode-switch {
+  display: flex;
+  gap: 6px;
+  padding: 10px 16px 0;
+  background: #fff;
+}
+
+.mode-btn {
+  flex: 1;
+  height: 30px;
+  border: 1px solid #e4e7ed;
+  background: #fff;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #606266;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mode-btn:hover {
+  border-color: #b9d8ff;
+  color: #409eff;
+}
+
+.mode-btn.active {
+  background: #ecf5ff;
+  border-color: #409eff;
+  color: #409eff;
+  font-weight: 600;
 }
 
 .chat-body {
@@ -403,6 +619,16 @@ onBeforeUnmount(() => {
 
 .msg.ai .bubble {
   /* Markdown 自己控制空白，别让 pre-wrap 把空行放大 */
+  white-space: normal;
+}
+
+/* 操作卡片自带边框和内边距，气泡只当容器，不要再套一层白底 */
+.bubble-card {
+  flex: 1;
+  max-width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
   white-space: normal;
 }
 

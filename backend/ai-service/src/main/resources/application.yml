@@ -40,6 +40,136 @@ ai:
   security:
     role-check-enabled: ${AI_ROLE_CHECK:true}
 
+  # ============================================================
+  # 架构知识图谱（扫 Controller + Swagger 生成的「系统地图」）
+  # ------------------------------------------------------------
+  # 种子文件 arch-graph-seed.json 由 scripts/build-arch-graph.py 生成，
+  # 一个服务都没起时靠它工作。想拿真实参数类型，调
+  #   POST /api/v1/ai/admin/graph/rebuild
+  # 从各服务的 /v3/api-docs 覆盖。
+  # ============================================================
+  graph:
+    enabled: ${AI_GRAPH_ENABLED:true}
+    seed-resource: arch-graph-seed.json
+    # 启动就去拉 9 个服务会拖慢启动，本地默认关；线上可以打开
+    refresh-on-startup: ${AI_GRAPH_REFRESH_ON_STARTUP:false}
+    max-candidates: 8
+    min-score: 0.15
+    sources:
+      # gateway-prefix 不能自动推导：网关 StripPrefix 各服务不一样
+      # （breeding 是 3，其余 2），auth/trace 的服务内路径本身带一级
+      - service: auth-service
+        docs-url: ${AUTH_DOCS_URL:http://localhost:8081/v3/api-docs}
+        gateway-prefix: /api/v1
+        internal: true          # 登录/用户管理不给 AI 执行
+      - service: breeding-service
+        docs-url: ${BREEDING_DOCS_URL:http://localhost:8082/v3/api-docs}
+        gateway-prefix: /api/v1/breeding
+      - service: slaughter-service
+        docs-url: ${SLAUGHTER_DOCS_URL:http://localhost:8083/v3/api-docs}
+        gateway-prefix: /api/v1
+      - service: distribution-service
+        docs-url: ${DISTRIBUTION_DOCS_URL:http://localhost:8084/v3/api-docs}
+        gateway-prefix: /api/v1
+      - service: sales-service
+        docs-url: ${SALES_DOCS_URL:http://localhost:8085/v3/api-docs}
+        gateway-prefix: /api/v1
+      - service: trace-service
+        docs-url: ${TRACE_DOCS_URL:http://localhost:8086/v3/api-docs}
+        gateway-prefix: /api/v1
+      - service: blockchain-service
+        docs-url: ${BLOCKCHAIN_DOCS_URL:http://localhost:8087/v3/api-docs}
+        gateway-prefix: /api/v1
+      - service: file-service
+        docs-url: ${FILE_DOCS_URL:http://localhost:8088/v3/api-docs}
+        gateway-prefix: /api/v1
+    # 用户口语 → 系统用词。加一个说法只要改这里，不用发版。
+    # 用 List 而不是 Map：中文不能做 Map 的 key（Spring 的
+    # ConfigurationPropertyName 只认小写字母/数字/-，中文 key 会被静默丢弃）
+    synonyms:
+      - words: ["养殖场", "猪场", "养猪场"]
+        expand: ["farm", "farms"]
+      - words: ["批次"]
+        expand: ["batch", "batches"]
+      - words: ["检疫"]
+        expand: ["quarantine", "cert"]
+      - words: ["屠宰"]
+        expand: ["slaughter"]
+      - words: ["白条"]
+        expand: ["carcass"]
+      - words: ["分割"]
+        expand: ["split"]
+      - words: ["发货", "出车"]
+        expand: ["delivery", "plan"]
+      - words: ["门店", "店铺"]
+        expand: ["store"]
+      - words: ["零售", "卖", "销售", "售出"]
+        expand: ["sale", "sell", "retail"]
+      - words: ["产品"]
+        expand: ["product"]
+      - words: ["召回"]
+        expand: ["recall"]
+      - words: ["退货"]
+        expand: ["recall", "return", "reject"]
+      - words: ["拒收"]
+        expand: ["reject", "return"]
+      - words: ["收运"]
+        expand: ["transport", "collect"]
+      - words: ["过期", "效期", "临期"]
+        expand: ["expire", "warning"]
+      - words: ["溯源"]
+        expand: ["trace"]
+      - words: ["投诉", "举报"]
+        expand: ["complaint"]
+      - words: ["通知", "消息"]
+        expand: ["notification"]
+      - words: ["存栏"]
+        expand: ["stock", "inventory"]
+      - words: ["导出"]
+        expand: ["export"]
+      - words: ["统计", "汇总"]
+        expand: ["stats", "summary"]
+      - words: ["看板", "首页", "概览"]
+        expand: ["dashboard", "overview"]
+      - words: ["疫苗"]
+        expand: ["vaccine"]
+      - words: ["存证", "上链"]
+        expand: ["blockchain"]
+      - words: ["检测", "检验", "瘦肉精"]
+        expand: ["inspection", "test", "ractopamine"]
+    stopwords: ["的", "了", "吗", "呢", "吧", "啊", "请", "帮我", "我要", "我想",
+                "一下", "这个", "那个", "什么", "怎么", "如何", "可以", "能不能",
+                "麻烦", "现在", "所有", "系统", "里面"]
+
+  # ============================================================
+  # 自然语言操作（执行真实接口）
+  # ------------------------------------------------------------
+  # 默认只放行 GET。写操作必须在 allowed-write-operations 里逐个点名，
+  # 而且要用户二次确认。这是硬边界，不是建议。
+  # ============================================================
+  action:
+    enabled: ${AI_ACTION_ENABLED:true}
+    # 走网关：复用 JWT 校验、X-User-* 注入、令牌黑名单，ai-service 不自己造身份
+    gateway-base-url: ${GATEWAY_BASE_URL:http://localhost:8080}
+    allowed-methods:
+      - GET
+    # 想放开某个写操作，把 operationId 填进来（GET /ai/graph/search 可以查到 id）
+    # 例如：- op:breeding-service:POST:/farms
+    allowed-write-operations: []
+    denied-services:
+      - auth-service
+    denied-path-prefixes:
+      - /system
+      - /internal
+      - /ingest
+      - /ai/
+    timeout-seconds: ${AI_ACTION_TIMEOUT:30}
+    max-result-chars: 4000
+    session-ttl-minutes: 10
+    session-max: 5000
+    rate-limit-per-minute: ${AI_ACTION_RATE_LIMIT:20}
+
+
 # 内部服务地址（与 trace-service 保持同一套风格）
 services:
   trace-url: ${TRACE_SERVICE_URL:http://localhost:8086}

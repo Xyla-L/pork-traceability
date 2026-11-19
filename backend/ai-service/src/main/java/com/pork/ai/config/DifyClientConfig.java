@@ -29,6 +29,7 @@ import java.util.concurrent.TimeUnit;
 public class DifyClientConfig {
 
     private final DifyProperties properties;
+    private final ActionProperties actionProperties;
 
     @Bean("difyWebClient")
     public WebClient difyWebClient() {
@@ -45,6 +46,27 @@ public class DifyClientConfig {
                 .clientConnector(new ReactorClientHttpConnector(httpClient))
                 // 报告类回答可能很长，放宽编解码缓冲
                 .codecs(c -> c.defaultCodecs().maxInMemorySize(16 * 1024 * 1024))
+                .build();
+    }
+
+    /**
+     * 自然语言操作的执行客户端：请求的是<b>本平台的网关</b>，不是 Dify。
+     *
+     * <p>单独一个 Bean 而不是复用 plainWebClient，因为超时策略完全不同：
+     * plainWebClient 用来取溯源数据，慢一点无所谓；执行器后面接的是真实写操作，
+     * 卡住 30 秒对用户来说就是「点了没反应」，必须有自己的读超时。</p>
+     */
+    @Bean("actionWebClient")
+    public WebClient actionWebClient() {
+        int timeout = Math.max(5, actionProperties.getTimeoutSeconds());
+        HttpClient httpClient = HttpClient.create()
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 3_000)
+                .responseTimeout(Duration.ofSeconds(timeout))
+                .doOnConnected(conn ->
+                        conn.addHandlerLast(new ReadTimeoutHandler(timeout, TimeUnit.SECONDS)));
+        return WebClient.builder()
+                .clientConnector(new ReactorClientHttpConnector(httpClient))
+                .codecs(c -> c.defaultCodecs().maxInMemorySize(8 * 1024 * 1024))
                 .build();
     }
 
